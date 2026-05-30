@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Countryballs: Survive!</title>
+    <style>
+        body {
+            margin: 0; padding: 0; background-color: #0b0b1e; color: white;
+            font-family: 'Arial', sans-serif; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; min-height: 100vh;
+            overflow: hidden; touch-action: none; user-select: none;
+        }
+        #gameContainer {
+            position: relative; width: 100%; max-width: 400px; aspect-ratio: 2 / 3;
+            border: 4px solid #333; border-radius: 10px; overflow: hidden;
+            background: linear-gradient(to bottom, #000011, #050522);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        canvas { width: 100%; height: 100%; display: block; }
+        .ui-layer {
+            position: absolute; top: 12px; left: 12px; right: 12px;
+            display: flex; flex-direction: column; gap: 5px; pointer-events: none;
+            font-size: 16px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 5;
+        }
+        .ui-top {
+            display: flex; justify-content: space-between; color: #ffdda1; font-size: 18px;
+        }
+        .player-status-container {
+            display: flex; flex-direction: column; gap: 2px; font-size: 13px;
+        }
+        
+        .menu-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            background: rgba(5, 5, 15, 0.95); z-index: 10; padding: 15px; box-sizing: border-box;
+            overflow-y: auto;
+        }
+        
+        h1 { font-size: 24px; text-align: center; margin: 10px 0 5px; color: #ff4757; }
+        .sub-text { text-align: center; margin-bottom: 15px; font-size: 14px; color: #ced6e0; line-height: 1.4; white-space: pre-wrap; font-weight: bold; }
+        
+        .section-title { font-size: 12px; color: #aaa; margin-top: 5px; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        
+        .collapsible-header {
+            background: #1e272e; border: 2px solid #576574; border-radius: 6px;
+            padding: 6px 15px; width: 100%; max-width: 280px; text-align: center;
+            font-size: 13px; font-weight: bold; cursor: pointer; margin-bottom: 5px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-sizing: border-box; transition: 0.2s;
+        }
+        .collapsible-header:hover { background: #2f3640; border-color: #ff4757; }
+        .hidden-panel { display: none !important; }
+        
+        .lang-panel {
+            display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;
+            background: #111; padding: 6px; border-radius: 6px; border: 1px solid #444;
+            max-height: 120px; overflow-y: auto; width: 100%; max-width: 280px; margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        .lang-btn {
+            background: #222; border: 1px solid #444; color: #ccc; padding: 4px 6px;
+            font-size: 11px; border-radius: 4px; cursor: pointer; transition: 0.1s;
+        }
+        .lang-btn.active { background: #ff4757; color: white; border-color: #ff4757; font-weight: bold; }
+
+        .grid-select {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+            width: 100%; max-width: 280px; margin-bottom: 5px;
+        }
+        .grid-4col {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;
+            margin-bottom: 15px; width: 100%; max-width: 280px;
+        }
+        .grid-wrap {
+            display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; width: 100%; max-width: 280px; margin-bottom: 10px;
+        }
+        .option-box {
+            background: #1e272e; border: 2px solid #576574; border-radius: 6px;
+            padding: 5px 2px; text-align: center; cursor: pointer;
+            font-weight: bold; font-size: 11px; transition: 0.1s;
+        }
+        .option-box.selected { border-color: #ff4757; background: #2f3640; box-shadow: 0 0 5px rgba(255, 71, 87, 0.4); }
+
+        .menu-btn {
+            padding: 10px 40px; font-size: 18px; font-weight: bold;
+            color: white; border: none; border-radius: 25px;
+            cursor: pointer; margin-bottom: 10px; width: 200px; text-align: center;
+        }
+        .start-btn { background-color: #ff4757; box-shadow: 0 5px #cf212f; }
+        .start-btn:active { transform: translateY(5px); box-shadow: none; }
+        
+        .config-btn { background-color: #54a0ff; box-shadow: 0 5px #2e86de; font-size: 14px; padding: 8px 20px; }
+        .config-btn:active { transform: translateY(5px); box-shadow: none; }
+
+        .back-btn { background-color: #576574; box-shadow: 0 5px #222f3e; font-size: 14px; padding: 8px 20px; margin-top: 15px; }
+        .back-btn:active { transform: translateY(5px); box-shadow: none; }
+
+        .hidden { display: none !important; }
+
+        .p-setting-block {
+            background: rgba(255,255,255,0.05); border: 1px solid #444; border-radius: 8px;
+            padding: 8px; width: 100%; max-width: 290px; margin-bottom: 10px; box-sizing: border-box;
+        }
+        .p-title { font-size: 13px; font-weight: bold; margin-bottom: 5px; border-left: 3px solid #ff4757; padding-left: 5px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #ff4757; border-radius: 3px; }
+        
+        .new-record { color: #ffd700; text-shadow: 0 0 10px #ffa500; font-size: 18px; animation: flash 1s infinite alternate; margin-bottom: 5px;}
+        @keyframes flash { from { opacity: 0.8; } to { opacity: 1; transform: scale(1.05); } }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div class="ui-layer">
+        <div class="ui-top">
+            <div id="timerDisplay">0.0s</div>
+            <div id="modeDisplay">1P MODE</div>
+        </div>
+        <div class="player-status-container" id="playerStatus"></div>
+    </div>
+
+    <div class="menu-screen" id="mainScreen">
+        <h1 id="screenTitle">Survive!</h1>
+        <div class="sub-text" id="screenSub">ライヒから逃げて生き残れ！</div>
+        
+        <div class="collapsible-header" id="langToggle">
+            <span>🌍 <span id="lblLangToggle">Language</span></span>
+            <span id="langArrow">▼</span>
+        </div>
+        <div class="lang-panel hidden-panel" id="langPanel"></div>
+
+        <div class="section-title" id="lblPlayers">Players</div>
+        <div class="grid-4col" id="playerSelect">
+            <div class="option-box selected" data-players="1">1P</div>
+            <div class="option-box" data-players="2">2P</div>
+            <div class="option-box" data-players="3">3P</div>
+            <div class="option-box" data-players="4">4P</div>
+        </div>
+
+        <button class="menu-btn start-btn" id="startBtn">START</button>
+        <button class="menu-btn config-btn" id="toConfigBtn">🔧 SETTINGS</button>
+    </div>
+
+    <div class="menu-screen hidden" id="configScreen">
+        <h1 id="configTitle" style="color:#54a0ff; font-size:20px;">CUSTOM SETTINGS</h1>
+        <div style="font-size:11px; color:#aaa; margin-bottom:10px;" id="configSub">各プレイヤーのキャラクターと操作を設定してください</div>
+        
+        <div id="playersConfigContainer" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+
+        <button class="menu-btn back-btn" id="backToMenuBtn">↩️ BACK</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+    const i18n = {
+        "ja": { t: "Survive!", sub: "ライヒから逃げて生き残れ！", st: "スタート", tm: "タイム", bs: "最高記録", nr: "✨最高記録更新！✨", ov: "全滅した！", rt: "リトライ", la: "言語", plrs: "プレイ人数", cfg: "🔧 カスタム設定", cft: "CUSTOM SETTINGS", cfsub: "各プレイヤーのキャラクターと操作を設定してください", bk: "↩️ 戻る", pl: "ポーランド", jp: "日本", lg: "言語の国" },
+        "en": { t: "Survive!", sub: "Dodge Reichtangle and survive!", st: "START", tm: "Time", bs: "Best", nr: "✨NEW RECORD!✨", ov: "Game Over!", rt: "RETRY", la: "Language", plrs: "Players", cfg: "🔧 SETTINGS", cft: "CUSTOM SETTINGS", cfsub: "Configure each player's character and controls", bk: "↩️ BACK", pl: "Poland", jp: "Japan", lg: "Lang Country" },
+        "pl": { t: "Przetrwaj!", sub: "Unikaj Reichtangle i przeżyj!", st: "START", tm: "Czas", bs: "Rekord", nr: "✨NOWY REKORD!✨", ov: "Koniec Gry!", rt: "PONÓW", la: "Język", plrs: "Gracze", cfg: "🔧 USTAWIENIA", cft: "USTAWIENIA", cfsub: "Skonfiguruj postać i sterowanie każdego gracza", bk: "↩️ POWRÓT", pl: "Polska", jp: "Japonia", lg: "Kraj Języka" },
+        "de": { t: "Überlebe!", sub: "Weiche Reichtangle aus!", st: "START", tm: "Zeit", bs: "Beste", nr: "✨NEUER REKORD!✨", ov: "Spiel vorbei!", rt: "NOCHMAL", la: "Sprache", plrs: "Spieler", cfg: "🔧 EINSTELL.", cft: "EINSTELLUNGEN", cfsub: "Charakter und Steuerung für jeden Spieler anpassen", bk: "↩️ ZURÜCK", pl: "Polen", jp: "Japan", lg: "Sprachland" },
+        "fr": { t: "Survis !", sub: "Évite Reichtangle et survis !", st: "JOUER", tm: "Temps", bs: "Record", nr: "✨NOUVEAU RECORD!✨", ov: "Fin de partie!", rt: "RÉESSAYER", la: "Langue", plrs: "Joueurs", cfg: "🔧 CONFIG", cft: "PARAMÈTRES", cfsub: "Configurer le personnage et les contrôles de chaque joueur", bk: "↩️ RETOUR", pl: "Pologne", jp: "Japon", lg: "Pays Langue" },
+        "es": { t: "¡Sobrevive!", sub: "¡Esquiva a Reichtangle!", st: "INICIAR", tm: "Tiempo", bs: "Mejor", nr: "✨¡NUEVO RÉCORD!✨", ov: "¡Juego terminado!", rt: "REINTENTAR", la: "Idioma", plrs: "Jugadores", cfg: "🔧 AJUSTES", cft: "AJUSTES", cfsub: "Configura el personaje y controles de cada jugador", bk: "↩️ VOLVER", pl: "Polonia", jp: "Japón", lg: "País Idioma" },
+        "it": { t: "Sopravvivi!", sub: "Evita Reichtangle!", st: "INIZIA", tm: "Tempo", bs: "Record", nr: "✨NUOVO RECORD!✨", ov: "Game Over!", rt: "RIPROVA", la: "Lingua", plrs: "Giocatori", cfg: "🔧 OPZIONI", cft: "IMPOSTAZIONI", cfsub: "Configura personaggio e controlli per ogni giocatore", bk: "↩️ INDIETRO", pl: "Polonia", jp: "Giappone", lg: "Lingua" },
+        "ko": { t: "살아남아라!", sub: "라이히탄글을 피해 생존하세요!", st: "시작", tm: "시간", bs: "최고기록", nr: "✨신기록!✨", ov: "전멸했다!", rt: "재시도", la: "언어", plrs: "플레이어 수", cfg: "🔧 커스텀 설정", cft: "상세 설정", cfsub: "각 플레이어의 캐릭터와 조작을 설정하세요", bk: "↩️ 뒤로가기", pl: "폴란드", jp: "일본", lg: "언어 국가" },
+        "zh": { t: "活下去！", sub: "躲避德意志帝国生存！", st: "开始", tm: "时间", bs: "最高记录", nr: "✨新纪录！✨", ov: "全军覆没！", rt: "重试", la: "语言", plrs: "玩家人数", cfg: "🔧 自定义设置", cft: "自定义设置", cfsub: "设置每位玩家的角色与操作方式", bk: "↩️ 返回", pl: "波兰", jp: "日本", lg: "语言国家" },
+        "ru": { t: "Выживи!", sub: "Уклоняйся от Рейхтангола!", st: "СТАРТ", tm: "Время", bs: "Рекорд", nr: "✨НОВЫЙ РЕКОРД!✨", ov: "Игра окончена!", rt: "ЗАНОВО", la: "Язык", plrs: "Игроки", cfg: "🔧 НАСТРОЙКИ", cft: "НАСТРОЙКИ", cfsub: "Настройте персонажа и управление для каждого игрока", bk: "↩️ НАЗАД", pl: "Польша", jp: "Япония", lg: "Язык" }
+    };
+
+    const flagData = {
+        ja: {t:'c', bg:'#fff', fg:'#bc002d'}, pl: {t:'h', c:['#ff4757', '#fff']}, en: {t:'cross', bg:'#fff', c1:'#012169', c2:'#C8102E'},
+        de: {t:'h', c:['#000', '#d00', '#fc0']}, fr: {t:'v', c:['#002395', '#fff', '#ed2939']}, es: {t:'h', c:['#aa151b', '#f1bf00', '#aa151b']},
+        it: {t:'v', c:['#009246', '#fff', '#ce2b37']}, ru: {t:'h', c:['#fff', '#1c3578', '#e4181c']},
+        zh: {t:'c', bg:'#ee1c25', fg:'#ff0'}, ko: {t:'c', bg:'#fff', fg:'#c60c30'}
+    };
+
+    let currentLang = 'ja';
+    let pCount = 1;
+    
+    let playerDataConfigs = [
+        { id: 1, char: 'poland', input: 'mouse', color: '#ff4757' },
+        { id: 2, char: 'japan', input: 'tfgh', color: '#54a0ff' },
+        { id: 3, char: 'lang', input: 'ijkl', color: '#1dd1a1' },
+        { id: 4, char: 'poland', input: 'vbnm', color: '#feca57' }
+    ];
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const mainScreen = document.getElementById('mainScreen');
+    const configScreen = document.getElementById('configScreen');
+    canvas.width = 400; canvas.height = 600;
+
+    let gameActive = false, spawnTimer = 0;
+    let players = [], enemies = [], beams = [], keys = {}, targetX = 200;
+    let shakeTimer = 0, startTime = 0, survivalTime = 0.0, nextBeamTime = 10;
+
+    document.getElementById('langToggle').addEventListener('click', () => {
+        const panel = document.getElementById('langPanel');
+        const arrow = document.getElementById('langArrow');
+        const isHidden = panel.classList.toggle('hidden-panel');
+        arrow.textContent = isHidden ? '▼' : '▲';
+    });
+
+    const langPanel = document.getElementById('langPanel');
+    Object.keys(i18n).forEach(code => {
+        const btn = document.createElement('div');
+        btn.className = `lang-btn ${code === currentLang ? 'active' : ''}`;
+        btn.textContent = code.toUpperCase();
+        btn.onclick = (e) => setLanguage(code, e.target);
+        langPanel.appendChild(btn);
+    });
+
+    function setLanguage(code, targetBtn) {
+        currentLang = code;
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        if(targetBtn) targetBtn.classList.add('active');
+        const t = i18n[code];
+        document.getElementById('screenTitle').textContent = t.t;
+        if(!document.getElementById('screenSub').innerHTML.includes('s<br>')) document.getElementById('screenSub').textContent = t.sub;
+        document.getElementById('startBtn').textContent = t.st;
+        document.getElementById('lblLangToggle').textContent = t.la;
+        document.getElementById('lblPlayers').textContent = t.plrs;
+        document.getElementById('toConfigBtn').textContent = t.cfg;
+        document.getElementById('configTitle').textContent = t.cft;
+        document.getElementById('configSub').textContent = t.cfsub;
+        document.getElementById('backToMenuBtn').textContent = t.bk;
+        buildConfigUI();
+    }
+
+    document.getElementById('toConfigBtn').addEventListener('click', () => {
+        mainScreen.classList.add('hidden');
+        configScreen.classList.remove('hidden');
+        buildConfigUI();
+    });
+    document.getElementById('backToMenuBtn').addEventListener('click', () => {
+        configScreen.classList.add('hidden');
+        mainScreen.classList.remove('hidden');
+    });
+
+    document.querySelectorAll('#playerSelect .option-box').forEach(opt => {
+        opt.addEventListener('click', () => {
+            document.querySelectorAll('#playerSelect .option-box').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            pCount = parseInt(opt.getAttribute('data-players'));
+            document.getElementById('modeDisplay').textContent = `${pCount}P MODE`;
+        });
+    });
+
+    function buildConfigUI() {
+        const container = document.getElementById('playersConfigContainer');
+        container.innerHTML = '';
+        const t = i18n[currentLang];
+
+        for (let i = 0; i < pCount; i++) {
+            const conf = playerDataConfigs[i];
+            const block = document.createElement('div');
+            block.className = 'p-setting-block';
+            block.style.borderLeft = `4px solid ${conf.color}`;
+
+            block.innerHTML = `
+                <div class="p-title" style="border-left-color:${conf.color}">${i+1}P Setup</div>
+                <div class="section-title">Character</div>
+                <div class="grid-select char-pick-row" data-pid="${conf.id}">
+                    <div class="option-box ${conf.char==='poland'?'selected':''}" data-val="poland">🇵🇱 ${t.pl}</div>
+                    <div class="option-box ${conf.char==='japan'?'selected':''}" data-val="japan">🇯🇵 ${t.jp}</div>
+                    <div class="option-box ${conf.char==='lang'?'selected':''}" data-val="lang">🌐 ${t.lg}</div>
+                </div>
+                <div class="section-title">Controls</div>
+                <div class="grid-wrap input-pick-row" data-pid="${conf.id}">
+                    <div class="option-box ${conf.input==='mouse'?'selected':''}" data-val="mouse">🖱️ Mouse</div>
+                    <div class="option-box ${conf.input==='wasd'?'selected':''}" data-val="wasd">⌨️ WASD</div>
+                    <div class="option-box ${conf.input==='arrows'?'selected':''}" data-val="arrows">⌨️ Arrow</div>
+                    <div class="option-box ${conf.input==='tfgh'?'selected':''}" data-val="tfgh">⌨️ TFGH</div>
+                    <div class="option-box ${conf.input==='ijkl'?'selected':''}" data-val="ijkl">⌨️ IJKL</div>
+                    <div class="option-box ${conf.input==='vbnm'?'selected':''}" data-val="vbnm">⌨️ VBNM</div>
+                    <div class="option-box ${conf.input==='controller'?'selected':''}" data-val="controller">🎮 Pad</div>
+                </div>
+            `;
+            container.appendChild(block);
+        }
+
+        document.querySelectorAll('.char-pick-row').forEach(row => {
+            const pid = parseInt(row.getAttribute('data-pid'));
+            row.querySelectorAll('.option-box').forEach(box => {
+                box.onclick = () => {
+                    row.querySelectorAll('.option-box').forEach(b => b.classList.remove('selected'));
+                    box.classList.add('selected');
+                    playerDataConfigs[pid-1].char = box.getAttribute('data-val');
+                };
+            });
+        });
+
+        document.querySelectorAll('.input-pick-row').forEach(row => {
+            const pid = parseInt(row.getAttribute('data-pid'));
+            row.querySelectorAll('.option-box').forEach(box => {
+                box.onclick = () => {
+                    row.querySelectorAll('.option-box').forEach(b => b.classList.remove('selected'));
+                    box.classList.add('selected');
+                    playerDataConfigs[pid-1].input = box.getAttribute('data-val');
+                };
+            });
+        });
+    }
+
+    function initGame() {
+        enemies = []; beams = []; keys = {}; targetX = 200; shakeTimer = 0;
+        startTime = Date.now();
+        survivalTime = 0.0;
+        nextBeamTime = 10;
+        players = [];
+
+        const spacing = canvas.width / (pCount + 1);
+        
+        for (let i = 0; i < pCount; i++) {
+            const conf = playerDataConfigs[i];
+            players.push({
+                id: conf.id,
+                x: spacing * (i + 1),
+                y: 520,
+                radius: pCount === 1 ? 24 : 20,
+                lives: 3,
+                hitTimer: 0,
+                color: conf.color,
+                charType: conf.char,
+                input: conf.input,
+                active: true
+            });
+        }
+        updateStatusUI();
+    }
+
+    function updateStatusUI() {
+        const container = document.getElementById('playerStatus');
+        container.innerHTML = '';
+        players.forEach(p => {
+            const row = document.createElement('div');
+            row.style.color = p.color;
+            row.textContent = `${p.id}P: ` + (p.active ? '❤️'.repeat(p.lives) : '💀 OUT');
+            container.appendChild(row);
+        });
+    }
+
+    function drawPlayer(p) {
+        if (!p.active) return;
+        ctx.save();
+        
+        if (p.hitTimer > 0) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#ff4757";
+            if (Math.floor(p.hitTimer / 2) % 2 === 0) {
+                ctx.filter = "brightness(1.5) sepia(1) hue-rotate(-50deg)";
+            }
+        }
+
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.clip();
+        
+        let drawCode = p.charType === 'lang' ? currentLang : (p.charType === 'poland' ? 'pl' : (p.charType === 'japan' ? 'ja' : p.charType));
+        let f = flagData[drawCode] || flagData['pl'];
+
+        if (f.t === 'h') {
+            let h = (p.radius*2) / f.c.length;
+            f.c.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(p.x - p.radius, p.y - p.radius + i * h, p.radius * 2, h); });
+        } else if (f.t === 'v') {
+            let w = (p.radius*2) / f.c.length;
+            f.c.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(p.x - p.radius + i * w, p.y - p.radius, w, p.radius * 2); });
+        } else if (f.t === 'c') {
+            ctx.fillStyle = f.bg; ctx.fillRect(p.x-p.radius, p.y-p.radius, p.radius*2, p.radius*2);
+            ctx.fillStyle = f.fg; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius*0.45, 0, Math.PI*2); ctx.fill();
+        } else if (f.t === 'cross') {
+            ctx.fillStyle = f.bg; ctx.fillRect(p.x-p.radius, p.y-p.radius, p.radius*2, p.radius*2);
+            ctx.fillStyle = f.c1; ctx.fillRect(p.x-p.radius, p.y-p.radius/4, p.radius*2, p.radius/2);
+            ctx.fillStyle = f.c1; ctx.fillRect(p.x-p.radius/4, p.y-p.radius, p.radius/2, p.radius*2);
+        }
+        ctx.restore();
+        
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = p.color; ctx.stroke();
+        
+        ctx.fillStyle = '#fff';
+        if (pCount === 1) {
+            ctx.beginPath(); ctx.ellipse(p.x - 8, p.y - 4, 5, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(p.x + 8, p.y - 4, 5, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.ellipse(p.x - 6, p.y - 3, 4, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(p.x + 6, p.y - 3, 4, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+    }
+
+    function drawReichtangle(x, y, w, h) {
+        ctx.save();
+        ctx.fillStyle = '#000'; ctx.fillRect(x - w/2, y - h/2, w, h/3);
+        ctx.fillStyle = '#fff'; ctx.fillRect(x - w/2, y - h/2 + h/3, w, h/3);
+        ctx.fillStyle = '#f00'; ctx.fillRect(x - w/2, y - h/2 + (h/3)*2, w, h/3);
+        ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeRect(x - w/2, y - h/2, w, h);
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(x - 6, y - 8, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x + 6, y - 8, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+    
+    const handleMouse = (clientX) => {
+        const rect = canvas.getBoundingClientRect();
+        targetX = (clientX - rect.left) * (canvas.width / rect.width);
+    };
+    window.addEventListener('mousemove', e => { if(gameActive) handleMouse(e.clientX); });
+    window.addEventListener('touchmove', e => { if(gameActive) handleMouse(e.touches[0].clientX); }, { passive: true });
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+        if(!gameActive) { 
+            initGame(); 
+            mainScreen.classList.add('hidden'); 
+            configScreen.classList.add('hidden'); 
+            gameActive = true; 
+            animate(); 
+        }
+    });
+
+    function animate() {
+        if (!gameActive) return;
+        ctx.save();
+        
+        if (shakeTimer > 0) {
+            let dx = (Math.random() - 0.5) * shakeTimer * 2;
+            let dy = (Math.random() - 0.5) * shakeTimer * 2;
+            ctx.translate(dx, dy);
+            shakeTimer--;
+        }
+
+        ctx.clearRect(-20, -20, canvas.width+40, canvas.height+40);
+
+        survivalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+        document.getElementById('timerDisplay').textContent = `${survivalTime}s`;
+
+        // 繋がっているコントローラーを抽出（nullを除外）
+        const activeGamepads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(gp => gp !== null) : [];
+        let padAssignIndex = 0;
+
+        players.forEach(p => {
+            if (!p.active) return;
+            
+            if (p.input === 'mouse') {
+                p.x += (targetX - p.x) * 0.25;
+            }
+            else if (p.input === 'wasd') { if (keys['a']) p.x -= 5; if (keys['d']) p.x += 5; }
+            else if (p.input === 'arrows') { if (keys['arrowleft']) p.x -= 5; if (keys['arrowright']) p.x += 5; }
+            else if (p.input === 'tfgh') { if (keys['f']) p.x -= 5; if (keys['h']) p.x += 5; }
+            else if (p.input === 'ijkl') { if (keys['j']) p.x -= 5; if (keys['l']) p.x += 5; }
+            else if (p.input === 'vbnm') { if (keys['b']) p.x -= 5; if (keys['m']) p.x += 5; }
+            else if (p.input === 'controller') {
+                // コントローラーを使うプレイヤーの順に、認識されているコントローラーを割り当てる
+                const gp = activeGamepads[padAssignIndex];
+                padAssignIndex++; // 次のコントローラー使用者のためにインデックスを進める
+                
+                if (gp) {
+                    const axisX = gp.axes[0];
+                    const dpadLeft = gp.buttons[14]?.pressed;
+                    const dpadRight = gp.buttons[15]?.pressed;
+                    
+                    if (axisX < -0.3 || dpadLeft) p.x -= 5;
+                    if (axisX > 0.3 || dpadRight) p.x += 5;
+                }
+            }
+
+            if (p.x < p.radius) p.x = p.radius;
+            if (p.x > canvas.width - p.radius) p.x = canvas.width - p.radius;
+
+            if (p.hitTimer > 0) p.hitTimer--;
+            drawPlayer(p);
+        });
+
+        let diff = parseFloat(survivalTime);
+        
+        // --- ビーム（レーザー）の処理 ---
+        if (diff >= nextBeamTime) {
+            beams.push({
+                x: Math.random() * (canvas.width - 60) + 30, // ランダムなX座標
+                w: 70, // ビームの幅
+                warnTimer: 75, // 約1.25秒の警告時間
+                activeTimer: 20 // 約0.3秒の攻撃判定時間
+            });
+            nextBeamTime += 10;
+        }
+
+        for (let i = beams.length - 1; i >= 0; i--) {
+            let b = beams[i];
+            if (b.warnTimer > 0) {
+                b.warnTimer--;
+                // 警告エフェクト（赤く点滅）
+                ctx.fillStyle = (Math.floor(b.warnTimer / 5) % 2 === 0) ? 'rgba(255, 50, 50, 0.4)' : 'rgba(255, 200, 50, 0.1)';
+                ctx.fillRect(b.x - b.w/2, 0, b.w, canvas.height);
+            } else if (b.activeTimer > 0) {
+                b.activeTimer--;
+                // ビーム本体の描画
+                ctx.fillStyle = '#ff0044';
+                ctx.fillRect(b.x - b.w/2, 0, b.w, canvas.height);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(b.x - b.w/4, 0, b.w/2, canvas.height);
+
+                // ビームの当たり判定
+                players.forEach(p => {
+                    if (p.active && p.hitTimer <= 0 && Math.abs(p.x - b.x) < p.radius + b.w/2 - 5) {
+                        p.lives--;
+                        p.hitTimer = 30;
+                        shakeTimer = 15;
+                        updateStatusUI();
+                        if (p.lives <= 0) p.active = false;
+                    }
+                });
+            } else {
+                beams.splice(i, 1);
+            }
+        }
+
+        // --- 敵（ライヒ）の処理 ---
+        spawnTimer++;
+        if (spawnTimer > Math.max(6, 35 - diff * 1.2 - pCount * 2)) {
+            spawnTimer = 0;
+            enemies.push({ x: Math.random() * (canvas.width - 40) + 20, y: -30, speed: Math.random() * 3 + 4 + (diff * 0.15), w: 36, h: 48 });
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i];
+            e.y += e.speed;
+            drawReichtangle(e.x, e.y, e.w, e.h);
+
+            players.forEach(p => {
+                if (!p.active) return;
+                
+                if (p.hitTimer <= 0 && Math.abs(p.x - e.x) < p.radius + e.w/2 - 4 && Math.abs(p.y - e.y) < p.radius + e.h/2 - 4) {
+                    p.lives--;
+                    p.hitTimer = 30;
+                    shakeTimer = 10;
+                    updateStatusUI();
+                    if (p.lives <= 0) p.active = false;
+                }
+            });
+
+            if (e.y > canvas.height + 40) enemies.splice(i, 1);
+        }
+        
+        if (players.every(p => !p.active)) {
+            gameOver();
+            ctx.restore();
+            return;
+        }
+
+        ctx.restore();
+        requestAnimationFrame(animate);
+    }
+
+    function gameOver() {
+        gameActive = false;
+        const t = i18n[currentLang];
+        let finalTime = parseFloat(survivalTime);
+        
+        const recordKey = `cb_best_time_${pCount}p`;
+        let bestTime = parseFloat(localStorage.getItem(recordKey)) || 0.0;
+        
+        let isNewRecord = false;
+        if (finalTime > bestTime) {
+            bestTime = finalTime;
+            localStorage.setItem(recordKey, bestTime.toFixed(1));
+            isNewRecord = true;
+        }
+
+        document.getElementById('screenTitle').textContent = t.ov;
+        let res = `[${pCount}P MODE]<br>${t.tm}: ${finalTime.toFixed(1)}s<br>${t.bs}: ${bestTime.toFixed(1)}s`;
+        if (isNewRecord) res = `<div class="new-record">${t.nr}</div>` + res;
+        
+        document.getElementById('screenSub').innerHTML = res;
+        document.getElementById('startBtn').textContent = t.rt;
+        document.getElementById('langPanel').classList.add('hidden-panel');
+        document.getElementById('langArrow').textContent = '▼';
+        mainScreen.classList.remove('hidden');
+    }
+    
+    setLanguage('ja', document.querySelector('.lang-btn'));
+</script>
+</body>
+</html>
