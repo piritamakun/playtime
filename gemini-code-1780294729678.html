@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync Chat - Click to Chat</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background-color: #7494C0; height: 100vh; display: flex; overflow: hidden; }
+        #sidebar { width: 140px; background: #2c3e50; display: flex; flex-direction: column; align-items: center; padding: 15px 5px; gap: 10px; overflow-y: auto; z-index: 100; }
+        .history-item { width: 100%; padding: 12px 8px; background: #34495e; border-radius: 10px; color: white; text-align: left; font-size: 12px; cursor: pointer; position: relative; border: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-item.active { background: #85E249; color: #000; font-weight: bold; }
+        .status-dot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #95a5a6; border: 1px solid #2c3e50; }
+        .status-online { background: #85E249; box-shadow: 0 0 4px #85E249; }
+        #main-chat { flex: 1; display: flex; flex-direction: column; width: 100%; }
+        #setup-area { background: rgba(0,0,0,0.9); color: white; padding: 10px; font-size: 13px; }
+        .id-display { font-weight: bold; color: #85E249; font-size: 18px; }
+        header { background: #1E2A3A; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+        #chat-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 85%; }
+        .sent-wrapper { align-self: flex-end; align-items: flex-end; }
+        .received-wrapper { align-self: flex-start; align-items: flex-start; }
+        .msg { padding: 10px 14px; border-radius: 18px; font-size: 15px; word-wrap: break-word; line-height: 1.4; }
+        .sent { background-color: #85E249; border-top-right-radius: 4px; }
+        .received { background-color: white; border-top-left-radius: 4px; color: #333; }
+        footer { background: white; padding: 10px; display: flex; gap: 10px; align-items: center; }
+        #message-input { flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 25px; outline: none; font-size: 16px; }
+        #message-input:disabled { background-color: #f0f0f0; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+<div id="sidebar"></div>
+<div id="main-chat">
+    <div id="setup-area">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div>ID: <span id="my-id-display" class="id-display">----</span></div>
+            <input type="text" id="my-nickname" placeholder="自分の名前" style="width:100px; padding:5px; border-radius:5px; border:none;">
+        </div>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="peer-num" placeholder="相手の4桁" inputmode="numeric" maxlength="4" style="flex:1; padding:8px; border-radius:5px; border:none;">
+            <button id="connect-btn" style="background:#85E249; border:none; padding:0 15px; border-radius:6px; font-weight:bold;">接続</button>
+        </div>
+    </div>
+    <header>
+        <span id="chat-title">相手を選択してください</span>
+        <button id="clear-history" style="background:none; border:none; color:#e74c3c; font-size:18px; display:none;">🗑️</button>
+    </header>
+    <div id="chat-container"></div>
+    <footer>
+        <input type="text" id="message-input" placeholder="相手を選択してください" disabled>
+        <button id="send-btn" style="background:#85E249; border:none; padding:8px 15px; border-radius:20px; font-weight:bold; opacity:0.5;" disabled>送信</button>
+    </footer>
+</div>
+
+<script>
+    const VER = "v20"; 
+    const PREFIX = "p2p_stable_" + VER + "_";
+    let myNumber = localStorage.getItem('chat_id_'+VER) || Math.floor(1000 + Math.random() * 9000).toString();
+    localStorage.setItem('chat_id_'+VER, myNumber);
+
+    let myNickname = localStorage.getItem('chat_nick_'+VER) || "名無し";
+    const nickInput = document.getElementById('my-nickname');
+    nickInput.value = myNickname;
+    nickInput.oninput = (e) => {
+        myNickname = e.target.value || "名無し";
+        localStorage.setItem('chat_nick_'+VER, myNickname);
+    };
+
+    const peer = new Peer(PREFIX + myNumber);
+    let connections = {};
+    let activePeer = null;
+
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    peer.on('open', () => {
+        document.getElementById('my-id-display').textContent = myNumber;
+        renderHistory();
+    });
+
+    peer.on('connection', (conn) => {
+        const num = conn.peer.replace(PREFIX, "");
+        setupConn(conn, num);
+    });
+
+    document.getElementById('connect-btn').onclick = () => {
+        const target = document.getElementById('peer-num').value.trim();
+        if (target.length === 4 && target !== myNumber) tryConnect(target);
+    };
+
+    function tryConnect(num) {
+        if (connections[num] && connections[num].open) {
+            selectChat(num);
+            return;
+        }
+        const conn = peer.connect(PREFIX + num, { reliable: true });
+        setupConn(conn, num);
+        document.getElementById('chat-title').textContent = "接続中...";
+    }
+
+    function setupConn(conn, num) {
+        conn.on('open', () => {
+            connections[num] = conn;
+            addFriend(num, null); 
+            renderHistory();
+            selectChat(num);
+        });
+        conn.on('data', (data) => {
+            addFriend(num, data.senderName);
+            saveMsg(num, data, 'received');
+            if (activePeer === num) renderChat();
+            renderHistory();
+        });
+        conn.on('close', () => { 
+            delete connections[num]; 
+            if(activePeer === num) updateInputStatus();
+            renderHistory(); 
+        });
+        conn.on('error', () => {
+            delete connections[num];
+            renderHistory();
+        });
+    }
+
+    // ★今回のメイン修正：名前をクリックした時のチャット切り替え
+    function selectChat(num) {
+        activePeer = num;
+        updateInputStatus();
+        const friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        document.getElementById('chat-title').textContent = friends[num] || num;
+        document.getElementById('clear-history').style.display = 'block';
+        renderChat();
+        renderHistory(); // 選択状態（色）を更新するために再描画
+    }
+
+    function updateInputStatus() {
+        if (!activePeer) return;
+        const isConnected = connections[activePeer] && connections[activePeer].open;
+        if (isConnected) {
+            input.disabled = false;
+            input.placeholder = "メッセージを入力...";
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = "1";
+        } else {
+            input.disabled = true;
+            input.placeholder = "接続が切れています...";
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = "0.5";
+        }
+    }
+
+    function executeSend() {
+        const text = input.value.trim();
+        if (!text || !activePeer) return;
+        const msgObj = { type: 'text', content: text, senderName: myNickname, time: new Date().toLocaleTimeString() };
+        
+        if (connections[activePeer] && connections[activePeer].open) {
+            connections[activePeer].send(msgObj);
+            saveMsg(activePeer, msgObj, 'sent');
+            input.value = "";
+            renderChat();
+        } else {
+            tryConnect(activePeer);
+        }
+    }
+
+    function addFriend(num, name) {
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        if (name) friends[num] = name;
+        else if (!friends[num]) friends[num] = num;
+        localStorage.setItem('friends_'+VER, JSON.stringify(friends));
+    }
+
+    // ★名前をクリックした時に selectChat(num) を呼ぶように設定
+    function renderHistory() {
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        const sb = document.getElementById('sidebar');
+        sb.innerHTML = '<div style="color:white; font-size:10px; margin-bottom:10px; opacity:0.6;">履歴</div>';
+        
+        Object.keys(friends).forEach(num => {
+            const btn = document.createElement('button');
+            btn.className = `history-item ${activePeer === num ? 'active' : ''}`;
+            const online = connections[num] && connections[num].open;
+            const displayName = friends[num] || num;
+            btn.innerHTML = `<div class="status-dot ${online ? 'status-online' : ''}"></div>${displayName}`;
+            
+            // ここでクリック時の処理を紐付け
+            btn.onclick = () => selectChat(num);
+            
+            sb.appendChild(btn);
+        });
+    }
+
+    function saveMsg(num, msg, type) {
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+num) || "[]");
+        log.push({ ...msg, chatType: type });
+        localStorage.setItem('log_'+VER+'_'+num, JSON.stringify(log));
+    }
+
+    function renderChat() {
+        const container = document.getElementById('chat-container');
+        container.innerHTML = "";
+        if (!activePeer) return;
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+activePeer) || "[]");
+        log.forEach(m => {
+            const wrap = document.createElement('div');
+            wrap.className = `msg-wrapper ${m.chatType === 'received' ? 'received-wrapper' : 'sent-wrapper'}`;
+            const c = document.createElement('div');
+            c.className = `msg ${m.chatType === 'received' ? 'received' : 'sent'}`;
+            c.textContent = m.content;
+            wrap.appendChild(c);
+            container.appendChild(wrap);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    sendBtn.onclick = executeSend;
+    input.onkeypress = (e) => { if(e.key === 'Enter') executeSend(); };
+    setInterval(() => { if(activePeer) updateInputStatus(); }, 2000);
+
+    document.getElementById('clear-history').onclick = () => {
+        if (confirm("履歴を削除しますか？")) {
+            localStorage.removeItem('log_'+VER+'_'+activePeer);
+            let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+            delete f[activePeer];
+            localStorage.setItem('friends_'+VER, JSON.stringify(f));
+            location.reload();
+        }
+    };
+</script>
+</body>
+</html>
