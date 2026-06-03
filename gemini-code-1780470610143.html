@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync Chat - Data Recovery v42</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* 既存デザイン維持 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #313338; color: #dbdee1; height: 100vh; display: flex; overflow: hidden; }
+        
+        #sidebar { width: 160px; background: #2b2d31; display: flex; flex-direction: column; align-items: center; padding: 15px 10px; gap: 8px; overflow-y: auto; z-index: 100; border-right: 1px solid #1e1f22; }
+        .history-item { width: 100%; padding: 12px 10px; background: #1e1f22; border-radius: 8px; color: #949ba4; text-align: left; font-size: 13px; cursor: pointer; position: relative; border: none; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .history-item:hover { background: #3f4147; color: white; }
+        .history-item.active { background: #85E249; color: #111; font-weight: bold; }
+        .fav-star { color: #5c5e66; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .fav-star.is-fav { color: #f1c40f !important; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #5c5e66; margin-right: 5px; flex-shrink: 0; }
+        .status-online { background: #23a559; box-shadow: 0 0 5px #23a559; }
+
+        #main-chat { flex: 1; display: flex; flex-direction: column; width: 100%; background: #313338; position: relative; }
+        #setup-area { background: #1e1f22; color: #dbdee1; padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #2b2d31; }
+        .id-display { font-weight: bold; color: #85E249; font-size: 18px; letter-spacing: 1px; cursor: pointer; text-decoration: underline dotted; }
+        input[type="text"] { background: #1e1f22; color: white; border: 1px solid #3f4147; outline: none; padding: 6px 10px; border-radius: 6px; }
+        
+        header { background: #2b2d31; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; min-height: 50px; font-weight: bold; border-bottom: 1px solid #1e1f22; }
+        
+        #screen-share-container { width: 100%; background: #000; display: none; position: relative; max-height: 40%; }
+        #screen-video { width: 100%; height: 100%; max-height: 400px; object-fit: contain; }
+        
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 75%; }
+        .sent-wrapper { align-self: flex-end; align-items: flex-end; }
+        .received-wrapper { align-self: flex-start; align-items: flex-start; }
+        .msg { padding: 12px 16px; border-radius: 18px; font-size: 15px; word-wrap: break-word; line-height: 1.5; }
+        .sent { background-color: #85E249; color: #111; border-bottom-right-radius: 4px; }
+        .received { background-color: #2b2d31; color: #dbdee1; border-bottom-left-radius: 4px; }
+        
+        footer { background: #2b2d31; padding: 15px 20px; display: flex; gap: 12px; align-items: center; }
+        #attach-btn { background: none; border: none; color: #949ba4; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        #attach-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #attach-btn:hover:not(:disabled) { color: white; }
+        #message-input { flex: 1; background: #383a40; border: none; padding: 14px 20px; border-radius: 25px; outline: none; font-size: 15px; color: white; }
+        #send-btn { background: #85E249; color: #111; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        #send-btn:disabled, #message-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #call-members-container { display: flex; gap: 5px; margin-left: 10px; flex-wrap: wrap; }
+        .member-badge { background: #3f4147; color: #85E249; padding: 4px 8px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #85E249; }
+        .member-kick { cursor: pointer; color: #da373c; font-weight: bold; font-size: 14px; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .calling { color: #ff4757 !important; animation: pulse 1.2s infinite; }
+        .sharing { color: #85E249 !important; animation: pulse 1.5s infinite; }
+        #visualizer-canvas { width: 60px; height: 20px; vertical-align: middle; margin-left: 10px; display: none; }
+        
+        #incoming-call-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; backdrop-filter: blur(3px); }
+        .modal-content { background: #2b2d31; padding: 30px 40px; border-radius: 12px; text-align: center; color: white; border: 1px solid #3f4147; }
+        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; justify-content: center; }
+        .modal-btn { padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-answer { background: #23a559; color: white; }
+        .btn-decline { background: #da373c; color: white; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #85E249; color: #111; padding: 10px 25px; border-radius: 30px; font-weight: bold; opacity: 0; transition: 0.4s; pointer-events: none; z-index: 1000; }
+        .toast-show { opacity: 1 !important; transform: translateX(-50%) translateY(0) !important; }
+    </style>
+</head>
+<body>
+<div id="sidebar"></div>
+<div id="main-chat">
+    <div id="setup-area">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+                ID: <span id="my-id-display" class="id-display" title="ID変更">----</span>
+                <canvas id="visualizer-canvas"></canvas>
+            </div>
+            <input type="text" id="my-nickname" placeholder="自分の名前">
+        </div>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="peer-num" placeholder="相手のID" style="flex:1;">
+            <button id="connect-btn" style="background:#85E249; color:#111; border:none; padding:0 20px; border-radius:6px; font-weight:bold; cursor:pointer;">接続</button>
+        </div>
+    </div>
+    <header>
+        <div style="display:flex; align-items:center; overflow: hidden;">
+            <span id="chat-title">相手を選択してください</span>
+            <div id="call-members-container"></div>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <button id="screen-btn" style="background:none; border:none; color:white; font-size:20px; display:none; cursor:pointer;" title="画面共有">🖥️</button>
+            <button id="invite-btn" style="background:none; border:none; color:#85E249; font-size:22px; display:none; cursor:pointer;">➕</button>
+            <button id="call-btn" style="background:none; border:none; color:white; font-size:22px; display:none; cursor:pointer;">📞</button>
+            <button id="clear-history" style="background:none; border:none; color:#da373c; font-size:20px; display:none; cursor:pointer;">🗑️</button>
+        </div>
+    </header>
+
+    <div id="screen-share-container">
+        <video id="screen-video" autoplay playsinline></video>
+    </div>
+
+    <div id="chat-container"></div>
+    <footer>
+        <button id="attach-btn" title="画像を添付" disabled>📎</button>
+        <input type="file" id="file-input" style="display:none;" accept="image/*,video/*">
+        <input type="text" id="message-input" placeholder="相手を選択してください" disabled>
+        <button id="send-btn" disabled>送信</button>
+    </footer>
+</div>
+
+<div id="incoming-call-modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom:10px; color:#85E249;">📞 通話着信</h3>
+        <p><span id="caller-name-display">相手</span></p>
+        <div class="modal-buttons">
+            <button class="modal-btn btn-decline" id="decline-btn">拒否</button>
+            <button class="modal-btn btn-answer" id="answer-btn">応答</button>
+        </div>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script>
+    const VER = "v42"; 
+    const PREFIX = "p2p_stable_v42_"; 
+    
+    // ★ 修正点: 過去の「すべて」のバージョンからデータをかき集めて完全復旧する処理
+    if (!localStorage.getItem('migrated_to_'+VER)) {
+        const oldVersions = ["v37", "v38", "v39", "v40", "v41"];
+        let foundFriends = null;
+        let foundVer = null;
+        
+        // 一番新しいバージョンのデータを探す
+        for (let i = oldVersions.length - 1; i >= 0; i--) {
+            let f = localStorage.getItem('friends_' + oldVersions[i]);
+            if (f) {
+                foundFriends = f;
+                foundVer = oldVersions[i];
+                break;
+            }
+        }
+
+        if (foundFriends) {
+            localStorage.setItem('friends_' + VER, foundFriends);
+            let parsed = JSON.parse(foundFriends);
+            Object.keys(parsed).forEach(num => {
+                let oldLog = localStorage.getItem('log_' + foundVer + '_' + num);
+                if (oldLog) localStorage.setItem('log_' + VER + '_' + num, oldLog);
+            });
+        }
+        localStorage.setItem('migrated_to_'+VER, 'true');
+    }
+
+    let myNumber = localStorage.getItem('my_permanent_chat_id');
+    if (!myNumber) {
+        myNumber = Math.floor(1000 + Math.random() * 9000).toString();
+        localStorage.setItem('my_permanent_chat_id', myNumber);
+    }
+
+    const myIdDisplay = document.getElementById('my-id-display');
+    myIdDisplay.onclick = () => {
+        const newId = prompt("新しいIDを入力:", myNumber);
+        if (newId && newId !== myNumber) {
+            localStorage.setItem('my_permanent_chat_id', newId);
+            location.reload();
+        }
+    };
+
+    // ★ 修正点: ニックネームも永久保存化して消えないように保護
+    let myNickname = localStorage.getItem('my_permanent_nick');
+    if (!myNickname) {
+        myNickname = localStorage.getItem('chat_nick_v40') || localStorage.getItem('chat_nick_v39') || "名無し";
+        localStorage.setItem('my_permanent_nick', myNickname);
+    }
+    const nickInput = document.getElementById('my-nickname');
+    nickInput.value = myNickname;
+    nickInput.oninput = (e) => {
+        myNickname = e.target.value || "名無し";
+        localStorage.setItem('my_permanent_nick', myNickname);
+    };
+
+    const peer = new Peer(PREFIX + myNumber, {
+        config: {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }]},
+        debug: 1
+    });
+
+    let connections = {};
+    let activePeer = null;
+    let localStream = null;
+    let screenStream = null;
+    let activeCalls = {}; 
+    let remoteStreams = {};
+    let pendingCall = null;
+    let audioContext, analyser, animationId;
+
+    const callBtn = document.getElementById('call-btn');
+    const screenBtn = document.getElementById('screen-btn');
+    const inviteBtn = document.getElementById('invite-btn');
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const attachBtn = document.getElementById('attach-btn');
+    const fileInput = document.getElementById('file-input');
+    const canvas = document.getElementById('visualizer-canvas');
+    const ctx = canvas.getContext('2d');
+    const screenContainer = document.getElementById('screen-share-container');
+    const screenVideo = document.getElementById('screen-video');
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('toast-show');
+        setTimeout(() => toast.classList.remove('toast-show'), 3000);
+    }
+
+    peer.on('open', () => {
+        myIdDisplay.textContent = myNumber;
+        renderHistory();
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        Object.keys(friends).forEach(num => { if (num !== myNumber) tryConnect(num); });
+    });
+
+    peer.on('connection', (conn) => {
+        const num = conn.peer.replace(PREFIX, "");
+        setupConn(conn, num);
+    });
+
+    peer.on('call', (call) => {
+        const callerId = call.peer.replace(PREFIX, "");
+        if (Object.keys(activeCalls).length > 0 && localStream) {
+            call.answer(localStream);
+            setupCallUI(call);
+            return;
+        }
+        pendingCall = call;
+        const friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        document.getElementById('caller-name-display').textContent = (friends[callerId] ? friends[callerId].name : null) || callerId;
+        document.getElementById('incoming-call-modal').style.display = 'flex';
+    });
+
+    document.getElementById('answer-btn').onclick = () => {
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        if (!pendingCall) return;
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            localStream = stream;
+            pendingCall.answer(stream);
+            startVisualizer(stream);
+            setupCallUI(pendingCall);
+            pendingCall = null;
+            setTimeout(broadcastMesh, 1000);
+        }).catch(() => showToast("マイクエラー"));
+    };
+
+    function tryConnect(num) {
+        if (connections[num] && connections[num].open) return;
+        const conn = peer.connect(PREFIX + num, { reliable: true });
+        setupConn(conn, num);
+    }
+
+    function setupConn(conn, num) {
+        conn.on('open', () => {
+            connections[num] = conn;
+            addFriend(num, null); 
+            renderHistory();
+            if(activePeer === num) updateInputStatus();
+        });
+        conn.on('data', (data) => {
+            if (data && data.type === 'sys-mesh') {
+                data.participants.forEach(p => {
+                    if (p !== myNumber && !activeCalls[p] && localStream) {
+                        const call = peer.call(PREFIX + p, localStream);
+                        setupCallUI(call);
+                    }
+                });
+                return;
+            }
+            if (data && (data.content || data.type === 'file')) {
+                addFriend(num, data.senderName);
+                saveMsg(num, data, 'received');
+                if (activePeer === num) renderChat();
+                renderHistory();
+            }
+        });
+    }
+
+    function updateCallMemberListUI() {
+        const container = document.getElementById('call-members-container');
+        container.innerHTML = "";
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        Object.keys(activeCalls).forEach(id => {
+            const badge = document.createElement('div');
+            badge.className = 'member-badge';
+            const name = friends[id] ? friends[id].name : id;
+            badge.innerHTML = `<span>${name}</span><span class="member-kick" title="切断">×</span>`;
+            badge.querySelector('.member-kick').onclick = () => removeCall(id);
+            container.appendChild(badge);
+        });
+    }
+
+    function setupCallUI(call) {
+        const peerId = call.peer.replace(PREFIX, "");
+        activeCalls[peerId] = call;
+        callBtn.textContent = "🔴";
+        callBtn.classList.add('calling');
+        inviteBtn.style.display = 'block';
+        screenBtn.style.display = 'block';
+
+        call.on('stream', (stream) => { 
+            if (stream.getVideoTracks().length > 0) {
+                screenContainer.style.display = 'block';
+                screenVideo.srcObject = stream;
+            } else {
+                if (remoteStreams[peerId]) return;
+                remoteStreams[peerId] = stream;
+                const audioEl = document.createElement('audio');
+                audioEl.id = 'audio_' + peerId;
+                audioEl.autoplay = true;
+                audioEl.srcObject = stream;
+                document.body.appendChild(audioEl);
+            }
+            updateCallMemberListUI();
+        });
+        call.on('close', () => removeCall(peerId));
+        updateCallMemberListUI();
+    }
+
+    function removeCall(peerId) {
+        if(activeCalls[peerId]) { activeCalls[peerId].close(); delete activeCalls[peerId]; }
+        if(remoteStreams[peerId]) delete remoteStreams[peerId];
+        const audioEl = document.getElementById('audio_' + peerId);
+        if(audioEl) audioEl.remove();
+
+        if(Object.keys(activeCalls).length === 0) {
+            endAllCalls();
+        } else {
+            updateCallMemberListUI();
+            broadcastMesh();
+        }
+    }
+
+    function endAllCalls() {
+        Object.keys(activeCalls).forEach(id => removeCall(id));
+        stopScreenShare();
+        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        stopVisualizer();
+        callBtn.textContent = "📞";
+        callBtn.classList.remove('calling');
+        inviteBtn.style.display = 'none';
+        screenBtn.style.display = 'none';
+        document.getElementById('call-members-container').innerHTML = "";
+    }
+
+    screenBtn.onclick = async () => {
+        if (screenStream) {
+            stopScreenShare();
+            return;
+        }
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: {
+                    width: { ideal: 1280, max: 1280 },
+                    height: { ideal: 720, max: 720 },
+                    frameRate: { ideal: 15, max: 15 }
+                }
+            });
+            screenBtn.classList.add('sharing');
+            screenContainer.style.display = 'block';
+            screenVideo.srcObject = screenStream;
+
+            Object.keys(activeCalls).forEach(id => {
+                peer.call(PREFIX + id, screenStream);
+            });
+
+            screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
+        } catch (e) {
+            showToast("共有がキャンセルされました");
+        }
+    };
+
+    function stopScreenShare() {
+        if (screenStream) {
+            screenStream.getTracks().forEach(t => t.stop());
+            screenStream = null;
+        }
+        screenBtn.classList.remove('sharing');
+        screenContainer.style.display = 'none';
+        screenVideo.srcObject = null;
+    }
+
+    function broadcastMesh() {
+        const participants = [...Object.keys(activeCalls), myNumber];
+        participants.forEach(id => {
+            const conn = connections[id];
+            if (conn && conn.open) conn.send({ type: 'sys-mesh', participants });
+        });
+    }
+
+    callBtn.onclick = () => {
+        if (!activePeer) return;
+        if (Object.keys(activeCalls).length > 0) { endAllCalls(); return; }
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            localStream = stream;
+            startVisualizer(stream);
+            setupCallUI(peer.call(PREFIX + activePeer, stream));
+            setTimeout(broadcastMesh, 1000);
+        }).catch(() => showToast("マイク許可が必要です"));
+    };
+
+    inviteBtn.onclick = () => {
+        const target = prompt("招待ID:");
+        if (target && target !== myNumber && localStream) {
+            setupCallUI(peer.call(PREFIX + target, localStream));
+            if (screenStream) peer.call(PREFIX + target, screenStream);
+            setTimeout(broadcastMesh, 1500);
+        }
+    };
+
+    function startVisualizer(stream) {
+        if (audioContext) audioContext.close();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyser.fftSize = 32;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        canvas.style.display = 'inline-block';
+        const draw = () => {
+            animationId = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#85E249';
+            for (let i = 0; i < dataArray.length; i++) {
+                ctx.fillRect(i * 4, canvas.height - dataArray[i]/6, 3, dataArray[i]/6);
+            }
+        };
+        draw();
+    }
+
+    function stopVisualizer() {
+        if (animationId) cancelAnimationFrame(animationId);
+        if (audioContext) audioContext.close();
+        canvas.style.display = 'none';
+    }
+
+    function addFriend(num, name) {
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        if (!friends[num]) friends[num] = { name: num, fav: false };
+        if (name) friends[num].name = name;
+        localStorage.setItem('friends_'+VER, JSON.stringify(friends));
+    }
+
+    function toggleFav(num, e) {
+        e.stopPropagation();
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        if (friends[num]) {
+            friends[num].fav = !friends[num].fav;
+            localStorage.setItem('friends_'+VER, JSON.stringify(friends));
+            renderHistory();
+        }
+    }
+
+    function resetToDefault() {
+        activePeer = null;
+        document.getElementById('chat-title').textContent = "相手を選択してください";
+        document.getElementById('chat-container').innerHTML = "";
+        document.getElementById('clear-history').style.display = 'none';
+        callBtn.style.display = 'none';
+        input.disabled = true;
+        attachBtn.disabled = true;
+        renderHistory();
+    }
+
+    function selectChat(num) {
+        activePeer = num;
+        tryConnect(num);
+        updateInputStatus();
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        document.getElementById('chat-title').textContent = (friends[num] ? friends[num].name : null) || num;
+        document.getElementById('clear-history').style.display = 'block';
+        callBtn.style.display = 'block';
+        renderChat();
+        renderHistory(); 
+    }
+
+    function updateInputStatus() {
+        const isConnected = connections[activePeer] && connections[activePeer].open;
+        input.disabled = !isConnected;
+        sendBtn.disabled = !isConnected;
+        attachBtn.disabled = !isConnected;
+        input.placeholder = isConnected ? "メッセージ..." : "オフライン";
+    }
+
+    attachBtn.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => handleFileUpload(e.target.files[0]);
+    input.addEventListener('paste', (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let index in items) {
+            const item = items[index];
+            if (item.kind === 'file') handleFileUpload(item.getAsFile());
+        }
+    });
+
+    function handleFileUpload(file) {
+        if (!file || !activePeer) return;
+        if (file.size > 2 * 1024 * 1024) { 
+            showToast("ファイルサイズは2MB以下にしてください"); 
+            return; 
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target.result;
+            const msgObj = { type: 'file', content: dataUrl, fileType: file.type.split('/')[0], senderName: myNickname, time: new Date().toLocaleTimeString() };
+            const conn = connections[activePeer];
+            if (conn && conn.open) {
+                conn.send(msgObj);
+                saveMsg(activePeer, msgObj, 'sent');
+                renderChat();
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function executeSend() {
+        const text = input.value.trim();
+        if (!text || !activePeer) return;
+        const conn = connections[activePeer];
+        if (conn && conn.open) {
+            const msgObj = { type: 'text', content: text, senderName: myNickname, time: new Date().toLocaleTimeString() };
+            conn.send(msgObj);
+            saveMsg(activePeer, msgObj, 'sent');
+            input.value = "";
+            renderChat();
+        }
+    }
+
+    function renderHistory() {
+        let friends = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        const sb = document.getElementById('sidebar');
+        sb.innerHTML = '<div style="color:#949ba4; font-size:11px; margin-bottom:5px; font-weight:bold;">履歴</div>';
+        
+        // ★ 修正点: お気に入りのソート処理を堅牢化
+        const sortedKeys = Object.keys(friends).sort((a, b) => {
+            const favA = friends[a].fav ? 1 : 0;
+            const favB = friends[b].fav ? 1 : 0;
+            return favB - favA;
+        });
+
+        sortedKeys.forEach(num => {
+            const data = friends[num];
+            const btn = document.createElement('div');
+            btn.className = `history-item ${activePeer === num ? 'active' : ''}`;
+            const online = connections[num] && connections[num].open;
+            
+            btn.innerHTML = `
+                <div style="display:flex; align-items:center; overflow:hidden;">
+                    <div class="status-dot ${online ? 'status-online' : ''}"></div>
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${data.name || num}</span>
+                </div>
+                <span class="fav-star ${data.fav ? 'is-fav' : ''}" onclick="toggleFav('${num}', event)">★</span>
+            `;
+            btn.onclick = () => selectChat(num);
+            sb.appendChild(btn);
+        });
+    }
+
+    function saveMsg(num, msg, type) {
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+num) || "[]");
+        log.push({ ...msg, chatType: type });
+        localStorage.setItem('log_'+VER+'_'+num, JSON.stringify(log));
+    }
+
+    function formatMessage(text) {
+        let escaped = text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return escaped.replace(urlRegex, url => {
+            if (/\.(jpeg|jpg|gif|png|webp)$/i.test(url)) {
+                return `<a href="${url}" target="_blank"><img src="${url}" style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:200px; display:block;"></a><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            }
+            if (/\.(mp4|webm|ogg)$/i.test(url)) {
+                return `<video src="${url}" controls style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:250px; display:block;"></video><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            }
+            const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+            if(ytMatch) {
+                return `<iframe width="280" height="157" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen style="border-radius:8px; margin-bottom:5px; display:block;"></iframe><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            }
+            return `<a href="${url}" target="_blank" style="color:#85E249; text-decoration:underline;">${url}</a>`;
+        });
+    }
+
+    function renderChat() {
+        const container = document.getElementById('chat-container');
+        container.innerHTML = "";
+        if (!activePeer) return;
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+activePeer) || "[]");
+        log.forEach(m => {
+            const wrap = document.createElement('div');
+            wrap.className = `msg-wrapper ${m.chatType === 'received' ? 'received-wrapper' : 'sent-wrapper'}`;
+            const c = document.createElement('div');
+            c.className = `msg ${m.chatType === 'received' ? 'received' : 'sent'}`;
+            
+            if (m.type === 'file') {
+                if (m.fileType === 'image') {
+                    c.innerHTML = `<img src="${m.content}" style="max-width:100%; border-radius:8px; max-height:200px; cursor:pointer;" onclick="window.open('${m.content}')">`;
+                } else if (m.fileType === 'video') {
+                    c.innerHTML = `<video src="${m.content}" controls style="max-width:100%; border-radius:8px; max-height:250px;"></video>`;
+                } else {
+                    c.textContent = "📎 ファイルを受信しました";
+                }
+            } else {
+                c.innerHTML = formatMessage(m.content);
+            }
+
+            wrap.appendChild(c);
+            container.appendChild(wrap);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    sendBtn.onclick = executeSend;
+    input.onkeypress = (e) => { if(e.key === 'Enter') executeSend(); };
+    document.getElementById('decline-btn').onclick = () => {
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        if (pendingCall) { pendingCall.close(); pendingCall = null; }
+    };
+    document.getElementById('connect-btn').onclick = () => {
+        const target = document.getElementById('peer-num').value.trim();
+        if (target && target !== myNumber) { addFriend(target, null); selectChat(target); }
+    };
+    document.getElementById('clear-history').onclick = () => {
+        if (confirm("履歴を削除しますか？")) {
+            localStorage.removeItem('log_'+VER+'_'+activePeer);
+            let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+            delete f[activePeer];
+            localStorage.setItem('friends_'+VER, JSON.stringify(f));
+            resetToDefault(); 
+        }
+    };
+
+    setInterval(() => { 
+        Object.keys(connections).forEach(num => {
+            const conn = connections[num];
+            if (conn && conn.peerConnection && ['disconnected','failed','closed'].includes(conn.peerConnection.iceConnectionState)) {
+                delete connections[num];
+                renderHistory();
+            }
+        });
+        if (activePeer) updateInputStatus(); 
+        if (peer.disconnected && !peer.destroyed) peer.reconnect();
+    }, 2000);
+</script>
+</body>
+</html>
