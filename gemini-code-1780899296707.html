@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync Chat - Absolute Stability v67</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* デザイン完全維持 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #313338; color: #dbdee1; height: 100vh; display: flex; overflow: hidden; }
+        
+        #sidebar { width: 160px; background: #2b2d31; display: flex; flex-direction: column; align-items: center; padding: 15px 10px; gap: 8px; overflow-y: auto; z-index: 100; border-right: 1px solid #1e1f22; }
+        .history-item { width: 100%; padding: 12px 10px; background: #1e1f22; border-radius: 8px; color: #949ba4; text-align: left; font-size: 13px; cursor: pointer; position: relative; border: none; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .history-item:hover { background: #3f4147; color: white; }
+        .history-item.active { background: #85E249; color: #111; font-weight: bold; }
+        .fav-star { color: #5c5e66; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .fav-star.is-fav { color: #f1c40f !important; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #5c5e66; margin-right: 5px; flex-shrink: 0; }
+        .status-online { background: #23a559; box-shadow: 0 0 5px #23a559; }
+
+        #main-chat { flex: 1; display: flex; flex-direction: column; width: 100%; background: #313338; position: relative; }
+        #setup-area { background: #1e1f22; color: #dbdee1; padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #2b2d31; }
+        .id-display { font-weight: bold; color: #85E249; font-size: 18px; letter-spacing: 1px; cursor: pointer; text-decoration: underline dotted; }
+        input[type="text"] { background: #1e1f22; color: white; border: 1px solid #3f4147; outline: none; padding: 6px 10px; border-radius: 6px; }
+        
+        header { background: #2b2d31; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; min-height: 50px; font-weight: bold; border-bottom: 1px solid #1e1f22; }
+        
+        #screen-share-container { width: 100%; background: #000; display: none; position: relative; max-height: 60vh; }
+        #screen-video { width: 100%; height: 100%; max-height: 60vh; object-fit: contain; background: #000; }
+        
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 75%; }
+        .sent-wrapper { align-self: flex-end; align-items: flex-end; }
+        .received-wrapper { align-self: flex-start; align-items: flex-start; }
+        .msg { padding: 12px 16px; border-radius: 18px; font-size: 15px; word-wrap: break-word; line-height: 1.5; }
+        .sent { background-color: #85E249; color: #111; border-bottom-right-radius: 4px; }
+        .received { background-color: #2b2d31; color: #dbdee1; border-bottom-left-radius: 4px; }
+        
+        footer { background: #2b2d31; padding: 15px 20px; display: flex; gap: 12px; align-items: center; }
+        #attach-btn { background: none; border: none; color: #949ba4; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        #attach-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #message-input { flex: 1; background: #383a40; border: none; padding: 14px 20px; border-radius: 25px; outline: none; font-size: 15px; color: white; }
+        #send-btn { background: #85E249; color: #111; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        #send-btn:disabled, #message-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #call-members-container { display: flex; gap: 5px; margin-left: 10px; flex-wrap: wrap; }
+        .member-badge { background: #3f4147; color: #85E249; padding: 4px 8px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid #85E249; }
+        .member-kick { cursor: pointer; color: #da373c; font-weight: bold; font-size: 14px; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .calling { color: #ff4757 !important; animation: pulse 1.2s infinite; }
+        .sharing { color: #85E249 !important; animation: pulse 1.5s infinite; }
+        #visualizer-canvas { width: 60px; height: 20px; vertical-align: middle; margin-left: 10px; display: none; }
+        
+        #incoming-call-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(3px); }
+        .modal-content { background: #2b2d31; padding: 30px 40px; border-radius: 12px; text-align: center; color: white; border: 1px solid #3f4147; }
+        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; justify-content: center; }
+        .modal-btn { padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-answer { background: #23a559; color: white; }
+        .btn-decline { background: #da373c; color: white; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #85E249; color: #111; padding: 10px 25px; border-radius: 30px; font-weight: bold; opacity: 0; transition: 0.4s; pointer-events: none; z-index: 10000; }
+        .toast-show { opacity: 1 !important; transform: translateX(-50%) translateY(0) !important; }
+    </style>
+</head>
+<body>
+<div id="sidebar"></div>
+<div id="main-chat">
+    <div id="setup-area">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+                ID: <span id="my-id-display" class="id-display" title="ID変更">----</span>
+                <canvas id="visualizer-canvas"></canvas>
+            </div>
+            <input type="text" id="my-nickname" placeholder="自分の名前">
+        </div>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="peer-num" placeholder="相手のID" style="flex:1;">
+            <button id="connect-btn" style="background:#85E249; color:#111; border:none; padding:0 20px; border-radius:6px; font-weight:bold; cursor:pointer;">接続</button>
+        </div>
+    </div>
+    <header>
+        <div style="display:flex; align-items:center; overflow: hidden;">
+            <span id="chat-title">相手を選択してください</span>
+            <div id="call-members-container"></div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button id="mic-btn" style="background:none; border:none; color:#85E249; font-size:22px; display:none; cursor:pointer;" title="マイクON/OFF">🎤</button>
+            <button id="cam-btn" style="background:none; border:none; color:#85E249; font-size:22px; display:none; cursor:pointer;" title="カメラON/OFF">📹</button>
+            <button id="screen-btn" style="background:none; border:none; color:white; font-size:20px; display:none; cursor:pointer;" title="画面共有">🖥️</button>
+            <button id="invite-btn" style="background:none; border:none; color:#85E249; font-size:22px; display:none; cursor:pointer;" title="招待">➕</button>
+            <button id="call-btn" style="background:none; border:none; color:white; font-size:22px; display:none; cursor:pointer;">📞</button>
+            <button id="clear-history" style="background:none; border:none; color:#da373c; font-size:20px; display:none; cursor:pointer;">🗑️</button>
+        </div>
+    </header>
+    <div id="screen-share-container">
+        <video id="screen-video" autoplay playsinline muted></video>
+    </div>
+    <div id="chat-container"></div>
+    <footer>
+        <button id="attach-btn" title="画像添付" disabled>📎</button>
+        <input type="file" id="file-input" style="display:none;" accept="image/*,video/*">
+        <input type="text" id="message-input" placeholder="相手を選択してください" disabled>
+        <button id="send-btn" disabled>送信</button>
+    </footer>
+</div>
+<div id="incoming-call-modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom:10px; color:#85E249;">📞 通話着信</h3>
+        <p><span id="caller-name-display">相手</span></p>
+        <div class="modal-buttons">
+            <button class="modal-btn btn-decline" id="decline-btn">拒否</button>
+            <button class="modal-btn btn-answer" id="answer-btn">応答</button>
+        </div>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script>
+    const VER = "v67"; 
+    const PREFIX = "p2p_stable_v67_"; 
+
+    if (!localStorage.getItem('migrated_to_'+VER)) {
+        const oldVersions = ["v60", "v61", "v62", "v63", "v64", "v65", "v66"];
+        let foundFriends = null;
+        for (let v of oldVersions) {
+            let f = localStorage.getItem('friends_' + v);
+            if (f) { foundFriends = f; break; }
+        }
+        if (foundFriends) localStorage.setItem('friends_' + VER, foundFriends);
+        localStorage.setItem('migrated_to_'+VER, 'true');
+    }
+
+    let myNumber = localStorage.getItem('my_permanent_chat_id') || Math.floor(1000 + Math.random() * 9000).toString();
+    localStorage.setItem('my_permanent_chat_id', myNumber);
+    document.getElementById('my-id-display').textContent = myNumber;
+
+    document.getElementById('my-id-display').onclick = () => {
+        const n = prompt("新ID:", myNumber);
+        if (n) { localStorage.setItem('my_permanent_chat_id', n); location.reload(); }
+    };
+
+    let myNickname = localStorage.getItem('my_permanent_nick') || "名無し";
+    document.getElementById('my-nickname').value = myNickname;
+    document.getElementById('my-nickname').oninput = (e) => localStorage.setItem('my_permanent_nick', e.target.value);
+
+    const peer = new Peer(PREFIX + myNumber, {
+        config: {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }]},
+        debug: 1
+    });
+
+    let connections = {}, activePeer = null, localStream = null, screenStream = null;
+    let activeCalls = {}, isMicMuted = false, isCamOff = true;
+    
+    let globalAudioCtx = null;
+    let animationId;
+    let remoteAnalysers = {}; 
+    let localAnalyser = null;
+    let localAudioSource = null;
+    let isMediaSwitching = false;
+
+    let toastTimeout = null;
+    function showToast(m) { 
+        const t = document.getElementById('toast'); 
+        t.textContent = m; 
+        t.classList.add('toast-show'); 
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => t.classList.remove('toast-show'), 3000); 
+    }
+
+    // ★修正1: グループ通話時のすれ違い（レースコンディション）ドロップを防ぐ保留リスト
+    window.heldCalls = {};
+
+    function checkHeldCalls() {
+        const f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        Object.keys(window.heldCalls).forEach(id => {
+            if (connections[id]?.open || f[id]) {
+                let call = window.heldCalls[id];
+                delete window.heldCalls[id];
+                setupCallUI(call);
+                let streamToAnswer = localStream;
+                if (screenStream) {
+                    streamToAnswer = new MediaStream();
+                    if (localStream && localStream.getAudioTracks().length > 0) streamToAnswer.addTrack(localStream.getAudioTracks()[0]);
+                    if (screenStream && screenStream.getVideoTracks().length > 0) streamToAnswer.addTrack(screenStream.getVideoTracks()[0]);
+                }
+                call.answer(streamToAnswer);
+            }
+        });
+    }
+
+    function getAudioCtx() {
+        if (!globalAudioCtx) globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (globalAudioCtx.state === 'suspended') globalAudioCtx.resume();
+        return globalAudioCtx;
+    }
+
+    const callBtn = document.getElementById('call-btn'), micBtn = document.getElementById('mic-btn'), camBtn = document.getElementById('cam-btn');
+    const screenBtn = document.getElementById('screen-btn'), inviteBtn = document.getElementById('invite-btn');
+    const input = document.getElementById('message-input'), sendBtn = document.getElementById('send-btn'), attachBtn = document.getElementById('attach-btn');
+    const canvas = document.getElementById('visualizer-canvas'), ctx = canvas.getContext('2d');
+    const screenContainer = document.getElementById('screen-share-container'), screenVideo = document.getElementById('screen-video');
+
+    peer.on('open', () => { renderHistory(); let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}"); Object.keys(f).forEach(n => { if (n !== myNumber) tryConnect(n); }); });
+
+    peer.on('connection', (conn) => {
+        const num = conn.peer.replace(PREFIX, "");
+        addFriend(num, null); setupConn(conn, num);
+    });
+
+    peer.on('call', (call) => {
+        const callerId = call.peer.replace(PREFIX, "");
+        const oldCall = activeCalls[callerId];
+
+        const isCalling = localStream !== null || Object.keys(activeCalls).length > 0 || callBtn.classList.contains('calling');
+
+        const f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+
+        if (isCalling) {
+            if (connections[callerId]?.open || oldCall || f[callerId]) {
+                setupCallUI(call);
+                setTimeout(() => { if (oldCall) oldCall.close(); }, 2000); 
+
+                let streamToAnswer = localStream;
+                if (screenStream) {
+                    streamToAnswer = new MediaStream();
+                    if (localStream && localStream.getAudioTracks().length > 0) {
+                        streamToAnswer.addTrack(localStream.getAudioTracks()[0]);
+                    }
+                    if (screenStream.getVideoTracks().length > 0) {
+                        streamToAnswer.addTrack(screenStream.getVideoTracks()[0]);
+                    }
+                }
+                call.answer(streamToAnswer);
+                return;
+            } else {
+                // ★修正1: 知らない人からの電話でも、グループ通話の場合は「データが届くのが遅れているだけ」の可能性があるため4秒間だけ保留する
+                window.heldCalls[callerId] = call;
+                setTimeout(() => {
+                    if (window.heldCalls[callerId]) {
+                        window.heldCalls[callerId].close();
+                        delete window.heldCalls[callerId];
+                    }
+                }, 4000);
+                return; 
+            }
+        }
+        
+        if (oldCall) oldCall.close();
+        document.getElementById('caller-name-display').textContent = (f[callerId]?.name || callerId) + " からの着信";
+        const modal = document.getElementById('incoming-call-modal');
+        modal.style.display = 'flex';
+        modal.style.zIndex = '9999';
+        window.pendingCall = call;
+    });
+
+    document.getElementById('answer-btn').onclick = async () => {
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        getAudioCtx(); 
+        try {
+            const callerId = window.pendingCall.peer.replace(PREFIX, "");
+            if (connections[callerId]?.open) {
+                connections[callerId].send({ type: 'sys-call-accepted' });
+            }
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 48000 } });
+            startVisualizer(localStream);
+            setupCallUI(window.pendingCall);
+            window.pendingCall.answer(localStream);
+            setTimeout(broadcastMesh, 1000);
+        } catch (e) { showToast("マイクを許可してください"); }
+    };
+
+    document.getElementById('decline-btn').onclick = () => {
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        if (window.pendingCall) {
+            const callerId = window.pendingCall.peer.replace(PREFIX, "");
+            if (connections[callerId]?.open) {
+                connections[callerId].send({ type: 'sys-call-declined' });
+            } else {
+                const tempConn = peer.connect(PREFIX + callerId, { reliable: true });
+                tempConn.on('open', () => {
+                    tempConn.send({ type: 'sys-call-declined' });
+                    setTimeout(() => tempConn.close(), 1000);
+                });
+            }
+            window.pendingCall.close();
+            window.pendingCall = null;
+        }
+    };
+
+    function tryConnect(num) {
+        if (connections[num]?.open) return;
+        setupConn(peer.connect(PREFIX + num, { reliable: true }), num);
+    }
+
+    function setupConn(conn, num) {
+        conn.on('open', () => { 
+            connections[num] = conn; 
+            renderHistory(); 
+            if(activePeer === num) updateInputStatus(); 
+            checkHeldCalls(); // ★修正3: データ回線が開通した瞬間に、保留中の音声通話があればすぐに繋ぎ直す
+        });
+        
+        conn.on('close', () => { if (connections[num] === conn) { delete connections[num]; renderHistory(); updateInputStatus(); }});
+        conn.on('error', () => { if (connections[num] === conn) { delete connections[num]; renderHistory(); updateInputStatus(); }});
+
+        conn.on('data', (data) => {
+            if (data?.type === 'sys-call-accepted') {
+                showToast("通話が承諾されました");
+                return;
+            }
+            if (data?.type === 'sys-call-declined') {
+                showToast("通話が拒否されました");
+                endAllCalls();
+                return;
+            }
+            if (data?.type === 'sys-mesh') {
+                data.participants.forEach(p => { 
+                    if (p !== myNumber) {
+                        addFriend(p, null); // ★修正2: 音声の有無に関わらず、グループの参加者は強制的に仲間として即時登録し、以後の着信拒否を防ぐ
+                        
+                        if (!connections[p]?.open && myNumber > p) {
+                            tryConnect(p); 
+                        }
+                        if (!activeCalls[p] && localStream) {
+                            if (myNumber > p) {
+                                let streamToSend = localStream;
+                                if (screenStream) {
+                                    streamToSend = new MediaStream();
+                                    if (localStream && localStream.getAudioTracks().length > 0) {
+                                        streamToSend.addTrack(localStream.getAudioTracks()[0]);
+                                    }
+                                    if (screenStream && screenStream.getVideoTracks().length > 0) {
+                                        streamToSend.addTrack(screenStream.getVideoTracks()[0]);
+                                    }
+                                }
+                                setupCallUI(peer.call(PREFIX + p, streamToSend));
+                            }
+                        }
+                    }
+                });
+                checkHeldCalls(); // ★保留リストのチェック
+                return;
+            }
+            if (data?.content || data?.type === 'file') { addFriend(num, data.senderName); saveMsg(num, data, 'received'); if (activePeer === num) renderChat(); renderHistory(); }
+        });
+    }
+
+    micBtn.onclick = () => {
+        if (localStream) {
+            isMicMuted = !isMicMuted;
+            localStream.getAudioTracks()[0].enabled = !isMicMuted;
+            micBtn.textContent = isMicMuted ? "🔇" : "🎤";
+            micBtn.style.color = isMicMuted ? "#da373c" : "#85E249";
+        }
+    };
+
+    camBtn.onclick = async () => {
+        if (!localStream || isMediaSwitching) return;
+        isMediaSwitching = true;
+        setTimeout(() => { isMediaSwitching = false; }, 2500);
+        
+        if (isCamOff) {
+            try {
+                const vs = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                const videoTrack = vs.getVideoTracks()[0];
+                localStream.addTrack(videoTrack);
+                isCamOff = false;
+                camBtn.textContent = "📷";
+                camBtn.style.color = "#85E249";
+                
+                screenVideo.srcObject = localStream;
+                screenContainer.style.display = 'block';
+
+                let streamToSend = localStream;
+                if (screenStream) {
+                    streamToSend = new MediaStream();
+                    if (localStream.getAudioTracks().length > 0) streamToSend.addTrack(localStream.getAudioTracks()[0]);
+                    streamToSend.addTrack(screenStream.getVideoTracks()[0]);
+                }
+
+                Object.keys(activeCalls).forEach(id => {
+                    const oldCall = activeCalls[id];
+                    setupCallUI(peer.call(PREFIX + id, streamToSend));
+                    setTimeout(() => { if (oldCall) oldCall.close(); }, 2000);
+                });
+            } catch (e) { 
+                showToast("カメラが使えません"); 
+                isMediaSwitching = false;
+            }
+        } else {
+            localStream.getVideoTracks().forEach(t => { t.stop(); localStream.removeTrack(t); });
+            isCamOff = true;
+            camBtn.textContent = "📹";
+            camBtn.style.color = "#da373c";
+            
+            if (screenStream) {
+                screenVideo.srcObject = screenStream;
+            } else {
+                screenVideo.srcObject = null;
+                screenContainer.style.display = 'none';
+            }
+            
+            let streamToSend = localStream;
+            if (screenStream) {
+                streamToSend = new MediaStream();
+                if (localStream.getAudioTracks().length > 0) streamToSend.addTrack(localStream.getAudioTracks()[0]);
+                streamToSend.addTrack(screenStream.getVideoTracks()[0]);
+            }
+
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, streamToSend));
+                setTimeout(() => { if (oldCall) oldCall.close(); }, 2000);
+            });
+        }
+    };
+
+    function setupCallUI(call) {
+        const peerId = call.peer.replace(PREFIX, "");
+        activeCalls[peerId] = call;
+        callBtn.textContent = "🔴"; callBtn.classList.add('calling');
+        micBtn.style.display = camBtn.style.display = screenBtn.style.display = inviteBtn.style.display = 'block';
+
+        call.on('stream', (stream) => { 
+            let audioEl = document.getElementById('audio_' + peerId);
+            if (audioEl) audioEl.remove();
+            if (remoteAnalysers[peerId]) {
+                try { remoteAnalysers[peerId].disconnect(); } catch(e){}
+                delete remoteAnalysers[peerId];
+            }
+
+            audioEl = document.createElement('audio');
+            audioEl.id = 'audio_' + peerId;
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', 'true');
+            document.body.appendChild(audioEl);
+            audioEl.srcObject = stream;
+            audioEl.play().catch(() => {});
+
+            if (stream.getAudioTracks().length > 0) {
+                try {
+                    const actx = getAudioCtx();
+                    const rAnl = actx.createAnalyser();
+                    rAnl.fftSize = 32;
+                    const rSrc = actx.createMediaStreamSource(stream);
+                    rSrc.connect(rAnl);
+                    remoteAnalysers[peerId] = rAnl;
+                } catch(e) {}
+            }
+
+            if (stream.getVideoTracks().length > 0) {
+                screenContainer.style.display = 'block'; 
+                screenVideo.srcObject = stream;
+            }
+            updateCallMemberListUI();
+        });
+        
+        call.on('close', () => {
+            if (activeCalls[peerId] === call) removeCall(peerId);
+        });
+        updateCallMemberListUI();
+    }
+
+    function removeCall(id) {
+        if(activeCalls[id]) activeCalls[id].close(); delete activeCalls[id];
+        if(remoteAnalysers[id]) {
+            try { remoteAnalysers[id].disconnect(); } catch(e){}
+            delete remoteAnalysers[id];
+        }
+        const el = document.getElementById('audio_' + id); if(el) el.remove();
+        if(Object.keys(activeCalls).length === 0) endAllCalls(); else updateCallMemberListUI();
+    }
+
+    function endAllCalls() {
+        Object.values(activeCalls).forEach(c => c.close()); activeCalls = {};
+        Object.keys(remoteAnalysers).forEach(id => {
+            try { remoteAnalysers[id].disconnect(); } catch(e){}
+        });
+        remoteAnalysers = {}; 
+        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+        stopScreenShare(); stopVisualizer();
+        callBtn.textContent = "📞"; callBtn.classList.remove('calling');
+        micBtn.style.display = camBtn.style.display = screenBtn.style.display = inviteBtn.style.display = 'none';
+        isCamOff = true; camBtn.textContent = "📹";
+        document.getElementById('call-members-container').innerHTML = "";
+    }
+
+    function updateCallMemberListUI() {
+        const c = document.getElementById('call-members-container'); c.innerHTML = "";
+        const f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        Object.keys(activeCalls).forEach(id => {
+            const b = document.createElement('div'); b.className = 'member-badge';
+            b.innerHTML = `<span>${f[id]?.name || id}</span><canvas id="remote-vis-${id}" width="40" height="15" style="vertical-align:middle; margin-left:8px; margin-right:4px; display:inline-block;"></canvas><span class="member-kick" title="切断">×</span>`;
+            b.querySelector('.member-kick').onclick = () => removeCall(id);
+            c.appendChild(b);
+        });
+    }
+
+    callBtn.onclick = async () => {
+        if (callBtn.disabled) return;
+        if (Object.keys(activeCalls).length > 0) { endAllCalls(); return; }
+        getAudioCtx();
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 48000 } });
+            startVisualizer(localStream);
+            setupCallUI(peer.call(PREFIX + activePeer, localStream));
+            setTimeout(broadcastMesh, 1000);
+        } catch (e) { showToast("マイクを許可してください"); }
+    };
+
+    inviteBtn.onclick = () => {
+        const target = prompt("招待する相手のID:");
+        if (target && target !== myNumber) {
+            addFriend(target, null);
+            tryConnect(target);
+            if (localStream) {
+                setTimeout(() => {
+                    const oldCall = activeCalls[target];
+                    
+                    let streamToSend = localStream;
+                    if (screenStream) {
+                        streamToSend = new MediaStream();
+                        if (localStream.getAudioTracks().length > 0) streamToSend.addTrack(localStream.getAudioTracks()[0]);
+                        streamToSend.addTrack(screenStream.getVideoTracks()[0]);
+                    }
+
+                    setupCallUI(peer.call(PREFIX + target, streamToSend));
+                    setTimeout(() => { if (oldCall) oldCall.close(); }, 2000);
+
+                    setTimeout(broadcastMesh, 1500);
+                }, 800);
+            }
+        }
+    };
+
+    function startVisualizer(s) {
+        if (animationId) cancelAnimationFrame(animationId);
+        
+        const actx = getAudioCtx();
+        
+        if (localAnalyser) { try { localAnalyser.disconnect(); } catch(e){} }
+        if (localAudioSource) { try { localAudioSource.disconnect(); } catch(e){} }
+
+        localAnalyser = actx.createAnalyser();
+        localAudioSource = actx.createMediaStreamSource(s);
+        localAudioSource.connect(localAnalyser);
+        localAnalyser.fftSize = 32;
+        
+        const data = new Uint8Array(localAnalyser.frequencyBinCount);
+        canvas.style.display = 'inline-block';
+        
+        const draw = () => {
+            animationId = requestAnimationFrame(draw);
+            localAnalyser.getByteFrequencyData(data);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#85E249';
+            for (let i = 0; i < data.length; i++) ctx.fillRect(i * 4, canvas.height - data[i]/6, 3, data[i]/6);
+
+            Object.keys(remoteAnalysers).forEach(id => {
+                const rAnl = remoteAnalysers[id];
+                const rCanv = document.getElementById('remote-vis-' + id);
+                if (rAnl && rCanv) {
+                    const rCtx = rCanv.getContext('2d');
+                    const rData = new Uint8Array(rAnl.frequencyBinCount);
+                    rAnl.getByteFrequencyData(rData);
+                    rCtx.clearRect(0, 0, rCanv.width, rCanv.height);
+                    rCtx.fillStyle = '#f1c40f'; 
+                    for (let i = 0; i < rData.length; i++) rCtx.fillRect(i * 3, rCanv.height - rData[i]/8, 2, rData[i]/8);
+                }
+            });
+        };
+        draw();
+    }
+
+    function stopVisualizer() { 
+        if(animationId) cancelAnimationFrame(animationId); 
+        animationId = null;
+        canvas.style.display = 'none'; 
+    }
+
+    function broadcastMesh() {
+        const ps = [...Object.keys(activeCalls), myNumber];
+        ps.forEach(id => { if(connections[id]?.open) connections[id].send({ type: 'sys-mesh', participants: ps }); });
+    }
+
+    screenBtn.onclick = async () => {
+        if (isMediaSwitching) return;
+        isMediaSwitching = true;
+        setTimeout(() => { isMediaSwitching = false; }, 2500); 
+
+        if (screenStream) { stopScreenShare(); return; }
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: 854, height: 480, frameRate: 10 } });
+            screenBtn.classList.add('sharing'); 
+            screenContainer.style.display = 'block'; 
+            screenVideo.srcObject = screenStream;
+            
+            const combinedStream = new MediaStream();
+            if (localStream && localStream.getAudioTracks().length > 0) {
+                combinedStream.addTrack(localStream.getAudioTracks()[0]);
+            }
+            combinedStream.addTrack(screenStream.getVideoTracks()[0]);
+
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, combinedStream));
+                setTimeout(() => { if (oldCall) oldCall.close(); }, 2000);
+            });
+            screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
+        } catch (e) { 
+            showToast("共有キャンセル"); 
+            isMediaSwitching = false;
+        }
+    };
+
+    function stopScreenShare() {
+        if (!screenStream) return; 
+
+        screenStream.getTracks().forEach(t => t.stop()); 
+        screenStream = null;
+        screenBtn.classList.remove('sharing'); 
+        if (isCamOff) {
+            screenContainer.style.display = 'none';
+            screenVideo.srcObject = null;
+        } else {
+            screenVideo.srcObject = localStream;
+        }
+        
+        if (localStream && Object.keys(activeCalls).length > 0) {
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, localStream));
+                setTimeout(() => { if (oldCall) oldCall.close(); }, 2000);
+            });
+        }
+    }
+
+    function addFriend(num, name) {
+        let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        if (!f[num]) f[num] = { name: num, fav: false };
+        if (name) f[num].name = name;
+        localStorage.setItem('friends_'+VER, JSON.stringify(f)); renderHistory();
+    }
+
+    function renderHistory() {
+        const f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        const sb = document.getElementById('sidebar');
+        sb.innerHTML = '<div style="color:#949ba4; font-size:11px; margin-bottom:5px; font-weight:bold;">履歴</div>';
+        Object.keys(f).sort((a, b) => (f[b].fav ? 1 : 0) - (f[a].fav ? 1 : 0)).forEach(num => {
+            const b = document.createElement('div'); b.className = `history-item ${activePeer === num ? 'active' : ''}`;
+            const online = connections[num]?.open;
+            b.innerHTML = `<div style="display:flex; align-items:center; overflow:hidden;"><div class="status-dot ${online ? 'status-online' : ''}"></div><span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f[num].name || num}</span></div><span class="fav-star ${f[num].fav ? 'is-fav' : ''}" onclick="toggleFav('${num}', event)">★</span>`;
+            b.onclick = () => selectChat(num); sb.appendChild(b);
+        });
+    }
+
+    function toggleFav(n, e) { e.stopPropagation(); let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}"); f[n].fav = !f[n].fav; localStorage.setItem('friends_'+VER, JSON.stringify(f)); renderHistory(); }
+    
+    function selectChat(num) {
+        activePeer = num; tryConnect(num); updateInputStatus();
+        const f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+        document.getElementById('chat-title').textContent = (f[num]?.name || num);
+        document.getElementById('clear-history').style.display = 'block'; callBtn.style.display = 'block'; renderChat();
+    }
+
+    function updateInputStatus() {
+        const ok = connections[activePeer]?.open;
+        input.disabled = sendBtn.disabled = attachBtn.disabled = callBtn.disabled = !ok;
+        callBtn.style.opacity = ok ? "1" : "0.4";
+        input.placeholder = ok ? "メッセージ..." : "オフライン";
+    }
+
+    function saveMsg(num, msg, type) {
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+num) || "[]");
+        log.push({ ...msg, chatType: type });
+        if (log.length > 50) log = log.slice(-50);
+        try {
+            localStorage.setItem('log_'+VER+'_'+num, JSON.stringify(log));
+        } catch (e) {
+            log = log.slice(-25);
+            localStorage.setItem('log_'+VER+'_'+num, JSON.stringify(log));
+        }
+    }
+
+    function formatMessage(text) {
+        let esc = text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        return esc.replace(/(https?:\/\/[^\s]+)/g, url => {
+            if (/\.(jpeg|jpg|gif|png|webp)$/i.test(url)) return `<a href="${url}" target="_blank"><img src="${url}" style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:200px; display:block;"></a><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            if (/\.(mp4|webm|ogg)$/i.test(url)) return `<video src="${url}" controls style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:250px; display:block;"></video><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+            if(ytMatch) return `<iframe width="280" height="157" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen style="border-radius:8px; margin-bottom:5px; display:block;"></iframe><a href="${url}" target="_blank" style="color:#85E249; font-size:12px;">${url}</a>`;
+            return `<a href="${url}" target="_blank" style="color:#85E249; text-decoration:underline;">${url}</a>`;
+        });
+    }
+
+    function renderChat() {
+        const c = document.getElementById('chat-container'); c.innerHTML = "";
+        if (!activePeer) return;
+        let log = JSON.parse(localStorage.getItem('log_'+VER+'_'+activePeer) || "[]");
+        log.forEach(m => {
+            const w = document.createElement('div'); w.className = `msg-wrapper ${m.chatType === 'received' ? 'received-wrapper' : 'sent-wrapper'}`;
+            const msg = document.createElement('div'); msg.className = `msg ${m.chatType === 'received' ? 'received' : 'sent'}`;
+            if (m.type === 'file') {
+                if (m.fileType === 'image') msg.innerHTML = `<img src="${m.content}" style="max-width:100%; border-radius:8px; max-height:200px;" onclick="window.open('${m.content}')">`;
+                else if (m.fileType === 'video') msg.innerHTML = `<video src="${m.content}" controls style="max-width:100%; border-radius:8px;"></video>`;
+                else msg.textContent = "📎 ファイルを受信しました";
+            } else {
+                msg.innerHTML = formatMessage(m.content);
+            }
+            w.appendChild(msg); c.appendChild(w);
+        });
+        c.scrollTop = c.scrollHeight;
+    }
+
+    document.getElementById('connect-btn').onclick = () => { const t = document.getElementById('peer-num').value.trim(); if (t && t !== myNumber) { addFriend(t, null); selectChat(t); } };
+    sendBtn.onclick = () => {
+        const text = input.value.trim();
+        if (text && connections[activePeer]?.open) {
+            const m = { type: 'text', content: text, senderName: myNickname };
+            connections[activePeer].send(m); saveMsg(activePeer, m, 'sent'); input.value = ""; renderChat();
+        }
+    };
+    input.onkeypress = (e) => { if(e.key === 'Enter') sendBtn.onclick(); };
+    attachBtn.onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = (e) => {
+        const file = e.target.files[0];
+        if (file && activePeer && file.size <= 2 * 1024 * 1024) {
+            const r = new FileReader(); r.onload = (ev) => {
+                const m = { type: 'file', content: ev.target.result, fileType: file.type.split('/')[0], senderName: myNickname };
+                connections[activePeer].send(m); saveMsg(activePeer, m, 'sent'); renderChat();
+            };
+            r.readAsDataURL(file);
+        } else { showToast("2MB以下にしてください"); }
+    };
+
+    document.getElementById('clear-history').onclick = () => {
+        if (confirm("履歴を削除？")) {
+            localStorage.removeItem('log_'+VER+'_'+activePeer);
+            let f = JSON.parse(localStorage.getItem('friends_'+VER) || "{}");
+            delete f[activePeer];
+            localStorage.setItem('friends_'+VER, JSON.stringify(f));
+            location.reload();
+        }
+    };
+
+    setInterval(() => {
+        Object.keys(connections).forEach(n => {
+            const conn = connections[n];
+            if (conn && conn.peerConnection && ['failed','closed'].includes(conn.peerConnection.iceConnectionState)) {
+                delete connections[n]; renderHistory();
+            }
+        });
+        Object.keys(activeCalls).forEach(id => {
+            const call = activeCalls[id];
+            if (call && call.peerConnection && ['failed','closed'].includes(call.peerConnection.iceConnectionState)) {
+                removeCall(id);
+            }
+        });
+        if (activePeer) updateInputStatus();
+        if (peer.disconnected && !peer.destroyed) peer.reconnect();
+        if (peer.destroyed) location.reload();
+    }, 2000);
+</script>
+</body>
+</html>
