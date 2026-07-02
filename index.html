@@ -1,0 +1,1874 @@
+<!doctype html>
+<html lang="ja" style="--theme-color: #85E249;"><head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260702-05-84893f2"}');</script><script src="/_sdk/f432b76fb310b513.telemetry_sdk.js" integrity="sha512-9FJQ55EKmmqhyyik8BhrMVfm0+iYYfb8uOlRsjtkxJMEI97qOVEI4PnHohDjQAtvAep0IOEpdQ64eki0sz62ug=="></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sync Chat - Ultimate Sync v81 GitHub Edition</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        /* デザイン完全維持 ＆ 新機能スタイル追加 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #313338; color: #dbdee1; height: 100vh; display: flex; overflow: hidden; }
+        
+        #sidebar { width: 190px; background: #2b2d31; display: flex; flex-direction: column; align-items: center; padding: 15px 10px; gap: 8px; overflow-y: auto; z-index: 100; border-right: 1px solid #1e1f22; }
+        .sidebar-section-title { color: #949ba4; font-size: 11px; margin-top: 5px; margin-bottom: 2px; font-weight: bold; width: 100%; text-align: left; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .friend-add-box { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; padding: 12px; background: #1e1f22; border: 2px solid #3f4147; border-radius: 8px; transition: 0.2s; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
+        .friend-add-box:focus-within { border-color: var(--theme-color, #85E249); box-shadow: 0 0 8px rgba(133, 226, 73, 0.4); }
+        .friend-add-box input { width: 100%; background: #2b2d31; color: white; border: 1px solid #3f4147; padding: 8px; border-radius: 4px; font-size: 13px; outline: none; font-weight: bold; text-align: center; letter-spacing: 2px; }
+        .friend-add-box button { width: 100%; background: var(--theme-color, #85E249); color: #111; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .friend-add-box button:hover { opacity: 0.8; transform: translateY(-1px); }
+        
+        .history-item { width: 100%; padding: 12px 10px; background: #1e1f22; border-radius: 8px; color: #949ba4; text-align: left; font-size: 13px; cursor: pointer; position: relative; border: none; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .history-item:hover { background: #3f4147; color: white; }
+        .history-item.active { background: var(--theme-color, #85E249); color: #111; font-weight: bold; }
+        .fav-star { color: #5c5e66; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .fav-star.is-fav { color: #f1c40f !important; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #5c5e66; margin-right: 5px; flex-shrink: 0; }
+        .status-online { background: #23a559; box-shadow: 0 0 5px #23a559; }
+        .friend-icon-span { margin-right: 5px; font-size: 14px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; }
+
+        #main-area { flex: 1; display: flex; flex-direction: column; width: 100%; background: #313338; position: relative; overflow: hidden; }
+        #setup-area { background: #1e1f22; color: #dbdee1; padding: 12px 15px; font-size: 13px; border-bottom: 1px solid #2b2d31; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .id-display { font-weight: bold; color: var(--theme-color, #85E249); font-size: 18px; letter-spacing: 1px; cursor: pointer; text-decoration: underline dotted; }
+        
+        header { background: #2b2d31; color: white; padding: 0; display: flex; flex-direction: column; width: 100%; border-bottom: 1px solid #1e1f22; z-index: 10; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; width: 100%; }
+        
+        /* タブUI機能は裏側で残すが、表示はしない（1画面共存モード） */
+        .tab-container { display: none !important; }
+        .view-tab { flex: 1; padding: 10px; text-align: center; font-weight: bold; color: #949ba4; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; font-size: 14px; }
+        .view-tab:hover { background: #2b2d31; color: white; }
+        .view-tab.active { color: var(--theme-color, #85E249); border-bottom-color: var(--theme-color, #85E249); background: #2b2d31; }
+
+        .view-content { flex: 1; display: flex; flex-direction: column; width: 100%; height: 100%; overflow: hidden; position: relative; }
+        
+        /* ビデオエリア（通話中のみ表示） */
+        #view-video { flex: none; height: 45vh; border-bottom: 2px solid #1e1f22; background: #000; display: none; flex-direction: column; }
+        #view-chat { display: flex !important; flex: 1; flex-direction: column; background: #313338; }
+
+        #large-video-view { flex: 1; background: #111; display: flex; justify-content: center; align-items: center; position: relative; border-bottom: 2px solid var(--theme-color, #85E249); overflow: hidden; }
+        #large-video-element { width: 100%; height: 100%; object-fit: contain; }
+        .large-video-label { position: absolute; bottom: 15px; left: 15px; background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 6px; font-size: 14px; color: white; font-weight: bold; border-left: 3px solid var(--theme-color, #85E249); display: flex; align-items: center; gap: 8px; }
+        
+        #video-grid-container { width: 100%; background: #1e1f22; padding: 10px; overflow-x: auto; overflow-y: hidden; }
+        #video-grid { display: flex; gap: 10px; min-width: min-content; height: 120px; }
+        .video-card { width: 160px; height: 100%; background: #2b2d31; border: 2px solid #3f4147; border-radius: 8px; overflow: hidden; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .video-card:hover { border-color: var(--theme-color, #85E249); transform: translateY(-2px); }
+        .video-card.selected-large { border-color: #f1c40f; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        .video-card video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+        .video-card-avatar { width: 100%; height: 100%; font-size: 40px; display: flex; align-items: center; justify-content: center; background: #2b2d31; }
+        .video-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .video-card-info { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); padding: 4px 6px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; }
+        .video-card-name { overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; color: white; }
+        
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* LINE風メッセージレイアウト用スタイル (自分を右、相手を左へ反転) */
+        .msg-row { display: flex; gap: 10px; width: 100%; align-items: flex-start; margin-bottom: 5px; }
+        .sent-row { flex-direction: row-reverse; } /* 自分が右 */
+        .received-row { flex-direction: row; } /* 相手が左 */
+        
+        .msg-avatar-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #2b2d31; border: 1px solid #3f4147; font-size: 18px; flex-shrink: 0; overflow: hidden; margin-top: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .msg-avatar-icon img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 70%; }
+        .sent-row .msg-wrapper { align-items: flex-end; } /* 自分のふきだし右寄せ */
+        .received-row .msg-wrapper { align-items: flex-start; } /* 相手のふきだし左寄せ */
+        
+        .sent-avatar { order: 1; }
+        .received-avatar { order: 2; }
+        
+        .msg { padding: 12px 16px; border-radius: 18px; font-size: 15px; word-wrap: break-word; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .sent { background-color: var(--theme-color, #85E249); color: #111; border-bottom-right-radius: 4px; } /* 右寄せ用の角丸調整 */
+        .received { background-color: #2b2d31; color: #dbdee1; border-bottom-left-radius: 4px; } /* 左寄せ用の角丸調整 */
+        
+        .msg-meta-name { font-size: 11px; color: #949ba4; margin-bottom: 3px; padding: 0 4px; }
+        .msg-time { font-size: 10px; color: #949ba4; margin-top: 4px; }
+        .time-right { align-self: flex-end; margin-right: 4px; } /* 右配置の自分の時刻 */
+        .time-left { align-self: flex-start; margin-left: 4px; } /* 左配置の相手の時刻 */
+        
+        footer { background: #2b2d31; padding: 15px 20px; display: flex; gap: 12px; align-items: center; z-index: 10; }
+        #attach-btn { background: none; border: none; color: #949ba4; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        #attach-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #message-input { flex: 1; background: #383a40; border: none; padding: 14px 20px; border-radius: 25px; outline: none; font-size: 15px; color: white; }
+        #send-btn { background: var(--theme-color, #85E249); color: #111; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        #send-btn:disabled, #message-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #call-members-container { display: flex; gap: 5px; margin-left: 10px; flex-wrap: wrap; }
+        .member-badge { background: #3f4147; color: var(--theme-color, #85E249); padding: 4px 8px; border-radius: 4px; font-size: 11px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--theme-color, #85E249); }
+        .member-kick { cursor: pointer; color: #da373c; font-weight: bold; font-size: 14px; padding: 0 2px; }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .calling { color: #ff4757 !important; animation: pulse 1.2s infinite; }
+        .sharing { color: var(--theme-color, #85E249) !important; animation: pulse 1.5s infinite; }
+        #visualizer-canvas { width: 60px; height: 20px; vertical-align: middle; margin-left: 10px; display: none; border-radius: 10px; background: rgba(0,0,0,0.2); }
+        
+        #incoming-call-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(3px); }
+        .modal-content { background: #2b2d31; padding: 30px 40px; border-radius: 12px; text-align: center; color: white; border: 1px solid #3f4147; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-buttons { display: flex; gap: 15px; margin-top: 25px; justify-content: center; }
+        .modal-btn { padding: 12px 30px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .modal-btn:hover { transform: scale(1.05); }
+        .btn-answer { background: var(--theme-color, #23a559); color: white; }
+        .btn-decline { background: #da373c; color: white; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px); background: var(--theme-color, #85E249); color: #111; padding: 12px 25px; border-radius: 30px; font-weight: bold; opacity: 0; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; z-index: 30000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .toast-show { opacity: 1 !important; transform: translateX(-50%) translateY(0) !important; }
+
+        /* 設定モーダル画面 */
+        #settings-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 20000; backdrop-filter: blur(5px); }
+        .settings-content { background: #2b2d31; width: 95%; max-width: 650px; height: 85vh; border-radius: 14px; border: 1px solid #3f4147; display: flex; flex-direction: column; overflow: hidden; color: #dbdee1; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .settings-header { padding: 18px 20px; background: #1e1f22; font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3f4147; }
+        .settings-close-btn { background: none; border: none; color: #949ba4; font-size: 24px; cursor: pointer; line-height: 1; }
+        .settings-close-btn:hover { color: white; }
+        
+        .settings-body-split { display: flex; flex-direction: row; height: 100%; width: 100%; background: #313338; overflow: hidden; }
+        .settings-sidebar { width: 170px; background: #1e1f22; border-right: 1px solid #3f4147; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
+        .settings-tab-btn { background: transparent; border: none; color: #949ba4; padding: 15px; text-align: left; cursor: pointer; font-weight: bold; border-bottom: 1px solid #2b2d31; transition: 0.2s; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .settings-tab-btn:hover { background: #2b2d31; color: white; }
+        .settings-tab-btn.active { background: #313338; color: var(--theme-color, #85E249); border-left: 4px solid var(--theme-color, #85E249); padding-left: 11px; }
+        
+        .settings-main { flex: 1; padding: 0; overflow-y: auto; background: #313338; }
+        .settings-pane { display: none; flex-direction: column; padding: 25px 20px; }
+        .settings-pane.active { display: flex; }
+        
+        .settings-label { font-size: 13px; color: white; font-weight: bold; border-left: 4px solid var(--theme-color, #85E249); padding-left: 10px; margin-bottom: 5px; }
+        .settings-desc { font-size: 11px; color: #949ba4; margin-bottom: 15px; }
+        
+        .settings-input-group { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+        .settings-input-group input, .settings-input-group select { flex: 1; background: #1e1f22; padding: 10px; border-radius: 6px; border: 1px solid #3f4147; color: white; outline: none; }
+        .settings-input-group input:focus, .settings-input-group select:focus { border-color: var(--theme-color, #85E249); }
+        .settings-btn { background: var(--theme-color, #85E249); color: #111; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .settings-btn:hover { opacity: 0.8; }
+        
+        .icon-selector { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; }
+        .icon-option { font-size: 28px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #1e1f22; border: 2px solid #3f4147; border-radius: 8px; cursor: pointer; transition: 0.2s; overflow: hidden; padding: 2px; }
+        .icon-option img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .icon-option:hover { background: #3f4147; transform: translateY(-2px); }
+        .icon-option.selected { border-color: var(--theme-color, #85E249); background: #383a40; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+        
+        #custom-icon-dropzone { border: 2px dashed #949ba4; border-radius: 8px; padding: 20px; text-align: center; color: #dbdee1; font-size: 13px; cursor: pointer; background: rgba(30, 31, 34, 0.5); transition: 0.2s; font-weight: bold; }
+        #custom-icon-dropzone:hover { background: #1e1f22; border-color: var(--theme-color, #85E249); color: var(--theme-color, #85E249); }
+        
+        .theme-selector { display: flex; gap: 15px; flex-wrap: wrap; padding: 5px 0; margin-bottom: 20px; }
+        .theme-color-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid #1e1f22; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .theme-color-btn:hover { transform: scale(1.15); }
+        .theme-color-btn.selected { border-color: white; transform: scale(1.1); box-shadow: 0 0 12px rgba(255,255,255,0.4); }
+
+        .settings-history-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; background: #1e1f22; padding: 12px; border-radius: 8px; border: 1px solid #3f4147; margin-bottom: 20px; }
+        .settings-history-row { display: flex; justify-content: space-between; align-items: center; background: #2b2d31; padding: 10px 15px; border-radius: 6px; font-size: 14px; border-left: 3px solid transparent; transition: 0.2s; }
+        .settings-history-row:hover { border-left-color: var(--theme-color, #85E249); background: #383a40; }
+        
+        /* フレンド削除ボタンのスタイル */
+        .history-del-btn { background: rgba(218, 55, 60, 0.1); border: 1px solid #da373c; color: #da373c; cursor: pointer; font-size: 12px; padding: 6px 12px; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .history-del-btn:hover { background: #da373c; color: white; }
+        
+        .sidebar-settings-trigger { width: 100%; padding: 12px; background: #1e1f22; border: 2px solid #3f4147; color: #dbdee1; border-radius: 8px; font-weight: bold; cursor: pointer; text-align: center; margin-top: auto; transition: 0.2s; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .sidebar-settings-trigger:hover { background: #3f4147; color: white; border-color: var(--theme-color, #85E249); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+        .call-controls { display: flex; gap: 15px; align-items: center; }
+        .call-btn-item { background: #2b2d31; border: 1px solid #3f4147; color: white; font-size: 20px; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .call-btn-item:hover { background: #3f4147; transform: translateY(-2px); }
+        .call-btn-item.active-state { color: var(--theme-color, #85E249); border-color: var(--theme-color, #85E249); background: rgba(133, 226, 73, 0.1); }
+        .call-btn-item.danger-state { color: #da373c; border-color: #da373c; background: rgba(218, 55, 60, 0.1); }
+        
+        #friend-status-list { display: flex; flex-direction: column; gap: 6px; background: #1e1f22; padding: 12px; border-radius: 8px; border: 1px solid #3f4147; max-height: 200px; overflow-y: auto; }
+        .friend-status-row { display: flex; justify-content: space-between; align-items: center; background: #2b2d31; padding: 10px; border-radius: 6px; font-size: 13px; }
+        .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
+        .status-badge.active { background: rgba(35, 165, 89, 0.2); color: #23a559; border: 1px solid #23a559; }
+        .status-badge.inactive { background: rgba(148, 155, 164, 0.1); color: #949ba4; border: 1px solid #3f4147; }
+        
+        input[type="range"] { -webkit-appearance: none; background: #3f4147; height: 6px; border-radius: 3px; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--theme-color, #85E249); border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        
+        /* チャンク送信時のプログレスバー用スタイル */
+        #upload-progress-container { display:none; width: 100%; height: 4px; background: #1e1f22; position: absolute; bottom: 0; left: 0; }
+        #upload-progress-bar { height: 100%; background: var(--theme-color, #85E249); width: 0%; transition: 0.1s; }
+    </style>
+<script src="/_sdk/0b3af1c300e720aa.resizing_sdk.js" integrity="sha512-nX1P6oXZmEY5wCI2lUVg3BwKu1cr0yi+ZpXgZ0Yn90vkSwvpmyzBMvOyD6VLJUtBwFI2dSrw1b6OvORxSggw3w=="></script></head>
+<body data-html-import-id="html-import-0" data-template-id="__page-root" style="background: rgb(49, 51, 56);">
+<div id="sidebar" data-html-import-id="html-import-1" data-template-id="div-0" class="canva-container" style="background: rgb(43, 45, 49);">
+    <div class="sidebar-section-title canva-container" data-html-import-id="html-import-2" data-template-id="div-1" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 11px;">👤 フレンド追加</div>
+    <div class="friend-add-box canva-container" data-html-import-id="html-import-3" data-template-id="div-2" style="background: rgb(30, 31, 34);">
+        <input type="text" id="sidebar-friend-id" placeholder="相手のIDを入力" maxlength="4" data-html-import-id="html-import-4" data-template-id="input-3" class="canva-input" style="background: rgb(43, 45, 49); color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">
+        <button id="sidebar-friend-add-btn" data-html-import-id="html-import-5" data-template-id="button-4" class="canva-button" style="background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700; font-size: 13px;">➕ フレンド登録</button>
+    </div>
+    <div class="sidebar-section-title canva-container" data-html-import-id="html-import-6" data-template-id="div-5" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 11px;">👥 フレンド一覧</div>
+    <div id="friend-list-container" style="width:100%; display:flex; flex-direction:column; gap:8px;" data-html-import-id="html-import-7"></div>
+    <button class="sidebar-settings-trigger canva-button" id="open-settings-btn" data-html-import-id="html-import-8" data-template-id="button-6" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-weight: 700; font-size: 14px;">⚙️ アプリ設定</button>
+</div>
+
+<div id="main-area" data-html-import-id="html-import-9" data-template-id="div-7" class="canva-container" style="background: rgb(49, 51, 56);">
+    <div id="setup-area" data-html-import-id="html-import-10" data-template-id="div-8" class="canva-container" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 13px;">
+        <div style="display: flex; align-items: center;" data-html-import-id="html-import-11">
+            <span style="color:#949ba4; font-size:12px; margin-right:5px;" data-html-import-id="html-import-12" data-template-id="span-9" class="canva-text">Your ID:</span> 
+            <span id="my-id-display" class="id-display canva-text" title="クリックで設定を開く" data-html-import-id="html-import-13" data-template-id="span-10" style="color: rgb(133, 226, 73); font-weight: 700; font-size: 18px;">5971</span>
+            <div id="my-avatar-display" style="margin-left: 12px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 20px; border-radius: 50%; overflow: hidden; background: rgb(43, 45, 49); border: 1px solid rgb(63, 65, 71); color: rgb(219, 222, 225);" data-html-import-id="html-import-14" data-template-id="div-11" class="canva-container">👤</div>
+            <canvas id="visualizer-canvas" data-html-import-id="html-import-15" data-template-id="canvas-12" style="background: rgba(0, 0, 0, 0.2);"></canvas>
+        </div>
+        <div style="font-weight: 700; color: rgb(148, 155, 164); font-size: 11px;" id="top-ver-display" data-html-import-id="html-import-16" data-template-id="div-13" class="canva-container">Version 81 GitHub Ultimate</div>
+    </div>
+    
+    <header data-html-import-id="html-import-17" data-template-id="header-14" class="canva-header" style="background: rgb(43, 45, 49); color: rgb(255, 255, 255);">
+        <div class="header-top" data-html-import-id="html-import-18">
+            <div style="display:flex; align-items:center; overflow: hidden; flex: 1;" data-html-import-id="html-import-19">
+                <span id="chat-title" style="font-size: 16px; color: rgb(255, 255, 255);" data-html-import-id="html-import-20" data-template-id="span-15" class="canva-text">フレンドを選択してください</span>
+                <div id="call-members-container" style="margin-left:15px;" data-html-import-id="html-import-21"></div>
+            </div>
+            
+            <div class="call-controls" data-html-import-id="html-import-22">
+                <button id="clear-history" class="call-btn-item canva-button" style="display: none; background: rgba(218, 55, 60, 0.1); color: rgb(218, 55, 60); border: 1px solid rgb(218, 55, 60); font-size: 20px;" title="フレンド削除" data-html-import-id="html-import-23" data-template-id="button-16">🗑️</button>
+                <button id="view-toggle-btn" class="call-btn-item canva-button" style="display: none; background: rgb(52, 152, 219); color: rgb(255, 255, 255); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; font-size: 20px;" title="ビデオ画面へ切り替え" data-html-import-id="html-import-24" data-template-id="button-17">📹</button>
+                <button id="mic-btn" class="call-btn-item active-state canva-button" style="display: none; background: rgba(255, 255, 255, 0.05); color: rgb(133, 226, 73); font-size: 20px;" title="マイクON/OFF" data-html-import-id="html-import-25" data-template-id="button-18">🎤</button>
+                <button id="cam-btn" class="call-btn-item canva-button" style="display: none; background: rgb(43, 45, 49); color: rgb(255, 255, 255); font-size: 20px;" title="カメラON/OFF" data-html-import-id="html-import-26" data-template-id="button-19">📹</button>
+                <button id="screen-btn" class="call-btn-item canva-button" style="display: none; background: rgb(43, 45, 49); color: rgb(255, 255, 255); font-size: 20px;" title="画面共有" data-html-import-id="html-import-27" data-template-id="button-20">🖥️</button>
+                <button id="invite-btn" class="call-btn-item active-state canva-button" style="display: none; background: rgba(255, 255, 255, 0.05); color: rgb(133, 226, 73); font-size: 20px;" title="フレンドを招待" data-html-import-id="html-import-28" data-template-id="button-21">➕</button>
+                <button id="call-btn" class="call-btn-item canva-button" style="display: none; background: rgb(35, 165, 89); color: rgb(255, 255, 255); border-width: medium; border-style: none; border-color: currentcolor; border-image: initial; font-size: 20px;" title="通話開始" data-html-import-id="html-import-29" data-template-id="button-22">📞</button>
+            </div>
+        </div>
+        <div id="upload-progress-container" data-html-import-id="html-import-30" data-template-id="div-23" class="canva-container" style="background: rgb(30, 31, 34);"><div id="upload-progress-bar" data-html-import-id="html-import-31" data-template-id="div-24" class="canva-container" style="background: rgb(133, 226, 73);"></div></div>
+    </header>
+    
+    <div id="view-video" class="view-content canva-container" data-html-import-id="html-import-32" data-template-id="div-25" style="background: rgb(0, 0, 0);">
+        <div id="large-video-view" data-html-import-id="html-import-33" data-template-id="div-26" class="canva-container" style="background: rgb(17, 17, 17);">
+            <video id="large-video-element" autoplay="" playsinline="" data-html-import-id="html-import-34"></video>
+            <div class="large-video-label canva-container" id="large-video-label-text" data-html-import-id="html-import-35" data-template-id="div-27" style="background: rgba(0, 0, 0, 0.7); color: rgb(133, 226, 73); font-weight: 700; font-size: 14px;">拡大表示中</div>
+        </div>
+        <div id="video-grid-container" data-html-import-id="html-import-36" data-template-id="div-28" class="canva-container" style="background: rgb(30, 31, 34);">
+            <div id="video-grid" data-html-import-id="html-import-37"></div>
+        </div>
+    </div>
+
+    <div id="view-chat" class="view-content active canva-container" data-html-import-id="html-import-38" data-template-id="div-29" style="background: rgb(49, 51, 56);">
+        <div id="chat-container" data-html-import-id="html-import-39"></div>
+        <footer data-html-import-id="html-import-40" data-template-id="footer-30" class="canva-footer" style="background: rgb(43, 45, 49);">
+            <button id="attach-btn" title="ファイル添付" disabled="" data-html-import-id="html-import-41" data-template-id="button-31" class="canva-button" style="color: rgb(148, 155, 164); font-size: 22px;">📎</button>
+            <input type="file" id="file-input" style="display:none;" accept="image/*,video/*,.html,.htm" data-html-import-id="html-import-42">
+            <input type="text" id="message-input" placeholder="メッセージを入力..." disabled="" data-html-import-id="html-import-43" data-template-id="input-32" class="canva-input" style="background: rgb(56, 58, 64); color: rgb(255, 255, 255); font-size: 15px;">
+            <button id="send-btn" disabled="" data-html-import-id="html-import-44" data-template-id="button-33" class="canva-button" style="background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700;">送信</button>
+        </footer>
+    </div>
+</div>
+
+<div id="incoming-call-modal" data-html-import-id="html-import-45" data-template-id="div-34" class="canva-container" style="background: rgba(0, 0, 0, 0.8);">
+    <div class="modal-content canva-container" data-html-import-id="html-import-46" data-template-id="div-35" style="background: rgb(43, 45, 49); color: rgb(255, 255, 255);">
+        <h3 style="margin-bottom: 15px; color: rgb(133, 226, 73); font-size: 20px;" data-html-import-id="html-import-47" data-template-id="h3-36" class="canva-text">📞 通話着信</h3>
+        <p style="font-size: 16px; margin-bottom: 10px; color: rgb(255, 255, 255);" data-html-import-id="html-import-48" data-template-id="p-37" class="canva-text"><span id="caller-name-display" style="font-weight: 700; color: rgb(255, 255, 255);" data-html-import-id="html-import-49" data-template-id="span-38" class="canva-text">相手</span></p>
+        <p style="font-size:12px; color:#949ba4;" data-html-import-id="html-import-50" data-template-id="p-39" class="canva-text">グループ通話に参加しますか？</p>
+        <div class="modal-buttons" data-html-import-id="html-import-51">
+            <button class="modal-btn btn-decline canva-button" id="decline-btn" data-html-import-id="html-import-52" data-template-id="button-40" style="background: rgb(218, 55, 60); color: rgb(255, 255, 255); font-weight: 700;">拒否する</button>
+            <button class="modal-btn btn-answer canva-button" id="answer-btn" data-html-import-id="html-import-53" data-template-id="button-41" style="background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700;">応答する</button>
+        </div>
+    </div>
+</div>
+
+<div id="settings-modal" data-html-import-id="html-import-54" data-template-id="div-42" class="canva-container" style="background: rgba(0, 0, 0, 0.85);">
+    <div class="settings-content canva-container" data-html-import-id="html-import-55" data-template-id="div-43" style="background: rgb(43, 45, 49); color: rgb(219, 222, 225);">
+        <div class="settings-header canva-container" data-html-import-id="html-import-56" data-template-id="div-44" style="background: rgb(30, 31, 34); font-weight: 700; font-size: 16px;">
+            <span data-html-import-id="html-import-57" data-template-id="span-45" class="canva-text" style="color: rgb(219, 222, 225);">⚙️ アプリケーション設定</span>
+            <button class="settings-close-btn canva-button" id="close-settings-btn" data-html-import-id="html-import-58" data-template-id="button-46" style="color: rgb(148, 155, 164); font-size: 24px;">×</button>
+        </div>
+        <div class="settings-body-split canva-container" data-html-import-id="html-import-59" data-template-id="div-47" style="background: rgb(49, 51, 56);">
+            <div class="settings-sidebar canva-container" data-html-import-id="html-import-60" data-template-id="div-48" style="background: rgb(30, 31, 34);">
+                <button class="settings-tab-btn active canva-button" data-pane="pane-profile" data-html-import-id="html-import-61" data-template-id="button-49" style="background: rgb(49, 51, 56); color: rgb(133, 226, 73); font-weight: 700; font-size: 13px;">👤 プロフィール</button>
+                <button class="settings-tab-btn canva-button" data-pane="pane-theme" data-html-import-id="html-import-62" data-template-id="button-50" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 13px;">🎨 外観・テーマ</button>
+                <button class="settings-tab-btn canva-button" data-pane="pane-notify" data-html-import-id="html-import-63" data-template-id="button-51" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 13px;">🔔 通知設定</button>
+                <button class="settings-tab-btn canva-button" data-pane="pane-device" data-html-import-id="html-import-64" data-template-id="button-52" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 13px;">📱 デバイス・音声</button>
+                <button class="settings-tab-btn canva-button" data-pane="pane-data" data-html-import-id="html-import-65" data-template-id="button-53" style="color: rgb(148, 155, 164); font-weight: 700; font-size: 13px;">💾 データ・管理</button>
+            </div>
+            
+            <div class="settings-main canva-container" data-html-import-id="html-import-66" data-template-id="div-54" style="background: rgb(49, 51, 56);">
+                
+                <div id="pane-profile" class="settings-pane active" data-html-import-id="html-import-67">
+                    <div class="settings-label canva-container" data-html-import-id="html-import-68" data-template-id="div-55" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">名前とID</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-69" data-template-id="div-56" style="color: rgb(148, 155, 164); font-size: 11px;">相手に表示されるあなたの名前とIDです。</div>
+                    <div class="settings-input-group" data-html-import-id="html-import-70">
+                        <input type="text" id="settings-my-nickname" placeholder="ニックネームを入力" data-html-import-id="html-import-71" data-template-id="input-57" class="canva-input" style="background: rgb(30, 31, 34); color: rgb(255, 255, 255);">
+                    </div>
+                    <div class="settings-input-group" data-html-import-id="html-import-72">
+                        <input type="text" id="settings-my-id-input" placeholder="新しい4桁ID" maxlength="4" data-html-import-id="html-import-73" data-template-id="input-58" class="canva-input" style="background: rgb(30, 31, 34); color: rgb(255, 255, 255);">
+                        <button id="settings-id-change-btn" class="settings-btn canva-button" data-html-import-id="html-import-74" data-template-id="button-59" style="background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700;">ID変更</button>
+                    </div>
+                    
+                    <div class="settings-label canva-container" style="margin-top: 10px; color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;" data-html-import-id="html-import-75" data-template-id="div-60">アバターアイコン</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-76" data-template-id="div-61" style="color: rgb(148, 155, 164); font-size: 11px;">チャットや通話中に表示されるアイコンです。</div>
+                    <div class="icon-selector" id="settings-icon-selector" data-html-import-id="html-import-77">
+                        <span class="icon-option canva-text" data-icon="👤" data-html-import-id="html-import-78" data-template-id="span-62" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">👤</span>
+                        <span class="icon-option canva-text" data-icon="🦊" data-html-import-id="html-import-79" data-template-id="span-63" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">🦊</span>
+                        <span class="icon-option canva-text" data-icon="🐱" data-html-import-id="html-import-80" data-template-id="span-64" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">🐱</span>
+                        <span class="icon-option canva-text" data-icon="🤖" data-html-import-id="html-import-81" data-template-id="span-65" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">🤖</span>
+                        <span class="icon-option canva-text" data-icon="🎮" data-html-import-id="html-import-82" data-template-id="span-66" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">🎮</span>
+                        <span class="icon-option canva-text" data-icon="🚀" data-html-import-id="html-import-83" data-template-id="span-67" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">🚀</span>
+                        <span class="icon-option canva-text" data-icon="👑" data-html-import-id="html-import-84" data-template-id="span-68" style="background: rgb(30, 31, 34); color: rgb(219, 222, 225); font-size: 28px;">👑</span>
+                    </div>
+                    <div id="custom-icon-dropzone" data-html-import-id="html-import-85" data-template-id="div-69" class="canva-container" style="background: rgba(30, 31, 34, 0.5); color: rgb(219, 222, 225); font-weight: 700; font-size: 13px;"><canva-inline-text data-template-id="canva-inline-text-70" class="canva-text" style="color: rgb(219, 222, 225); font-weight: 700; font-size: 13px;">
+                        📥 ここに画像をドロップしてカスタムアイコンを設定</canva-inline-text><br data-html-import-id="html-import-86"><span style="font-size: 11px; font-weight: 400; margin-top: 4px; display: inline-block; color: rgb(219, 222, 225);" data-html-import-id="html-import-87" data-template-id="span-71" class="canva-text">(またはクリックしてファイルを選択 / 2MB以下の正方形推奨)</span>
+                    </div>
+                </div>
+
+                <div id="pane-theme" class="settings-pane" data-html-import-id="html-import-88">
+                    <div class="settings-label canva-container" data-html-import-id="html-import-89" data-template-id="div-72" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">テーマカラー</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-90" data-template-id="div-73" style="color: rgb(148, 155, 164); font-size: 11px;">アプリ全体のアクセントカラーを変更します。</div>
+                    <div class="theme-selector" id="theme-selector-box" data-html-import-id="html-import-91">
+                        <div class="theme-color-btn selected canva-container" style="background:#85E249;" data-color="#85E249" title="Sync Green" data-html-import-id="html-import-92" data-template-id="div-74"></div>
+                        <div class="theme-color-btn canva-container" style="background:#3498db;" data-color="#3498db" title="Ocean Blue" data-html-import-id="html-import-93" data-template-id="div-75"></div>
+                        <div class="theme-color-btn canva-container" style="background:#e74c3c;" data-color="#e74c3c" title="Rose Red" data-html-import-id="html-import-94" data-template-id="div-76"></div>
+                        <div class="theme-color-btn canva-container" style="background:#f1c40f;" data-color="#f1c40f" title="Sun Yellow" data-html-import-id="html-import-95" data-template-id="div-77"></div>
+                        <div class="theme-color-btn canva-container" style="background:#9b59b6;" data-color="#9b59b6" title="Amethyst" data-html-import-id="html-import-96" data-template-id="div-78"></div>
+                        <div class="theme-color-btn canva-container" style="background:#00d2d3;" data-color="#00d2d3" title="Cyan" data-html-import-id="html-import-97" data-template-id="div-79"></div>
+                        <div class="theme-color-btn canva-container" style="background:#ff9ff3;" data-color="#ff9ff3" title="Pink" data-html-import-id="html-import-98" data-template-id="div-80"></div>
+                    </div>
+                </div>
+
+                <div id="pane-notify" class="settings-pane" data-html-import-id="html-import-99">
+                    <div class="settings-label canva-container" data-html-import-id="html-import-100" data-template-id="div-81" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">サウンド通知</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-101" data-template-id="div-82" style="color: rgb(148, 155, 164); font-size: 11px;">メッセージ受信時や着信時の音を設定します。</div>
+                    <div style="background:#1e1f22; padding:15px; border-radius:8px; border:1px solid #3f4147;" data-html-import-id="html-import-102" data-template-id="div-83" class="canva-container">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 700; margin-bottom: 15px; color: rgb(219, 222, 225);" data-html-import-id="html-import-103" data-template-id="label-84" class="canva-text">
+                            <input type="checkbox" id="notify-sound-toggle" checked="" style="width:16px; height:16px;" data-html-import-id="html-import-104"><canva-inline-text data-template-id="canva-inline-text-85" class="canva-text" style="color: rgb(219, 222, 225); font-weight: 700; font-size: 14px;">
+                            通知音を鳴らす
+                        </canva-inline-text></label>
+                        <div style="display:flex; flex-direction:column; gap:8px;" data-html-import-id="html-import-105">
+                            <span style="font-size:12px; color:#949ba4;" data-html-import-id="html-import-106" data-template-id="span-86" class="canva-text">通知音の種類:</span>
+                            <div style="display:flex; gap:10px;" data-html-import-id="html-import-107">
+                                <select id="notify-sound-type" style="flex: 1 1 0%; background: rgb(43, 45, 49); color: rgb(255, 255, 255); border: 1px solid rgb(63, 65, 71); padding: 8px; border-radius: 6px; outline: none;" data-html-import-id="html-import-108" data-template-id="select-87" class="canva-input">
+                                    <option value="bell" data-html-import-id="html-import-109" data-template-id="option-88" style="color: rgb(255, 255, 255);">チャイム (Bell)</option>
+                                    <option value="beep" data-html-import-id="html-import-110" data-template-id="option-89" style="color: rgb(255, 255, 255);">ピピッ (Beep)</option>
+                                    <option value="digital" data-html-import-id="html-import-111" data-template-id="option-90" style="color: rgb(255, 255, 255);">デジタル (Digital)</option>
+                                    <option value="soft" data-html-import-id="html-import-112" data-template-id="option-91" style="color: rgb(255, 255, 255);">ソフト (Soft)</option>
+                                </select>
+                                <button id="notify-test-btn" class="settings-btn canva-button" style="padding: 8px 15px; background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700;" data-html-import-id="html-import-113" data-template-id="button-92">再生テスト</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pane-device" class="settings-pane" data-html-import-id="html-import-114">
+                    <div class="settings-label canva-container" data-html-import-id="html-import-115" data-template-id="div-93" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">カメラとマイクの選択</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-116" data-template-id="div-94" style="color: rgb(148, 155, 164); font-size: 11px;">使用するデバイスを指定してください。</div>
+                    <div class="settings-input-group" style="flex-direction:column; align-items:stretch;" data-html-import-id="html-import-117">
+                        <label style="font-size:12px; color:#949ba4;" data-html-import-id="html-import-118" data-template-id="label-95" class="canva-text">カメラ:</label>
+                        <select id="camera-select" data-html-import-id="html-import-119" data-template-id="select-96" class="canva-input" style="background: rgb(30, 31, 34); color: rgb(255, 255, 255);"></select>
+                    </div>
+                    <div class="settings-input-group" style="flex-direction:column; align-items:stretch;" data-html-import-id="html-import-120">
+                        <label style="font-size:12px; color:#949ba4;" data-html-import-id="html-import-121" data-template-id="label-97" class="canva-text">マイク:</label>
+                        <select id="mic-select" data-html-import-id="html-import-122" data-template-id="select-98" class="canva-input" style="background: rgb(30, 31, 34); color: rgb(255, 255, 255);"></select>
+                    </div>
+                    
+                    <div class="settings-label canva-container" style="margin-top: 15px; color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;" data-html-import-id="html-import-123" data-template-id="div-99">マイクの送信音量 (ブースト)</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-124" data-template-id="div-100" style="color: rgb(148, 155, 164); font-size: 11px;">相手に届くあなたの声の大きさを調整します（標準=1.0）。</div>
+                    <div style="display:flex; align-items:center; gap:15px; background:#1e1f22; padding:15px; border-radius:8px; border:1px solid #3f4147;" data-html-import-id="html-import-125" data-template-id="div-101" class="canva-container">
+                        <span style="font-size: 18px; color: rgb(219, 222, 225);" data-html-import-id="html-import-126" data-template-id="span-102" class="canva-text">🔈</span>
+                        <input type="range" id="mic-volume-slider" min="0" max="3" step="0.1" value="1" style="flex: 1 1 0%; background: rgb(63, 65, 71);" data-html-import-id="html-import-127" data-template-id="input-103" class="canva-input">
+                        <span id="mic-volume-val" style="font-weight: 700; width: 30px; text-align: right; color: rgb(219, 222, 225);" data-html-import-id="html-import-128" data-template-id="span-104" class="canva-text">1.0</span>
+                    </div>
+                </div>
+
+                <div id="pane-data" class="settings-pane" data-html-import-id="html-import-129">
+                    <div class="settings-label canva-container" data-html-import-id="html-import-130" data-template-id="div-105" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">フレンドの閲覧状態 (リアルタイム)</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-131" data-template-id="div-106" style="color: rgb(148, 155, 164); font-size: 11px;">フレンドがあなたとのチャット画面を開いているか確認できます。</div>
+                    <div id="friend-status-list" style="margin-bottom: 25px; background: rgb(30, 31, 34);" data-html-import-id="html-import-132" data-template-id="div-107" class="canva-container"></div>
+
+                    <div class="settings-label canva-container" data-html-import-id="html-import-133" data-template-id="div-108" style="color: rgb(255, 255, 255); font-weight: 700; font-size: 13px;">フレンド管理</div>
+                    <div class="settings-desc canva-container" data-html-import-id="html-import-134" data-template-id="div-109" style="color: rgb(148, 155, 164); font-size: 11px;">登録済みのフレンドをリストから削除します。</div>
+                    <div class="settings-history-list canva-container" id="settings-history-list-box" data-html-import-id="html-import-135" data-template-id="div-110" style="background: rgb(30, 31, 34);"></div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<style id="dynamic-theme" data-html-import-id="html-import-136">
+            .history-item.active { background: #85E249 !important; color: #111 !important; }
+            .id-display { color: #85E249 !important; }
+            #send-btn { background: #85E249 !important; }
+            .sent { background-color: #85E249 !important; color: #111 !important; }
+            .sent-avatar { background: #85E249 !important; color: #111 !important; }
+            .member-badge { color: #85E249 !important; border-color: #85E249 !important; }
+            .sharing { color: #85E249 !important; border-color: #85E249 !important; }
+            #sidebar-friend-add-btn { background: #85E249 !important; }
+            .settings-btn { background: #85E249 !important; }
+            .icon-option.selected { border-color: #85E249 !important; }
+            #large-video-view { border-bottom-color: #85E249 !important; }
+            .large-video-label { color: #85E249 !important; border-left-color: #85E249 !important; }
+            .video-card:hover { border-color: #85E249 !important; }
+            .toast-show { background: #85E249 !important; }
+            h3 { color: #85E249 !important; }
+            .btn-answer { background: #85E249 !important; color: #111 !important; }
+            .settings-label { border-left-color: #85E249 !important; }
+            #custom-icon-dropzone:hover { border-color: #85E249 !important; color: #85E249 !important; }
+            .call-btn-item.active-state { color: #85E249 !important; border-color: #85E249 !important; background: rgba(255,255,255,0.05) !important; }
+            .call-btn-item.danger-state { color: #da373c !important; border-color: #da373c !important; background: rgba(218, 55, 60, 0.1) !important; }
+            .settings-tab-btn.active { color: #85E249 !important; border-left-color: #85E249 !important; }
+        </style>
+<div id="toast" data-html-import-id="html-import-137" data-template-id="div-111" class="canva-container" style="background: rgb(133, 226, 73); color: rgb(17, 17, 17); font-weight: 700;"></div>
+
+<script data-html-import-id="html-import-138">
+    // --- 1. アプリケーション初期設定・移行処理 ---
+    const VER = "v81_gh"; 
+    const PREFIX = "p2p_stable_v81_gh_"; 
+
+    // --- ★ストレージ安全フォールバックシステム＆強制クリーンアップ ---
+    function safeStorageGet(key, defaultVal) {
+        try { return localStorage.getItem(key) || defaultVal; } catch(e) { return defaultVal; }
+    }
+    function safeStorageSet(key, val) {
+        try { localStorage.setItem(key, val); return true; } catch(e) { return false; }
+    }
+    function safeStorageRemove(key) {
+        try { localStorage.removeItem(key); } catch(e) {}
+    }
+    function safeJsonParse(data, defaultVal) {
+        try { return JSON.parse(data); } catch(e) { return defaultVal; }
+    }
+    
+    // 過去の超大容量ゴミデータを全削除して、確実に動くように空き容量を作る
+    function clearOldVersionData() {
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('log_v') || key.startsWith('friends_v'))) {
+                    if (!key.includes(VER)) {
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            keysToRemove.forEach(k => safeStorageRemove(k));
+        } catch(e) {}
+    }
+
+    // テーマカラー動的適用システム
+    let currentThemeColor = safeStorageGet('my_theme_color', '#85E249');
+
+    function applyTheme(color) {
+        currentThemeColor = color;
+        safeStorageSet('my_theme_color', color);
+        document.documentElement.style.setProperty('--theme-color', color);
+        
+        let style = document.getElementById('dynamic-theme');
+        style.innerHTML = `
+            .history-item.active { background: ${color} !important; color: #111 !important; }
+            .id-display { color: ${color} !important; }
+            #send-btn { background: ${color} !important; }
+            .sent { background-color: ${color} !important; color: #111 !important; }
+            .sent-avatar { background: ${color} !important; color: #111 !important; }
+            .member-badge { color: ${color} !important; border-color: ${color} !important; }
+            .sharing { color: ${color} !important; border-color: ${color} !important; }
+            #sidebar-friend-add-btn { background: ${color} !important; }
+            .settings-btn { background: ${color} !important; }
+            .icon-option.selected { border-color: ${color} !important; }
+            #large-video-view { border-bottom-color: ${color} !important; }
+            .large-video-label { color: ${color} !important; border-left-color: ${color} !important; }
+            .video-card:hover { border-color: ${color} !important; }
+            .toast-show { background: ${color} !important; }
+            h3 { color: ${color} !important; }
+            .btn-answer { background: ${color} !important; color: #111 !important; }
+            .settings-label { border-left-color: ${color} !important; }
+            #custom-icon-dropzone:hover { border-color: ${color} !important; color: ${color} !important; }
+            .call-btn-item.active-state { color: ${color} !important; border-color: ${color} !important; background: rgba(255,255,255,0.05) !important; }
+            .call-btn-item.danger-state { color: #da373c !important; border-color: #da373c !important; background: rgba(218, 55, 60, 0.1) !important; }
+            .settings-tab-btn.active { color: ${color} !important; border-left-color: ${color} !important; }
+        `;
+        
+        document.querySelectorAll('.theme-color-btn').forEach(btn => {
+            if(btn.getAttribute('data-color') === color) btn.classList.add('selected');
+            else btn.classList.remove('selected');
+        });
+    }
+    applyTheme(currentThemeColor);
+    document.querySelectorAll('.theme-color-btn').forEach(btn => {
+        btn.onclick = () => applyTheme(btn.getAttribute('data-color'));
+    });
+
+    // 過去バージョンからのデータ・フレンド引き継ぎ (最新のものを一番最初に見つけるよう逆順)
+    if (!safeStorageGet('migrated_to_'+VER, false)) {
+        clearOldVersionData(); // マイグレーション前にゴミを消す
+        const oldVersions = ["v80_gh", "v80", "v79_gh", "v79", "v78_gh", "v78", "v77", "v76_gh", "v76", "v75", "v74", "v73", "v72", "v71", "v70", "v69", "v68", "v67", "v66", "v65", "v64", "v63", "v62", "v61", "v60"];
+        let foundFriends = null;
+        for (let v of oldVersions) {
+            let f = safeStorageGet('friends_' + v, null);
+            if (f) { foundFriends = f; break; }
+        }
+        if (foundFriends) {
+            try {
+                let parsed = JSON.parse(foundFriends);
+                Object.keys(parsed).forEach(k => { if(!parsed[k].icon) parsed[k].icon = "👤"; });
+                safeStorageSet('friends_' + VER, JSON.stringify(parsed));
+            } catch(e) {
+                // 不正な文字列だった場合は初期化
+                safeStorageSet('friends_' + VER, "{}");
+            }
+        }
+        safeStorageSet('migrated_to_'+VER, 'true');
+    }
+
+    let myNumber = safeStorageGet('my_permanent_chat_id', Math.floor(1000 + Math.random() * 9000).toString());
+    safeStorageSet('my_permanent_chat_id', myNumber);
+    document.getElementById('my-id-display').textContent = myNumber;
+    document.getElementById('settings-my-id-input').value = myNumber;
+
+    let myNickname = safeStorageGet('my_permanent_nick', "名無し");
+    document.getElementById('settings-my-nickname').value = myNickname;
+    document.getElementById('settings-my-nickname').oninput = (e) => {
+        safeStorageSet('my_permanent_nick', e.target.value);
+        myNickname = e.target.value;
+        broadcastUserInfo();
+    };
+
+    let myIcon = safeStorageGet('my_permanent_icon', "👤");
+    document.getElementById('my-avatar-display').innerHTML = myIcon;
+
+    // --- 通知サウンド制御モジュール ---
+    function loadNotifySettings() {
+        const enabled = safeStorageGet('notify_sound_enabled', 'true') !== 'false';
+        const type = safeStorageGet('notify_sound_type', 'bell');
+        document.getElementById('notify-sound-toggle').checked = enabled;
+        document.getElementById('notify-sound-type').value = type;
+    }
+    loadNotifySettings();
+
+    document.getElementById('notify-sound-toggle').onchange = saveNotifySettings;
+    document.getElementById('notify-sound-type').onchange = saveNotifySettings;
+    document.getElementById('notify-test-btn').onclick = () => playNotificationSound(true);
+
+    function saveNotifySettings() {
+        safeStorageSet('notify_sound_enabled', document.getElementById('notify-sound-toggle').checked);
+        safeStorageSet('notify_sound_type', document.getElementById('notify-sound-type').value);
+    }
+
+    // --- ★バグ修正: 欠落していたAudioContextの取得・再開関数を定義 ---
+    function getAudioCtx() {
+        if (!globalAudioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if(AudioContext) globalAudioCtx = new AudioContext();
+        }
+        if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+            globalAudioCtx.resume().catch(()=>{});
+        }
+        return globalAudioCtx;
+    }
+
+    function playNotificationSound(force = false, typeOverride = null) {
+        let isSoundOn = safeStorageGet('notify_sound_enabled', 'true') !== 'false';
+        if (!isSoundOn && !force) return;
+        
+        try {
+            const ctx = getAudioCtx();
+            if(!ctx) return;
+            const now = ctx.currentTime;
+            let type = typeOverride || safeStorageGet('notify_sound_type', 'bell');
+            
+            if (type === 'ring') {
+                const osc1 = ctx.createOscillator(); const osc2 = ctx.createOscillator(); const gain = ctx.createGain();
+                osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+                osc1.type = 'sine'; osc1.frequency.value = 400;
+                osc2.type = 'sine'; osc2.frequency.value = 450;
+                
+                const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 20;
+                const lfoGain = ctx.createGain(); lfoGain.gain.value = 200;
+                lfo.connect(lfoGain); lfoGain.connect(osc1.frequency); lfoGain.connect(osc2.frequency);
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+                gain.gain.setValueAtTime(0.08, now + 1.0);
+                gain.gain.linearRampToValueAtTime(0, now + 1.05);
+                
+                osc1.start(now); osc2.start(now); lfo.start(now);
+                osc1.stop(now + 1.1); osc2.stop(now + 1.1); lfo.stop(now + 1.1);
+                return;
+            }
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            if (type === 'beep') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
+                gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.start(now); osc.stop(now + 0.12);
+                setTimeout(() => {
+                    const c2 = getAudioCtx(); const o2 = c2.createOscillator(); const g2 = c2.createGain();
+                    o2.connect(g2); g2.connect(c2.destination); o2.type = 'sine';
+                    o2.frequency.setValueAtTime(880, c2.currentTime);
+                    g2.gain.setValueAtTime(0.08, c2.currentTime); g2.gain.exponentialRampToValueAtTime(0.001, c2.currentTime + 0.12);
+                    o2.start(c2.currentTime); o2.stop(c2.currentTime + 0.12);
+                }, 70);
+            } else if (type === 'bell') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(587.33, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            } else if (type === 'digital') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(1200, now);
+                gain.gain.setValueAtTime(0.04, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                osc.start(now); osc.stop(now + 0.07);
+            } else if (type === 'soft') {
+                osc.type = 'sine'; osc.frequency.setValueAtTime(523.25, now);
+                gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                osc.start(now); osc.stop(now + 0.25);
+            }
+        } catch(e) {}
+    }
+
+    let ringtoneInterval = null;
+    function startRingtone() {
+        if (ringtoneInterval) clearInterval(ringtoneInterval);
+        playNotificationSound(true, 'ring');
+        ringtoneInterval = setInterval(() => {
+            playNotificationSound(true, 'ring');
+        }, 2500);
+    }
+    function stopRingtone() {
+        if (ringtoneInterval) {
+            clearInterval(ringtoneInterval);
+            ringtoneInterval = null;
+        }
+    }
+
+    // --- 2. 通信システム (PeerJS) と状態管理 ---
+    const peer = new Peer(PREFIX + myNumber, {
+        secure: true,
+        config: {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:global.stun.twilio.com:3478' }]},
+        debug: 1
+    });
+
+    let connections = {}, activePeer = null, localStream = null, screenStream = null;
+    let activeCalls = {}, isMicMuted = false, isCamOff = true;
+    
+    let globalAudioCtx = null, animationId = null, remoteAnalysers = {}; 
+    let localAnalyser = null; 
+    let isMediaSwitching = false;
+    let currentlyExpandedPeer = null; 
+    let remoteStreamsCache = {}; 
+    window.heldCalls = {}; 
+    let friendViewStatus = {}; 
+    
+    let localAudioSourceForProcessing = null;
+    let outgoingGainNode = null;
+    let processedAudioStreamDest = null;
+
+    let toastTimeout = null;
+    function showToast(m) { 
+        const t = document.getElementById('toast'); 
+        t.textContent = m; 
+        t.classList.add('toast-show'); 
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => t.classList.remove('toast-show'), 3000); 
+    }
+
+    // --- 3. デバイス設定モジュール (★更なる高音質化 EQ搭載) ---
+    async function loadDevices() {
+        try {
+            const tempStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(e=>null);
+            if(tempStream) tempStream.getTracks().forEach(t => t.stop());
+
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const camSelect = document.getElementById('camera-select');
+            const micSelect = document.getElementById('mic-select');
+            camSelect.innerHTML = '<option value="">デフォルト（システム設定）</option>';
+            micSelect.innerHTML = '<option value="">デフォルト（システム設定）</option>';
+            
+            devices.forEach(device => {
+                if (device.kind === 'videoinput') {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `カメラ ${camSelect.length}`;
+                    camSelect.appendChild(option);
+                } else if (device.kind === 'audioinput') {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `マイク ${micSelect.length}`;
+                    micSelect.appendChild(option);
+                }
+            });
+            
+            const savedCam = safeStorageGet('saved_cam_id', '');
+            if(savedCam) camSelect.value = savedCam;
+            const savedMic = safeStorageGet('saved_mic_id', '');
+            if(savedMic) micSelect.value = savedMic;
+        } catch(e) {}
+    }
+    
+    document.getElementById('camera-select').onchange = (e) => { 
+        safeStorageSet('saved_cam_id', e.target.value); showToast("次回のカメラON時から適用されます"); 
+    };
+    document.getElementById('mic-select').onchange = (e) => { 
+        safeStorageSet('saved_mic_id', e.target.value); showToast("次回の通話時から適用されます"); 
+    };
+    
+    const savedVol = safeStorageGet('saved_mic_volume', '1');
+    document.getElementById('mic-volume-slider').value = savedVol;
+    document.getElementById('mic-volume-val').textContent = parseFloat(savedVol).toFixed(1);
+    
+    document.getElementById('mic-volume-slider').oninput = (e) => {
+        const val = e.target.value;
+        document.getElementById('mic-volume-val').textContent = parseFloat(val).toFixed(1);
+        safeStorageSet('saved_mic_volume', val);
+        if (outgoingGainNode) outgoingGainNode.gain.value = parseFloat(val);
+    };
+
+    // ★高音質エコーキャンセル＆ノイズ抑制コンプレッサー ＋ ハイパスフィルター
+    async function requestAudioStream() {
+        const micId = safeStorageGet('saved_mic_id', '');
+        const audioConstraints = {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 2
+        };
+        if (micId) audioConstraints.deviceId = { ideal: micId };
+        
+        const constraints = { audio: audioConstraints };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        try {
+            const actx = getAudioCtx();
+            if (actx) {
+                if (localAudioSourceForProcessing) localAudioSourceForProcessing.disconnect();
+                if (outgoingGainNode) outgoingGainNode.disconnect();
+                
+                localAudioSourceForProcessing = actx.createMediaStreamSource(stream);
+                
+                // 余計な低音ノイズ（風切り音など）をカット
+                const filter = actx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 85;
+
+                const compressor = actx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-45, actx.currentTime);
+                compressor.knee.setValueAtTime(30, actx.currentTime);
+                compressor.ratio.setValueAtTime(8, actx.currentTime);
+                compressor.attack.setValueAtTime(0.005, actx.currentTime);
+                compressor.release.setValueAtTime(0.1, actx.currentTime);
+
+                outgoingGainNode = actx.createGain();
+                const currentVol = safeStorageGet('saved_mic_volume', '1');
+                outgoingGainNode.gain.value = parseFloat(currentVol);
+                
+                processedAudioStreamDest = actx.createMediaStreamDestination();
+                
+                localAudioSourceForProcessing.connect(filter);
+                filter.connect(outgoingGainNode);
+                outgoingGainNode.connect(compressor);
+                compressor.connect(processedAudioStreamDest);
+            }
+        } catch(e) { console.error("Audio Processing Setup Failed:", e); }
+        
+        return stream; 
+    }
+
+    // --- 4. WebRTC 接続と通話イベントハンドリング ---
+    function checkHeldCalls() {
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        Object.keys(window.heldCalls).forEach(id => {
+            if (connections[id]?.open || f[id]) {
+                let call = window.heldCalls[id];
+                delete window.heldCalls[id];
+                setupCallUI(call);
+                let streamToAnswer = buildMyStream();
+                call.answer(streamToAnswer);
+            }
+        });
+    }
+
+    function buildMyStream() {
+        let streamToSend = new MediaStream();
+        if (localStream && localStream.getAudioTracks().length > 0) {
+            if (processedAudioStreamDest && processedAudioStreamDest.stream.getAudioTracks().length > 0) {
+                streamToSend.addTrack(processedAudioStreamDest.stream.getAudioTracks()[0]);
+            } else {
+                streamToSend.addTrack(localStream.getAudioTracks()[0]);
+            }
+        }
+        if (screenStream && screenStream.getVideoTracks().length > 0) {
+            streamToSend.addTrack(screenStream.getVideoTracks()[0]);
+        } else if (localStream && localStream.getVideoTracks().length > 0 && !isCamOff) {
+            streamToSend.addTrack(localStream.getVideoTracks()[0]);
+        }
+        return streamToSend;
+    }
+
+    const callBtn = document.getElementById('call-btn'), micBtn = document.getElementById('mic-btn'), camBtn = document.getElementById('cam-btn');
+    const screenBtn = document.getElementById('screen-btn'), inviteBtn = document.getElementById('invite-btn');
+    const input = document.getElementById('message-input'), sendBtn = document.getElementById('send-btn'), attachBtn = document.getElementById('attach-btn');
+    const canvas = document.getElementById('visualizer-canvas'), ctx = canvas.getContext('2d');
+
+    peer.on('open', () => { 
+        clearOldVersionData(); // 起動時に過去のゴミデータを強制削除して容量確保
+        renderHistory(); 
+        loadDevices(); 
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        Object.keys(f).forEach(n => { if (n !== myNumber) tryConnect(n); }); 
+    });
+
+    peer.on('connection', (conn) => {
+        const num = conn.peer.replace(PREFIX, "");
+        addFriend(num, null); setupConn(conn, num);
+    });
+
+    peer.on('call', (call) => {
+        const callerId = call.peer.replace(PREFIX, "");
+        const oldCall = activeCalls[callerId];
+        const isCalling = localStream !== null || Object.keys(activeCalls).length > 0 || callBtn.classList.contains('danger-state');
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+
+        if (isCalling) {
+            if (connections[callerId]?.open || oldCall || f[callerId]) {
+                setupCallUI(call);
+                if (oldCall && oldCall !== call) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+                call.answer(buildMyStream());
+                return;
+            } else {
+                window.heldCalls[callerId] = call;
+                setTimeout(() => {
+                    if (window.heldCalls[callerId]) {
+                        try{window.heldCalls[callerId].close();}catch(e){}
+                        delete window.heldCalls[callerId];
+                    }
+                }, 4000);
+                return; 
+            }
+        }
+        
+        if (oldCall) try{oldCall.close();}catch(e){}
+        document.getElementById('caller-name-display').textContent = (f[callerId]?.name || callerId);
+        const modal = document.getElementById('incoming-call-modal');
+        modal.style.display = 'flex';
+        modal.style.zIndex = '9999';
+        window.pendingCall = call;
+        
+        // ★バグ修正: 相手が呼び出しをキャンセル（切断）した際に着信画面を閉じる
+        call.on('close', () => {
+            if (window.pendingCall === call) {
+                modal.style.display = 'none';
+                stopRingtone();
+                window.pendingCall = null;
+            }
+        });
+        
+        startRingtone();
+    });
+
+    document.getElementById('answer-btn').onclick = async () => {
+        stopRingtone(); 
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        getAudioCtx(); 
+        try {
+            const callerId = window.pendingCall.peer.replace(PREFIX, "");
+            if (connections[callerId]?.open) try{ connections[callerId].send({ type: 'sys-call-accepted' }); }catch(e){}
+            
+            localStream = await requestAudioStream();
+            if (localStream && localStream.getAudioTracks().length > 0) localStream.getAudioTracks()[0].enabled = !isMicMuted;
+            
+            startVisualizer(localStream);
+            setupCallUI(window.pendingCall);
+            window.pendingCall.answer(buildMyStream()); 
+            setTimeout(broadcastMesh, 1000);
+            updateVideoGridUI();
+            
+            viewToggleBtn.style.display = 'flex';
+            isVideoViewActive = true;
+            updateViewDisplay();
+        } catch (e) { showToast("マイクを許可してください"); }
+    };
+
+    document.getElementById('decline-btn').onclick = () => {
+        stopRingtone(); 
+        document.getElementById('incoming-call-modal').style.display = 'none';
+        if (window.pendingCall) {
+            const callerId = window.pendingCall.peer.replace(PREFIX, "");
+            if (connections[callerId]?.open) {
+                try{ connections[callerId].send({ type: 'sys-call-declined' }); }catch(e){}
+            } else {
+                const tempConn = peer.connect(PREFIX + callerId, { reliable: true });
+                tempConn.on('open', () => {
+                    try{ tempConn.send({ type: 'sys-call-declined' }); }catch(e){}
+                    setTimeout(() => tempConn.close(), 1000);
+                });
+            }
+            try{window.pendingCall.close();}catch(e){}
+            window.pendingCall = null;
+        }
+    };
+
+    function tryConnect(num) {
+        if (connections[num]?.open) return;
+        setupConn(peer.connect(PREFIX + num, { reliable: true }), num);
+    }
+
+    // ★大容量データ回避：チャンク分割受信システム用バッファ
+    let incomingFileChunks = {};
+
+    function setupConn(conn, num) {
+        conn.on('open', () => { 
+            connections[num] = conn; 
+            renderHistory(); 
+            if(activePeer === num) updateInputStatus(); 
+            checkHeldCalls();
+            broadcastUserInfo();
+        });
+        
+        conn.on('close', () => { if (connections[num] === conn) { delete connections[num]; renderHistory(); updateInputStatus(); }});
+        conn.on('error', () => { if (connections[num] === conn) { delete connections[num]; renderHistory(); updateInputStatus(); }});
+
+        conn.on('data', (data) => {
+            if (data?.type === 'sys-view-status') {
+                friendViewStatus[num] = data.viewing;
+                updateViewStatusUI();
+                return;
+            }
+            if (data?.type === 'sys-call-accepted') { showToast("通話が承諾されました"); return; }
+            if (data?.type === 'sys-call-declined') { showToast("通話が拒否されました"); endAllCalls(); return; }
+            if (data?.type === 'sys-user-info') { updateFriendMeta(num, data.name, data.icon); return; }
+            if (data?.type === 'sys-mesh') {
+                data.participants.forEach(p => { 
+                    if (p !== myNumber) {
+                        addFriend(p, null);
+                        if (!connections[p]?.open && myNumber > p) tryConnect(p); 
+                        if (!activeCalls[p] && localStream) {
+                            if (myNumber > p) setupCallUI(peer.call(PREFIX + p, buildMyStream()));
+                        }
+                    }
+                });
+                checkHeldCalls(); 
+                return;
+            }
+            
+            // ★チャンク分割受信のバグ修正
+            if (data?.type === 'file-chunk') {
+                if(!incomingFileChunks[data.fileId]) {
+                    incomingFileChunks[data.fileId] = { chunks: [], total: data.total, name: data.fileName, ftype: data.fileType, sender: data.senderName, receivedCount: 0 };
+                }
+                if (typeof incomingFileChunks[data.fileId].chunks[data.index] === 'undefined') {
+                    incomingFileChunks[data.fileId].chunks[data.index] = data.chunk;
+                    incomingFileChunks[data.fileId].receivedCount++;
+                }
+                
+                let progress = Math.round((incomingFileChunks[data.fileId].receivedCount / data.total) * 100);
+                showToast(`受信中... ${progress}%`);
+                
+                if(incomingFileChunks[data.fileId].receivedCount === data.total) {
+                    const completeData = incomingFileChunks[data.fileId].chunks.join('');
+                    const m = { type: 'file', content: completeData, fileType: incomingFileChunks[data.fileId].ftype, fileName: incomingFileChunks[data.fileId].name, senderName: incomingFileChunks[data.fileId].sender, timestamp: Date.now() };
+                    addFriend(num, m.senderName); 
+                    saveMsg(num, m, 'received'); 
+                    if (activePeer === num) renderChat(); 
+                    renderHistory(); 
+                    playNotificationSound();
+                    delete incomingFileChunks[data.fileId];
+                }
+                return;
+            }
+
+            if (data?.content || data?.type === 'file') { 
+                addFriend(num, data.senderName); 
+                saveMsg(num, data, 'received'); 
+                if (activePeer === num) renderChat(); 
+                renderHistory(); 
+                playNotificationSound(); 
+            }
+        });
+    }
+
+    function broadcastUserInfo() {
+        Object.values(connections).forEach(conn => {
+            if (conn.open) try { conn.send({ type: 'sys-user-info', name: myNickname, icon: myIcon }); } catch(e){}
+        });
+    }
+
+    function updateFriendMeta(num, name, icon) {
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        if (f[num]) {
+            if (name) f[num].name = name;
+            if (icon) f[num].icon = icon;
+            safeStorageSet('friends_'+VER, JSON.stringify(f));
+            renderHistory();
+            updateVideoGridUI();
+        }
+    }
+
+    // --- 画面切り替え（チャット / ビデオ）ロジック ---
+    let isVideoViewActive = false;
+    const viewToggleBtn = document.getElementById('view-toggle-btn');
+    const viewVideo = document.getElementById('view-video');
+    const viewChat = document.getElementById('view-chat');
+
+    viewToggleBtn.onclick = () => {
+        isVideoViewActive = !isVideoViewActive;
+        updateViewDisplay();
+    };
+
+    function updateViewDisplay() {
+        if (Object.keys(activeCalls).length > 0 || localStream) {
+            if (isVideoViewActive) {
+                viewVideo.style.display = 'flex';
+                viewChat.style.setProperty('display', 'none', 'important');
+                viewToggleBtn.style.background = '#85E249'; 
+                viewToggleBtn.innerHTML = '💬';
+                viewToggleBtn.title = 'チャット画面へ切り替え';
+            } else {
+                viewVideo.style.display = 'none';
+                viewChat.style.setProperty('display', 'flex', 'important');
+                viewToggleBtn.style.background = '#3498db'; 
+                viewToggleBtn.innerHTML = '📹';
+                viewToggleBtn.title = 'ビデオ画面へ切り替え';
+                setTimeout(() => {
+                    const c = document.getElementById('chat-container');
+                    if(c) c.scrollTop = c.scrollHeight;
+                }, 50);
+            }
+        } else {
+            viewVideo.style.display = 'none';
+            viewChat.style.setProperty('display', 'flex', 'important');
+            viewToggleBtn.style.display = 'none';
+        }
+    }
+
+    // --- 5. メディアコントロールと画面共有のバグ修正 ---
+    micBtn.onclick = () => {
+        isMicMuted = !isMicMuted;
+        if (localStream && localStream.getAudioTracks().length > 0) {
+            localStream.getAudioTracks()[0].enabled = !isMicMuted;
+        }
+        if(isMicMuted) {
+            micBtn.textContent = "🔇";
+            micBtn.classList.replace('active-state', 'danger-state');
+        } else {
+            micBtn.textContent = "🎤";
+            micBtn.classList.replace('danger-state', 'active-state');
+        }
+    };
+
+    camBtn.onclick = async () => {
+        if (!localStream || isMediaSwitching) return;
+        isMediaSwitching = true;
+        setTimeout(() => { isMediaSwitching = false; }, 1500);
+        
+        if (isCamOff) {
+            try {
+                const camId = safeStorageGet('saved_cam_id', '');
+                const constraints = { video: camId ? { deviceId: { ideal: camId }, width: 640, height: 480 } : { width: 640, height: 480 } };
+                const vs = await navigator.mediaDevices.getUserMedia(constraints);
+                const videoTrack = vs.getVideoTracks()[0];
+                localStream.addTrack(videoTrack);
+                isCamOff = false;
+                
+                camBtn.classList.add('active-state');
+                
+                let streamToSend = buildMyStream();
+                Object.keys(activeCalls).forEach(id => {
+                    const oldCall = activeCalls[id];
+                    setupCallUI(peer.call(PREFIX + id, streamToSend));
+                    if (oldCall) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+                });
+                updateVideoGridUI();
+            } catch (e) { 
+                showToast("カメラが使えません"); 
+                isMediaSwitching = false;
+            }
+        } else {
+            localStream.getVideoTracks().forEach(t => { try{t.stop(); localStream.removeTrack(t);}catch(e){} });
+            isCamOff = true;
+            camBtn.classList.remove('active-state');
+            
+            let streamToSend = buildMyStream();
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, streamToSend));
+                if (oldCall) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+            });
+            updateVideoGridUI();
+        }
+    };
+
+    screenBtn.onclick = async () => {
+        if (isMediaSwitching) return;
+        isMediaSwitching = true;
+        setTimeout(() => { isMediaSwitching = false; }, 1500); 
+
+        if (screenStream) { stopScreenShare(); return; }
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: 1280, height: 720, frameRate: 15 } });
+            screenBtn.classList.add('sharing'); 
+            
+            let combinedStream = buildMyStream();
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, combinedStream));
+                if (oldCall) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+            });
+            screenStream.getVideoTracks()[0].onended = () => stopScreenShare();
+            updateVideoGridUI();
+        } catch (e) { 
+            showToast("共有がキャンセルされました"); 
+            isMediaSwitching = false;
+        }
+    };
+
+    function stopScreenShare() {
+        if (!screenStream) return; 
+        screenStream.getTracks().forEach(t => { try{t.stop();}catch(e){} }); 
+        screenStream = null;
+        screenBtn.classList.remove('sharing'); 
+        if (currentlyExpandedPeer === 'me') closeLargeVideo();
+
+        if (localStream && Object.keys(activeCalls).length > 0) {
+            let streamToSend = buildMyStream();
+            Object.keys(activeCalls).forEach(id => {
+                const oldCall = activeCalls[id];
+                setupCallUI(peer.call(PREFIX + id, streamToSend));
+                if (oldCall) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+            });
+        }
+        updateVideoGridUI();
+    }
+
+    // --- 6. 通話ストリームのUI管理 ---
+    function setupCallUI(call) {
+        const peerId = call.peer.replace(PREFIX, "");
+        activeCalls[peerId] = call;
+        
+        callBtn.textContent = "🔴"; 
+        callBtn.style.background = "none";
+        callBtn.classList.add('danger-state');
+        callBtn.title = "通話を終了";
+        
+        micBtn.style.display = camBtn.style.display = screenBtn.style.display = inviteBtn.style.display = 'flex';
+
+        call.on('stream', (stream) => { 
+            let audioEl = document.getElementById('audio_' + peerId);
+            if (audioEl) { try{audioEl.pause(); audioEl.srcObject = null; audioEl.remove();}catch(e){} }
+            if (remoteAnalysers[peerId]) { try { remoteAnalysers[peerId].disconnect(); } catch(e){} delete remoteAnalysers[peerId]; }
+
+            remoteStreamsCache[peerId] = stream;
+
+            audioEl = document.createElement('audio');
+            audioEl.id = 'audio_' + peerId;
+            audioEl.autoplay = true;
+            audioEl.setAttribute('playsinline', 'true');
+            document.body.appendChild(audioEl);
+            audioEl.srcObject = stream;
+            audioEl.play().catch(() => {});
+
+            if (stream.getAudioTracks().length > 0) {
+                try {
+                    const actx = getAudioCtx();
+                    const rAnl = actx.createAnalyser();
+                    rAnl.fftSize = 32;
+                    const rSrc = actx.createMediaStreamSource(stream);
+                    rSrc.connect(rAnl);
+                    remoteAnalysers[peerId] = rAnl;
+                } catch(e) {}
+            }
+            updateCallMemberListUI();
+            updateVideoGridUI();
+            
+            viewToggleBtn.style.display = 'flex';
+            if (!isVideoViewActive) {
+                isVideoViewActive = true;
+                updateViewDisplay();
+            }
+        });
+        
+        call.on('close', () => { if (activeCalls[peerId] === call) removeCall(peerId); });
+        updateCallMemberListUI();
+        updateVideoGridUI();
+    }
+
+    function removeCall(id) {
+        if(activeCalls[id]) { try{activeCalls[id].close();}catch(e){} delete activeCalls[id]; }
+        delete remoteStreamsCache[id];
+        
+        if(remoteAnalysers[id]) { try { remoteAnalysers[id].disconnect(); } catch(e){} delete remoteAnalysers[id]; }
+        const el = document.getElementById('audio_' + id); 
+        if(el) { try{el.pause(); el.srcObject = null; el.remove();}catch(e){} }
+        
+        if (currentlyExpandedPeer === id) closeLargeVideo();
+        if(Object.keys(activeCalls).length === 0) endAllCalls(); else { updateCallMemberListUI(); updateVideoGridUI(); }
+    }
+
+    function endAllCalls() {
+        Object.values(activeCalls).forEach(c => { try{c.close();}catch(e){} }); activeCalls = {};
+        remoteStreamsCache = {};
+        
+        Object.keys(remoteAnalysers).forEach(id => { try { remoteAnalysers[id].disconnect(); } catch(e){} });
+        remoteAnalysers = {}; 
+        
+        if (localStream) { localStream.getTracks().forEach(t => { try{t.stop();}catch(e){} }); localStream = null; }
+        stopRingtone(); 
+        
+        isMicMuted = false;
+        micBtn.textContent = "🎤";
+        micBtn.classList.remove('danger-state');
+        micBtn.classList.add('active-state');
+        
+        stopScreenShare(); stopVisualizer(); closeLargeVideo();
+        
+        callBtn.textContent = "📞"; 
+        callBtn.style.background = "#23a559";
+        callBtn.classList.remove('danger-state');
+        callBtn.title = "通話開始";
+        
+        micBtn.style.display = camBtn.style.display = screenBtn.style.display = inviteBtn.style.display = 'none';
+        isCamOff = true; 
+        camBtn.classList.remove('active-state');
+        
+        document.getElementById('call-members-container').innerHTML = "";
+        
+        isVideoViewActive = false;
+        updateViewDisplay();
+    }
+
+    function updateCallMemberListUI() {
+        const c = document.getElementById('call-members-container'); c.innerHTML = "";
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        Object.keys(activeCalls).forEach(id => {
+            const b = document.createElement('div'); b.className = 'member-badge';
+            b.innerHTML = `<span class="friend-icon-span" style="width:14px;height:14px;font-size:10px;">${f[id]?.icon || "👤"}</span><span>${f[id]?.name || id}</span><canvas id="remote-vis-${id}" width="40" height="15" style="vertical-align:middle; margin-left:8px; display:inline-block;"></canvas><span class="member-kick" title="切断">×</span>`;
+            b.querySelector('.member-kick').onclick = (e) => { e.stopPropagation(); removeCall(id); };
+            c.appendChild(b);
+        });
+    }
+
+    // --- 7. ビデオグリッド描画とラグ軽減 ---
+    let videoGridTimeout = null;
+    function updateVideoGridUI() {
+        if(videoGridTimeout) clearTimeout(videoGridTimeout);
+        videoGridTimeout = setTimeout(doUpdateVideoGridUI, 200);
+    }
+
+    function doUpdateVideoGridUI() {
+        const grid = document.getElementById('video-grid');
+        if (Object.keys(activeCalls).length === 0 && !localStream) {
+            grid.innerHTML = "";
+            return;
+        }
+        
+        grid.innerHTML = "";
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+
+        if (localStream && (!isCamOff || screenStream)) {
+            const myCard = document.createElement('div');
+            myCard.className = `video-card ${currentlyExpandedPeer === 'me' ? 'selected-large' : ''}`;
+            myCard.onclick = () => toggleExpandVideo('me', screenStream || localStream);
+
+            if (!isCamOff || screenStream) {
+                const v = document.createElement('video');
+                v.autoplay = true; v.playsinline = true; v.muted = true;
+                v.srcObject = screenStream || localStream;
+                myCard.appendChild(v);
+            }
+            
+            const info = document.createElement('div');
+            info.className = 'video-card-info';
+            info.innerHTML = `<span class="video-card-name"><span class="friend-icon-span" style="width:12px;height:12px;font-size:10px;">${myIcon}</span>${myNickname}(自)</span><span>${screenStream ? '🖥️' : '📹'}</span>`;
+            myCard.appendChild(info);
+            grid.appendChild(myCard);
+        }
+
+        Object.keys(activeCalls).forEach(id => {
+            const friend = f[id] || { name: id, icon: "👤" };
+            const card = document.createElement('div');
+            card.className = `video-card ${currentlyExpandedPeer === id ? 'selected-large' : ''}`;
+            
+            let remoteStream = remoteStreamsCache[id];
+            card.onclick = () => { if (remoteStream) toggleExpandVideo(id, remoteStream); };
+
+            const hasVideo = remoteStream && remoteStream.getVideoTracks().length > 0;
+            if (hasVideo) {
+                const v = document.createElement('video');
+                v.autoplay = true; v.playsinline = true;
+                v.srcObject = remoteStream;
+                card.appendChild(v);
+            } else {
+                const av = document.createElement('div');
+                av.className = 'video-card-avatar';
+                av.innerHTML = friend.icon || "👤";
+                card.appendChild(av);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'video-card-info';
+            info.innerHTML = `<span class="video-card-name"><span class="friend-icon-span" style="width:12px;height:12px;font-size:10px;">${friend.icon || "👤"}</span>${friend.name}</span><span>${hasVideo ? '📹' : '🎙️'}</span>`;
+            card.appendChild(info);
+            grid.appendChild(card);
+        });
+    }
+
+    function toggleExpandVideo(id, stream) {
+        const largeView = document.getElementById('large-video-view');
+        const largeVideo = document.getElementById('large-video-element');
+        const largeLabel = document.getElementById('large-video-label-text');
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+
+        if (currentlyExpandedPeer === id || !stream || stream.getVideoTracks().length === 0) {
+            closeLargeVideo();
+            return;
+        }
+
+        currentlyExpandedPeer = id;
+        largeVideo.srcObject = stream;
+        
+        let name = id === 'me' ? myNickname : (f[id]?.name || id);
+        let icon = id === 'me' ? myIcon : (f[id]?.icon || "👤");
+        largeLabel.innerHTML = `<span class="friend-icon-span" style="width:14px;height:14px;font-size:12px;">${icon}</span> ${name} の画面`;
+        updateVideoGridUI();
+    }
+
+    function closeLargeVideo() {
+        currentlyExpandedPeer = null;
+        document.getElementById('large-video-element').srcObject = null;
+        updateVideoGridUI();
+    }
+
+    callBtn.onclick = async () => {
+        if (callBtn.disabled) return;
+        if (Object.keys(activeCalls).length > 0) { endAllCalls(); return; }
+        getAudioCtx();
+        try {
+            localStream = await requestAudioStream();
+            if (localStream && localStream.getAudioTracks().length > 0) localStream.getAudioTracks()[0].enabled = !isMicMuted;
+            
+            startVisualizer(localStream);
+            setupCallUI(peer.call(PREFIX + activePeer, buildMyStream()));
+            setTimeout(broadcastMesh, 1000);
+            updateVideoGridUI();
+            
+            document.getElementById('view-video').style.display = 'flex';
+        } catch (e) { showToast("マイクを許可してください"); }
+    };
+
+    inviteBtn.onclick = () => {
+        const target = prompt("招待する相手のID (4桁):");
+        if (target && target !== myNumber) {
+            addFriend(target, null);
+            tryConnect(target);
+            if (localStream) {
+                setTimeout(() => {
+                    const oldCall = activeCalls[target];
+                    setupCallUI(peer.call(PREFIX + target, buildMyStream()));
+                    if (oldCall) setTimeout(() => { try{oldCall.close();}catch(e){} }, 1000);
+                    setTimeout(broadcastMesh, 1500);
+                }, 800);
+            }
+        }
+    };
+
+    // --- 8. 音声波形ビジュアライザー ---
+    function startVisualizer(s) {
+        if (animationId) cancelAnimationFrame(animationId);
+        const actx = getAudioCtx();
+        if (localAnalyser) { try { localAnalyser.disconnect(); } catch(e){} }
+        let visSource = null;
+        try { visSource = actx.createMediaStreamSource(s); } catch(e){}
+        if(!visSource) return;
+
+        localAnalyser = actx.createAnalyser();
+        visSource.connect(localAnalyser);
+        localAnalyser.fftSize = 32;
+        
+        const data = new Uint8Array(localAnalyser.frequencyBinCount);
+        canvas.style.display = 'inline-block';
+        
+        const draw = () => {
+            animationId = requestAnimationFrame(draw);
+            localAnalyser.getByteFrequencyData(data);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = currentThemeColor;
+            for (let i = 0; i < data.length; i++) ctx.fillRect(i * 4, canvas.height - data[i]/6, 3, data[i]/6);
+
+            Object.keys(remoteAnalysers).forEach(id => {
+                const rAnl = remoteAnalysers[id];
+                const rCanv = document.getElementById('remote-vis-' + id);
+                if (rAnl && rCanv) {
+                    const rCtx = rCanv.getContext('2d');
+                    const rData = new Uint8Array(rAnl.frequencyBinCount);
+                    rAnl.getByteFrequencyData(rData);
+                    rCtx.clearRect(0, 0, rCanv.width, rCanv.height);
+                    rCtx.fillStyle = '#f1c40f'; 
+                    for (let i = 0; i < rData.length; i++) rCtx.fillRect(i * 3, rCanv.height - rData[i]/8, 2, rData[i]/8);
+                }
+            });
+        };
+        draw();
+    }
+
+    function stopVisualizer() { 
+        if(animationId) cancelAnimationFrame(animationId); 
+        animationId = null;
+        canvas.style.display = 'none'; 
+    }
+
+    function broadcastMesh() {
+        const ps = [...Object.keys(activeCalls), myNumber];
+        ps.forEach(id => { if(connections[id]?.open) try{connections[id].send({ type: 'sys-mesh', participants: ps });}catch(e){} });
+    }
+
+    // --- 9. チャット＆履歴機能 ---
+    function addFriend(num, name) {
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        if (!f[num]) f[num] = { name: num, fav: false, icon: "👤" };
+        if (name) f[num].name = name;
+        
+        let success = safeStorageSet('friends_'+VER, JSON.stringify(f));
+        if(!success) {
+            clearOldVersionData(); // 限界なら古いゴミデータを消して再挑戦
+            safeStorageSet('friends_'+VER, JSON.stringify(f));
+        }
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const container = document.getElementById('friend-list-container');
+        container.innerHTML = "";
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        
+        Object.keys(f).sort((a, b) => (f[b].fav ? 1 : 0) - (f[a].fav ? 1 : 0)).forEach(num => {
+            const b = document.createElement('div'); 
+            b.className = `history-item ${activePeer === num ? 'active' : ''}`;
+            const online = connections[num]?.open;
+            const currentIcon = f[num].icon || "👤";
+            
+            b.innerHTML = `<div style="display:flex; align-items:center; overflow:hidden;"><div class="status-dot ${online ? 'status-online' : ''}"></div><span class="friend-icon-span">${currentIcon}</span><span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f[num].name || num}</span></div><span class="fav-star ${f[num].fav ? 'is-fav' : ''}" onclick="toggleFav('${num}', event)">★</span>`;
+            b.onclick = () => selectChat(num); 
+            container.appendChild(b);
+        });
+    }
+
+    function toggleFav(n, e) { 
+        e.stopPropagation(); 
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        if(f[n]) {
+            f[n].fav = !f[n].fav; 
+            safeStorageSet('friends_'+VER, JSON.stringify(f));
+            renderHistory(); 
+        }
+    }
+    
+    function selectChat(num) {
+        activePeer = num; tryConnect(num); updateInputStatus();
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        document.getElementById('chat-title').innerHTML = `<span class="friend-icon-span" style="width:16px;height:16px;font-size:12px;">${f[num]?.icon || "👤"}</span> ${f[num]?.name || num}`;
+        
+        callBtn.style.display = 'block'; 
+        document.getElementById('clear-history').style.display = 'flex';
+        
+        renderChat();
+        
+        if (connections[num]?.open) try{connections[num].send({ type: 'sys-view-status', viewing: true });}catch(e){}
+    }
+
+    function updateInputStatus() {
+        const ok = connections[activePeer]?.open;
+        input.disabled = sendBtn.disabled = attachBtn.disabled = callBtn.disabled = !ok;
+        callBtn.style.opacity = ok ? "1" : "0.4";
+        input.placeholder = ok ? "メッセージを入力..." : "オフライン";
+    }
+
+    // ★容量オーバー防御策：超堅牢な段階的削減システム
+    function saveMsg(num, msg, type) {
+        let log = safeJsonParse(safeStorageGet('log_'+VER+'_'+num, "[]"), []);
+        log.push({ ...msg, chatType: type });
+        
+        if (log.length > 100) log = log.slice(-100);
+        
+        let success = safeStorageSet('log_'+VER+'_'+num, JSON.stringify(log));
+        
+        if(!success) {
+            clearOldVersionData(); // 過去のゴミを消去して再挑戦
+            success = safeStorageSet('log_'+VER+'_'+num, JSON.stringify(log));
+            
+            if(!success) {
+                console.warn("Storage quota approaching limit. Triggering Stage 1 Reduction.");
+                log = log.slice(-50);
+                success = safeStorageSet('log_'+VER+'_'+num, JSON.stringify(log));
+                
+                if(!success) {
+                    console.warn("Storage quota critical. Triggering Stage 2 Reduction.");
+                    log = log.slice(-10);
+                    success = safeStorageSet('log_'+VER+'_'+num, JSON.stringify(log));
+                    
+                    if(!success) {
+                        console.warn("Storage quota extremely critical. Triggering Final Reduction.");
+                        success = safeStorageSet('log_'+VER+'_'+num, JSON.stringify([log[log.length-1]]));
+                        if(!success) {
+                            console.error("Storage completely full. Failed to save.");
+                            showToast("ブラウザの保存容量がいっぱいです。設定から履歴を削除してください。");
+                        }
+                    }
+                }
+            }
+        }
+        buildSettingsHistoryList(); 
+    }
+
+    function formatMessage(text) {
+        let esc = text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        return esc.replace(/(https?:\/\/[^\s]+)/g, url => {
+            if (/\.(jpeg|jpg|gif|png|webp)$/i.test(url)) return `<a href="${url}" target="_blank"><img src="${url}" style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:200px; display:block;"></a><a href="${url}" target="_blank" style="color:var(--theme-color, #85E249); font-size:12px;">${url}</a>`;
+            if (/\.(mp4|webm|ogg)$/i.test(url)) return `<video src="${url}" controls style="max-width:100%; border-radius:8px; margin-bottom:5px; max-height:250px; display:block;"></video><a href="${url}" target="_blank" style="color:var(--theme-color, #85E249); font-size:12px;">${url}</a>`;
+            const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+            if(ytMatch) return `<iframe width="280" height="157" src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen style="border-radius:8px; margin-bottom:5px; display:block;"></iframe><a href="${url}" target="_blank" style="color:var(--theme-color, #85E249); font-size:12px;">${url}</a>`;
+            return `<a href="${url}" target="_blank" style="color:var(--theme-color, #85E249); text-decoration:underline;">${url}</a>`;
+        });
+    }
+
+    function renderChat() {
+        const c = document.getElementById('chat-container'); c.innerHTML = "";
+        if (!activePeer) return;
+        const log = safeJsonParse(safeStorageGet('log_'+VER+'_'+activePeer, "[]"), []);
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+
+        log.forEach(m => {
+            const row = document.createElement('div');
+            // 'sent' は自分が送信したもの。自分を右(sent-row)、相手を左(received-row)にする。
+            row.className = `msg-row ${m.chatType === 'received' ? 'received-row' : 'sent-row'}`;
+            
+            const av = document.createElement('div');
+            av.className = `msg-avatar-icon ${m.chatType === 'received' ? 'received-avatar' : 'sent-avatar'}`;
+            let displayIcon = m.chatType === 'received' ? (f[activePeer]?.icon || "👤") : myIcon;
+            av.innerHTML = displayIcon;
+
+            const w = document.createElement('div'); 
+            w.className = `msg-wrapper`;
+            
+            if (m.chatType === 'received') {
+                const meta = document.createElement('div');
+                meta.className = 'msg-meta-name';
+                meta.textContent = m.senderName || (f[activePeer]?.name || activePeer);
+                w.appendChild(meta);
+            } else {
+                const meta = document.createElement('div');
+                meta.className = 'msg-meta-name';
+                meta.textContent = myNickname + " (あなた)";
+                w.appendChild(meta);
+            }
+
+            const msg = document.createElement('div'); 
+            msg.className = `msg ${m.chatType === 'received' ? 'received' : 'sent'}`;
+            
+            if (m.type === 'file') {
+                if (m.fileType === 'image') {
+                    const img = document.createElement('img');
+                    img.src = m.content;
+                    img.style = "max-width:100%; border-radius:8px; max-height:200px; cursor:pointer;";
+                    img.onclick = () => window.open(m.content);
+                    // ★バグ修正：画像読み込み完了後にもスクロールさせる
+                    img.onload = () => { c.scrollTop = c.scrollHeight; };
+                    msg.appendChild(img);
+                }
+                else if (m.fileType === 'video') msg.innerHTML = `<video src="${m.content}" controls style="max-width:100%; border-radius:8px;"></video>`;
+                else if (m.fileType === 'html') {
+                    let dlColor = m.chatType === 'received' ? 'var(--theme-color, #85E249)' : '#111';
+                    msg.innerHTML = `📄 <strong>${m.fileName || 'index.html'}</strong><br><a href="${m.content}" download="${m.fileName || 'download.html'}" style="color:${dlColor}; text-decoration:underline; font-weight:bold; display:inline-block; margin-top:6px; font-size:13px;">📥 ダウンロードして開く</a>`;
+                }
+                else msg.textContent = "📎 ファイルを受信しました";
+            } else {
+                msg.innerHTML = formatMessage(m.content);
+            }
+            w.appendChild(msg); 
+            
+            if (m.timestamp) {
+                const d = new Date(m.timestamp);
+                const tDiv = document.createElement('div');
+                tDiv.className = `msg-time ${m.chatType === 'received' ? 'time-left' : 'time-right'}`;
+                tDiv.textContent = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+                w.appendChild(tDiv);
+            }
+            
+            row.appendChild(av);
+            row.appendChild(w);
+            c.appendChild(row);
+        });
+        c.scrollTop = c.scrollHeight;
+    }
+
+    document.getElementById('sidebar-friend-add-btn').onclick = () => {
+        const t = document.getElementById('sidebar-friend-id').value.trim();
+        if (t && t !== myNumber) {
+            addFriend(t, null); selectChat(t);
+            document.getElementById('sidebar-friend-id').value = "";
+            showToast(`ID: ${t} を登録・接続しています...`);
+        }
+    };
+
+    sendBtn.onclick = () => {
+        const text = input.value.trim();
+        if (text && connections[activePeer]?.open) {
+            const m = { type: 'text', content: text, senderName: myNickname, timestamp: Date.now() };
+            try { connections[activePeer].send(m); } catch(e){}
+            saveMsg(activePeer, m, 'sent'); input.value = ""; renderChat();
+        }
+    };
+    input.onkeypress = (e) => { if(e.key === 'Enter') sendBtn.onclick(); };
+    
+    // ★大容量ファイル送信のためのチャンク分割システム
+    attachBtn.onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = (e) => {
+        const file = e.target.files[0];
+        if (file && activePeer && connections[activePeer]?.open) {
+            const chunkSize = 16 * 1024; // 16KBごとの安全なブロックに分割
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const dataUrl = ev.target.result;
+                const totalChunks = Math.ceil(dataUrl.length / chunkSize);
+                const fileId = Date.now().toString() + Math.floor(Math.random()*1000);
+                
+                // ★バグ修正：ファイルタイプが未定義の場合のエラー回避
+                let fType = file.type ? file.type.split('/')[0] : 'unknown';
+                if (file.type === 'text/html' || file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm')) {
+                    fType = 'html';
+                }
+                
+                const pBarContainer = document.getElementById('upload-progress-container');
+                const pBar = document.getElementById('upload-progress-bar');
+                pBarContainer.style.display = 'block';
+                pBar.style.width = '0%';
+                input.disabled = true;
+                sendBtn.disabled = true;
+                attachBtn.disabled = true;
+                
+                let currentChunk = 0;
+                
+                function sendNextChunk() {
+                    const start = currentChunk * chunkSize;
+                    const end = Math.min(dataUrl.length, start + chunkSize);
+                    const chunk = dataUrl.slice(start, end);
+                    
+                    try {
+                        connections[activePeer].send({
+                            type: 'file-chunk',
+                            fileId: fileId,
+                            index: currentChunk,
+                            total: totalChunks,
+                            chunk: chunk,
+                            fileType: fType,
+                            fileName: file.name,
+                            senderName: myNickname
+                        });
+                    } catch(err) {
+                        showToast("送信中にエラーが発生しました。");
+                        pBarContainer.style.display = 'none';
+                        updateInputStatus();
+                        return;
+                    }
+                    
+                    currentChunk++;
+                    pBar.style.width = Math.round((currentChunk / totalChunks) * 100) + '%';
+                    
+                    if (currentChunk < totalChunks) {
+                        setTimeout(sendNextChunk, 10); 
+                    } else {
+                        setTimeout(() => {
+                            pBarContainer.style.display = 'none';
+                            const m = { type: 'file', content: dataUrl, fileType: fType, fileName: file.name, senderName: myNickname, timestamp: Date.now() };
+                            saveMsg(activePeer, m, 'sent'); renderChat();
+                            updateInputStatus();
+                            showToast("送信完了");
+                        }, 500);
+                    }
+                }
+                
+                sendNextChunk();
+            };
+            r.readAsDataURL(file);
+        }
+        e.target.value = ''; 
+    };
+
+    // --- 10. 設定カテゴリー（2ペイン）UIシステム ---
+    const settingsModal = document.getElementById('settings-modal');
+    document.getElementById('open-settings-btn').onclick = openSettingsModal;
+    document.getElementById('close-settings-btn').onclick = closeSettingsModal;
+
+    function openSettingsModal() {
+        settingsModal.style.display = 'flex';
+        buildSettingsHistoryList();
+        updateViewStatusUI();
+        document.querySelectorAll('.icon-option').forEach(opt => {
+            if(opt.getAttribute('data-icon') === myIcon) opt.classList.add('selected');
+            else opt.classList.remove('selected');
+        });
+        
+        loadDevices();
+    }
+    function closeSettingsModal() { settingsModal.style.display = 'none'; }
+
+    document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.getAttribute('data-pane')).classList.add('active');
+        };
+    });
+
+    const customIconDropzone = document.getElementById('custom-icon-dropzone');
+    const customIconInput = document.createElement('input');
+    customIconInput.type = 'file'; customIconInput.accept = 'image/*';
+    
+    customIconDropzone.onclick = () => customIconInput.click();
+    customIconDropzone.ondragover = (e) => { e.preventDefault(); customIconDropzone.style.borderColor = currentThemeColor; };
+    customIconDropzone.ondragleave = (e) => { customIconDropzone.style.borderColor = '#949ba4'; };
+    customIconDropzone.ondrop = (e) => {
+        e.preventDefault(); customIconDropzone.style.borderColor = '#949ba4';
+        if(e.dataTransfer.files.length) handleCustomIconFile(e.dataTransfer.files[0]);
+    };
+    customIconInput.onchange = (e) => { if(e.target.files.length) handleCustomIconFile(e.target.files[0]); };
+
+    function handleCustomIconFile(file) {
+        if (file.size > 2 * 1024 * 1024) { showToast("アイコン画像は2MB以下にしてください"); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100; canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.beginPath(); ctx.arc(50, 50, 50, 0, Math.PI * 2); ctx.clip();
+                const size = Math.min(img.width, img.height);
+                const x = (img.width - size) / 2; const y = (img.height - size) / 2;
+                ctx.drawImage(img, x, y, size, size, 0, 0, 100, 100);
+                
+                myIcon = `<img src="${canvas.toDataURL('image/jpeg', 0.8)}" style="width:100%;height:100%;object-fit:cover;">`;
+                try { localStorage.setItem('my_permanent_icon', myIcon); } catch(err){}
+                document.getElementById('my-avatar-display').innerHTML = myIcon;
+                
+                document.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+                broadcastUserInfo(); updateVideoGridUI(); showToast("オリジナル画像をアイコンに設定しました！");
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.onclick = () => {
+            document.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            myIcon = opt.getAttribute('data-icon');
+            try { localStorage.setItem('my_permanent_icon', myIcon); } catch(err){}
+            document.getElementById('my-avatar-display').innerHTML = myIcon;
+            broadcastUserInfo(); updateVideoGridUI();
+        };
+    });
+
+    document.getElementById('settings-id-change-btn').onclick = () => {
+        const n = document.getElementById('settings-my-id-input').value.trim();
+        if (n && n.length === 4 && !isNaN(n)) {
+            try { localStorage.setItem('my_permanent_chat_id', n); } catch(err){}
+            showToast("IDを変更しました。システムを再起動します...");
+            setTimeout(() => location.reload(), 1500);
+        } else { showToast("エラー：IDは4桁の数字のみ設定可能です"); }
+    };
+
+    function buildSettingsHistoryList() {
+        const box = document.getElementById('settings-history-list-box');
+        box.innerHTML = "";
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        
+        if(Object.keys(f).length === 0) {
+            box.innerHTML = '<div style="color:#949ba4; font-size:13px; text-align:center;">フレンド履歴がありません</div>';
+            return;
+        }
+
+        Object.keys(f).forEach(num => {
+            const row = document.createElement('div');
+            row.className = 'settings-history-row';
+            row.innerHTML = `<span style="display:flex; align-items:center; gap:8px;"><span class="friend-icon-span" style="width:24px;height:24px;font-size:16px;">${f[num].icon || "👤"}</span> <span style="font-weight:bold;">${f[num].name || num}</span> <span style="color:#949ba4;font-size:12px;">(ID:${num})</span></span><button class="history-del-btn" title="フレンドを削除">フレンド削除</button>`;
+            row.querySelector('.history-del-btn').onclick = () => {
+                if (confirm(`${f[num].name || num} をフレンドから削除しますか？`)) {
+                    safeStorageRemove('log_'+VER+'_'+num);
+                    delete f[num];
+                    safeStorageSet('friends_'+VER, JSON.stringify(f));
+                    if(activePeer === num) {
+                        activePeer = null;
+                        document.getElementById('chat-title').textContent = "フレンドを選択してください";
+                        document.getElementById('chat-container').innerHTML = "";
+                        document.getElementById('clear-history').style.display = 'none';
+                        updateInputStatus();
+                    }
+                    renderHistory(); buildSettingsHistoryList(); showToast("削除が完了しました");
+                }
+            };
+            box.appendChild(row);
+        });
+    }
+
+    document.getElementById('clear-history').onclick = () => {
+        if (!activePeer) return;
+        if (confirm("現在表示中のフレンドを削除しますか？")) {
+            safeStorageRemove('log_'+VER+'_'+activePeer);
+            const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+            delete f[activePeer];
+            safeStorageSet('friends_'+VER, JSON.stringify(f));
+            location.reload();
+        }
+    };
+
+    function updateViewStatusUI() {
+        const list = document.getElementById('friend-status-list');
+        if (!list) return;
+        list.innerHTML = "";
+        const f = safeJsonParse(safeStorageGet('friends_'+VER, "{}"), {});
+        const friends = Object.keys(f).filter(n => n !== myNumber);
+        
+        if (friends.length === 0) {
+            list.innerHTML = '<div style="color:#949ba4; font-size:12px; text-align:center; padding:5px;">登録済みのフレンドはいません</div>';
+            return;
+        }
+
+        friends.forEach(num => {
+            const isViewing = friendViewStatus[num] === true;
+            const row = document.createElement('div');
+            row.className = 'friend-status-row';
+            row.innerHTML = `
+                <span style="display:flex; align-items:center; gap:6px;">
+                    <span class="friend-icon-span" style="width:20px;height:20px;font-size:14px;">${f[num].icon || "👤"}</span>
+                    <span>${f[num].name || num}</span>
+                </span>
+                <span class="status-badge ${isViewing ? 'active' : 'inactive'}">
+                    ${isViewing ? '● 閲覧中' : '○ 閉じています'}
+                </span>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    peer.on('disconnected', () => {
+        try { peer.reconnect(); } catch(e) {}
+    });
+
+    setInterval(() => {
+        Object.keys(connections).forEach(n => {
+            const conn = connections[n];
+            if (conn && conn.peerConnection && ['failed','closed'].includes(conn.peerConnection.iceConnectionState)) {
+                delete connections[n]; renderHistory();
+            } else if (conn && conn.open) {
+                try { conn.send({ type: 'sys-view-status', viewing: (activePeer === n) }); } catch(err){}
+            }
+        });
+        Object.keys(activeCalls).forEach(id => {
+            const call = activeCalls[id];
+            if (call && call.peerConnection && ['failed','closed'].includes(call.peerConnection.iceConnectionState)) {
+                removeCall(id);
+            }
+        });
+        if (activePeer) updateInputStatus();
+        if (peer.disconnected && !peer.destroyed) {
+            try { peer.reconnect(); } catch(err){}
+        }
+        if (peer.destroyed) location.reload();
+        
+        if (document.getElementById('settings-modal').style.display === 'flex') {
+            updateViewStatusUI();
+            // フレンドリストのオンラインドット更新用
+            renderHistory();
+        }
+    }, 2000);
+</script>
+
+<script src="/_sdk/6740099151a06780.editing_sdk.js" integrity="sha512-eSc5OWFJjK6fUpxViOKXm5ekJ3Gp5icgygsjPVz9Xzudb9TkX/uNdpqNHc63uN0PdxYE9+g8pZAHIib0FgE0Cw=="></script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a14bc5c317c3d53f',t:'MTc4Mjk3NTYxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body></html>
