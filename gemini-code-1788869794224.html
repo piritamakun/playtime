@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>テトリス 完全版 - 対戦対応</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        :root { --bg-base: #050508; --bg-grad: linear-gradient(135deg, #0f111a 0%, #050508 100%); --glass-bg: rgba(20, 22, 35, 0.6); --glass-border: rgba(255, 255, 255, 0.08); --accent-main: #00e5ff; --accent-sub: #ff00ea; --text-main: #ffffff; --text-muted: #8c92a6; }
+        body { background: var(--bg-grad); background-attachment: fixed; color: var(--text-main); text-align: center; font-family: 'Noto Sans JP', sans-serif; margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+        h1 { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; letter-spacing: 2px; margin: 0; background: linear-gradient(to right, var(--accent-main), var(--accent-sub)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        #game-layout { display: flex; gap: 15px; margin-top: calc(5px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; }
+        .canvas-container { position: relative; border-radius: 12px; padding: 4px; background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        #tetris { background: #000; border-radius: 8px; height: 100%; width: auto; max-height: 65vh; image-rendering: pixelated; display: block; }
+        
+        /* サイドパネル（左右） */
+        .side-panel { display: flex; flex-direction: column; gap: 12px; min-width: 90px; }
+        .status-box { padding: 12px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .status-label { font-size: 11px; color: var(--text-muted); font-weight: 700; letter-spacing: 1px; margin-bottom: 5px; }
+        .status-val { font-size: 20px; font-weight: 900; color: var(--accent-main); text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); }
+        #next-canvas { background: transparent; width: 60px; height: 60px; image-rendering: pixelated; }
+        
+        .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 12px; padding: 12px 0; font-size: 14px; cursor: pointer; transition: all 0.2s; font-weight: bold; margin-top: auto; }
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 15px 20px; width: 100%; max-width: 420px; margin-top: auto; padding-bottom: calc(15px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+        .ctrl-btn { height: 65px; font-size: 20px; background: var(--glass-bg); color: white; border: 1px solid var(--glass-border); border-radius: 20px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 4px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1); }
+        .ctrl-btn:active { transform: translateY(4px); box-shadow: 0 0px 0 rgba(0,0,0,0.5); }
+        .rotate-btn { grid-column: span 3; height: 55px; background: linear-gradient(180deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.05)); border-color: rgba(0, 229, 255, 0.3); color: var(--accent-main); font-weight: bold; font-size: 18px; }
+        
+        .screen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 8, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .screen-overlay.active { opacity: 1; pointer-events: auto; }
+        .menu-card { padding: 30px 40px; width: 85%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+        .menu-title { font-size: 44px; margin-bottom: 5px; }
+        .menu-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 5px; font-weight: bold; }
+        .mode-toggle { display: flex; background: rgba(0,0,0,0.5); border-radius: 12px; padding: 5px; border: 1px solid var(--glass-border); }
+        .mode-btn { flex: 1; padding: 12px; border-radius: 8px; color: var(--text-muted); font-size: 13px; font-weight: bold; cursor: pointer; }
+        .mode-btn.active { background: var(--accent-main); color: #000; box-shadow: 0 0 15px rgba(0, 229, 255, 0.4); }
+        
+        .btn-primary { padding: 15px; font-size: 17px; border-radius: 14px; border: none; font-weight: bold; cursor: pointer; background: var(--accent-main); color: #000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3); transition: transform 0.1s; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { padding: 13px; font-size: 15px; border-radius: 14px; border: 1px solid var(--glass-border); font-weight: bold; cursor: pointer; background: rgba(255,255,255,0.05); color: var(--text-main); }
+        .btn-danger { color: #ff4b4b !important; border-color: rgba(255, 75, 75, 0.4) !important; background: rgba(255, 75, 75, 0.05) !important; }
+        .admin-input { width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: white; border-radius: 8px; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
+
+        /* バッジ用のスタイル */
+        .badge-item { display: flex; align-items: center; gap: 15px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 12px; border: 1px solid var(--glass-border); text-align: left; margin-bottom: 8px; }
+        .badge-icon { font-size: 28px; opacity: 0.2; filter: grayscale(100%); transition: all 0.3s; min-width: 35px; text-align: center; }
+        .badge-item.unlocked { border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.05); }
+        .badge-item.unlocked .badge-icon { opacity: 1; filter: grayscale(0%); text-shadow: 0 0 15px rgba(255, 215, 0, 0.8); }
+        .badge-info { flex: 1; }
+        .badge-title { font-weight: bold; color: var(--text-muted); font-size: 14px; margin-bottom: 2px; }
+        .badge-desc { font-size: 11px; color: #666; }
+        .badge-item.unlocked .badge-title { color: #FFD700; }
+        .badge-item.unlocked .badge-desc { color: var(--text-main); }
+
+        /* 管理者サイドバー */
+        #admin-sidebar { position: absolute; top: 20px; left: 20px; width: 300px; max-width: 92vw; background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(25px); border: 2px solid var(--accent-sub); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000; display: none; flex-direction: column; }
+        #admin-sidebar.open { display: flex; }
+        .admin-header { padding: 12px 15px; font-size: 16px; font-weight: 900; color: var(--accent-sub); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        .admin-content { padding: 15px; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <!-- タイトル画面 -->
+    <div id="screen-title" class="screen-overlay active">
+        <div class="glass-panel menu-card">
+            <div>
+                <h1 class="menu-title">テトリス</h1>
+                <div id="jst-clock" style="font-size: 16px; color: var(--accent-main); font-weight: bold; margin: 8px 0; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 12px; border: 1px solid rgba(0, 229, 255, 0.2); letter-spacing: 1px;">日本時間: 同期中...</div>
+                <div class="menu-subtitle">最高得点: <span id="hi-display" style="color:var(--accent-main); font-size:18px;">0</span></div>
+            </div>
+            <div class="mode-toggle">
+                <div id="mode-normal" class="mode-btn active" onclick="setMode('normal')">ノーマル</div>
+                <div id="mode-extra" class="mode-btn" onclick="setMode('extra')">エクストラ</div>
+            </div>
+            <button class="btn-primary" onclick="startNewGame()">はじめから</button>
+            <button id="btn-continue" class="btn-primary" style="background:var(--accent-sub); color:#fff;" onclick="loadGame()" disabled>つづきから</button>
+            
+            <button class="btn-primary" style="background:#00e5ff; color:#000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);" onclick="openBattleMenu()">⚔️ 対戦モード</button>
+            <button class="btn-primary" style="background:#FFD700; color:#000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);" onclick="openBadgeScreen()">🏅 バッジ (50種)</button>
+            <button id="btn-admin-shortcut" class="btn-secondary" style="display:none; border-color:var(--accent-sub); color:var(--accent-sub);" onclick="openAdminPanel()">🛠️ 管理者パネル</button>
+        </div>
+    </div>
+
+    <!-- バッジ画面 -->
+    <div id="screen-badges" class="screen-overlay">
+        <div class="glass-panel menu-card" style="max-height: 85vh; padding: 20px; width: 90%; max-width: 400px; display: flex; flex-direction: column;">
+            <h1 style="font-size: 28px; background: none; color: #FFD700; margin-bottom: 12px;">バッジ コレクション</h1>
+            <div id="badge-list" style="overflow-y: auto; flex: 1; padding-right: 5px; margin-bottom: 12px;"></div>
+            <button class="btn-secondary" onclick="closeBadgeScreen()">タイトルへ戻る</button>
+        </div>
+    </div>
+
+    <!-- 対戦モードメニュー画面 -->
+    <div id="screen-battle-menu" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 class="menu-title" style="font-size:32px;">対戦モード</h1>
+            <button class="btn-primary" onclick="createBattleRoom()">部屋を作成する</button>
+            <div style="margin: 10px 0;">
+                <input type="text" id="join-room-id" class="admin-input" placeholder="4桁の部屋ID" maxlength="4" style="text-align:center; font-size:22px; letter-spacing:4px;">
+                <button class="btn-primary" style="width:100%; margin-top:5px; background:var(--accent-sub); color:white;" onclick="joinBattleRoom()">参加する</button>
+            </div>
+            <button class="btn-secondary" onclick="closeBattleMenu()">戻る</button>
+        </div>
+    </div>
+
+    <!-- 待機画面 -->
+    <div id="screen-battle-wait" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 class="menu-title" style="font-size:28px;">待機中...</h1>
+            <div id="battle-room-display" style="font-size: 32px; color: var(--accent-main); font-weight: bold; letter-spacing: 4px; margin: 10px 0;">ID: ----</div>
+            <div id="battle-players-count" style="font-size: 16px; margin-bottom: 15px;">参加人数: 1/2</div>
+            <button class="btn-secondary btn-danger" onclick="cancelBattle()">キャンセル</button>
+        </div>
+    </div>
+
+    <!-- ルール説明画面 -->
+    <div id="screen-battle-rules" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 class="menu-title" style="font-size:28px; color:#ff00ea;">対戦ルール</h1>
+            <p style="font-size: 14px; line-height: 1.6; text-align: left; background:rgba(0,0,0,0.5); padding:12px; border-radius:10px;">
+                ・制限時間は <strong>5分間</strong> です。<br>
+                ・より多くのスコアを稼いだ方の勝利！<br>
+                ・ブロックが上まで詰まっても盤面がリセットされ、そのままゲームを続行できます。
+            </p>
+            <div style="font-size: 20px; font-weight: bold; margin-top: 10px; color: var(--accent-main); text-shadow: 0 0 10px rgba(0,229,255,0.5);">
+                ゲーム開始まで: <span id="rule-countdown">10</span>秒
+            </div>
+        </div>
+    </div>
+
+    <!-- 対戦結果画面 -->
+    <div id="screen-battle-result" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 id="battle-result-title" class="menu-title" style="font-size:36px;">結果発表</h1>
+            <div style="display:flex; justify-content:space-around; font-size:18px; margin: 15px 0; background:rgba(0,0,0,0.4); padding:12px; border-radius:12px;">
+                <div>あなた<br><span id="battle-result-me" style="color:var(--accent-main); font-size:26px; font-weight:bold;">0</span></div>
+                <div>相手<br><span id="battle-result-op" style="color:var(--accent-sub); font-size:26px; font-weight:bold;">0</span></div>
+            </div>
+            <button class="btn-primary" id="btn-rematch" onclick="requestRematch()">もう一回</button>
+            <button class="btn-secondary btn-danger" onclick="quitBattle()">終わる</button>
+            <div id="rematch-status-text" style="font-size:13px; color:var(--text-muted); margin-top:5px;"></div>
+        </div>
+    </div>
+
+    <!-- ポーズ画面 -->
+    <div id="screen-pause" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 style="font-size: 32px; background: none; color: white;">一時停止中</h1>
+            <button class="btn-primary" onclick="resumeGame()">ゲームに戻る</button>
+            <button class="btn-secondary" onclick="saveAndQuit()">タイトルへ戻る</button>
+        </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="screen-gameover" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 style="font-size: 36px; background: none; color: #ff4b4b;">ゲームオーバー</h1>
+            <div style="font-size: 16px; margin: 10px 0;">得点: <span id="final-score" style="color:var(--accent-main); font-size:26px;">0</span></div>
+            <button class="btn-secondary" onclick="document.getElementById('screen-gameover').classList.remove('active'); document.getElementById('screen-title').classList.add('active');">タイトルへ</button>
+        </div>
+    </div>
+
+    <!-- 管理者パネル -->
+    <div id="admin-sidebar">
+        <div class="admin-header" id="admin-drag-handle">≡ 管理者パネル <button style="background:none; border:none; color:white; font-size:20px; cursor:pointer;" onclick="closeAdminPanel()">×</button></div>
+        <div class="admin-content">
+            <label style="font-size:12px; color:var(--accent-main); font-weight:bold;">スコア強制変更:</label>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="number" id="admin-set-score" class="admin-input" placeholder="数値">
+                <button onclick="changeCurrentScore()" style="background:var(--accent-main); border:none; padding:8px; border-radius:6px; font-weight:bold; cursor:pointer;">適用</button>
+            </div>
+            <button class="btn-secondary btn-danger" style="width:100%; padding:8px; font-size:12px;" onclick="logoutAdmin()">管理者モード解除</button>
+        </div>
+    </div>
+
+    <!-- ゲームレイアウト -->
+    <div id="game-layout">
+        <!-- 対戦モード専用: 画面左側の相手スコア＆時間表示パネル -->
+        <div id="left-battle-panel" class="side-panel" style="display:none;">
+            <div class="glass-panel status-box" style="border-color: rgba(255, 0, 234, 0.4);">
+                <div class="status-label" style="color: var(--accent-sub);">相手得点</div>
+                <div id="battle-opponent-score-left" class="status-val" style="color: var(--accent-sub);">0</div>
+            </div>
+            <div class="glass-panel status-box" style="border-color: rgba(255, 149, 0, 0.4);">
+                <div class="status-label" style="color: #ff9500;">残り時間</div>
+                <div id="battle-timer-left" class="status-val" style="color: #ff9500;">5:00</div>
+            </div>
+        </div>
+
+        <!-- 自分のキャンバス -->
+        <div class="canvas-container"><canvas id="tetris" width="240" height="400"></canvas></div>
+
+        <!-- 右側パネル -->
+        <div id="side-panel" class="side-panel">
+            <div class="glass-panel status-box"><div class="status-label">次</div><canvas id="next-canvas" width="60" height="60"></canvas></div>
+            <div class="glass-panel status-box"><div class="status-label">得点</div><div id="score" class="status-val">0</div></div>
+            <div class="glass-panel status-box"><div class="status-label">レベル</div><div id="level" class="status-val">1</div></div>
+
+            <!-- 一時停止ボタン（通常プレイ時のみ表示） -->
+            <button id="btn-pause" class="btn-icon glass-panel" onclick="pauseGame()">⏸ 一時停止</button>
+        </div>
+    </div>
+
+    <!-- 操作ボタン -->
+    <div class="controls">
+        <button class="ctrl-btn rotate-btn" onclick="playerRotate(1)">回転 ↻</button>
+        <button class="ctrl-btn" onclick="playerMove(-1)">◀</button>
+        <button class="ctrl-btn" onclick="playerDrop()">▼</button>
+        <button class="ctrl-btn" onclick="playerMove(1)">▶</button>
+    </div>
+
+<script>
+/* --- CONFIG START --- */
+const DEFAULT_SETTINGS = {"gameId":""};
+/* --- CONFIG END --- */
+
+const canvas = document.getElementById('tetris'); const ctx = canvas.getContext('2d'); ctx.scale(20, 20);
+const nCanvas = document.getElementById('next-canvas'); const nCtx = nCanvas.getContext('2d'); nCtx.scale(15, 15);
+const colors = [null, '#FF2D55', '#007AFF', '#4CD964', '#AF52DE', '#FF9500', '#FFCC00', '#5856D6', '#00E5FF', '#FF3B30', '#FF00EA', '#5AC8FA', '#F0E68C'];
+let isRunning = false; let gameMode = 'normal'; let arena = Array.from({length: 20}, () => Array(12).fill(0));
+const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0, level: 1 };
+let dropCounter = 0, lastTime = 0; let highScore = localStorage.getItem('t-hi') || 0;
+document.getElementById('hi-display').innerText = highScore; checkSaveData();
+
+function setMode(mode) { gameMode = mode; document.getElementById('mode-normal').classList.toggle('active', mode === 'normal'); document.getElementById('mode-extra').classList.toggle('active', mode === 'extra'); }
+
+function createPiece(t) {
+    const p = {
+        'I': [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]], 'L': [[0,2,0],[0,2,0],[0,2,2]], 'J': [[0,3,0],[0,3,0],[3,3,0]], 'O': [[4,4],[4,4]],
+        'Z': [[5,5,0],[0,5,5],[0,0,0]], 'S': [[0,6,6],[6,6,0],[0,0,0]], 'T': [[0,7,0],[7,7,7],[0,0,0]], 'P': [[0,8,0],[8,8,8],[0,8,0]],
+        '5': [[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0],[0,9,0,0,0]], 'D': [[10]], 'B': [[11,0,0,0],[11,0,0,0],[11,0,0,0],[11,11,11,0]], 'X': [[0,12,12],[12,12,0],[12,0,0]]
+    }; return p[t];
+}
+
+function playerReset() {
+    let pieces = (gameMode === 'extra') ? 'ILJOTSZP5DBX' : 'ILJOTSZ';
+    if (!player.next) player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
+    player.matrix = player.next; player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
+    player.pos.y = 0; player.pos.x = Math.floor(arena[0].length / 2) - Math.floor(player.matrix[0].length / 2);
+    if (collide(arena, player)) gameOver();
+    drawNext();
+}
+
+function collide(a, p) {
+    const m = p.matrix; const o = p.pos;
+    for (let y = 0; y < m.length; ++y) {
+        for (let x = 0; x < m[y].length; ++x) {
+            if (m[y][x] !== 0) { if (!a[y + o.y] || a[y + o.y][x + o.x] === undefined || a[y + o.y][x + o.x] !== 0) return true; }
+        }
+    } return false;
+}
+
+function merge(a, p) { p.matrix.forEach((row, y) => { row.forEach((value, x) => { if (value !== 0) { if (a[y + p.pos.y]) a[y + p.pos.y][x + p.pos.x] = value; } }); }); }
+
+function arenaSweep() {
+    let rowCount = 1;
+    for (let y = arena.length - 1; y >= 0; --y) {
+        if (arena[y].every(v => v !== 0)) { arena.splice(y, 1); arena.unshift(new Array(12).fill(0)); ++y; player.score += rowCount * 10; rowCount *= 2; }
+    } player.level = Math.floor(player.score / 100) + 1; updateUI();
+}
+
+function updateUI() { 
+    document.getElementById('score').innerText = player.score; 
+    document.getElementById('level').innerText = player.level; 
+    updateBadgeStats('level', player.level);
+    updateBadgeStats('score', player.score);
+    if (isBattleMode && battleConn && battleConn.open) {
+        battleConn.send({ type: 'score', val: player.score });
+    }
+}
+
+function gameOver() { 
+    if (isBattleMode) {
+        arena.forEach(r => r.fill(0));
+        playerReset();
+        return;
+    }
+    isRunning = false; localStorage.removeItem('t-save'); checkSaveData(); 
+    if(player.score > highScore) { highScore = player.score; localStorage.setItem('t-hi', highScore); document.getElementById('hi-display').innerText = highScore; } 
+    document.getElementById('final-score').innerText = player.score; 
+    document.getElementById('screen-gameover').classList.add('active'); 
+}
+
+function playerDrop() { if (!isRunning) return; player.pos.y++; if (collide(arena, player)) { player.pos.y--; merge(arena, player); playerReset(); arenaSweep(); } dropCounter = 0; }
+function playerMove(d) { if (!isRunning) return; player.pos.x += d; if (collide(arena, player)) player.pos.x -= d; }
+function playerRotate(d) {
+    if (!isRunning) return; const m = player.matrix; for (let y = 0; y < m.length; ++y) for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
+    if (d > 0) m.forEach(r => r.reverse()); else m.reverse(); let o = 1; const pos = player.pos.x;
+    while (collide(arena, player)) { player.pos.x += o; o = -(o + (o > 0 ? 1 : -1)); if (o > m[0].length) { playerRotate(-d); player.pos.x = pos; return; } }
+}
+
+function drawBlock(c, x, y, v, isGhost = false) { if (isGhost) { c.fillStyle = colors[v] + '20'; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.strokeStyle = colors[v] + '80'; c.lineWidth = 0.05; c.strokeRect(x+0.05, y+0.05, 0.9, 0.9); } else { c.fillStyle = colors[v]; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x+0.05, y+0.05, 0.9, 0.15); } }
+function drawMatrix(m, o, c, isGhost = false) { m.forEach((r, y) => r.forEach((v, x) => { if (v !== 0) drawBlock(c, x + o.x, y + o.y, v, isGhost); })); }
+function drawNext() { nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height); if (player.next) { drawMatrix(player.next, {x: player.next[0].length === 2 ? 1 : 0.5, y: 1}, nCtx); } }
+
+function update(time = 0) {
+    if (!isRunning) return; const dt = time - lastTime; lastTime = time; dropCounter += dt;
+    if (dropCounter > Math.max(80, 1000 - (player.level - 1) * 100)) playerDrop();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    arena.forEach((r, y) => r.forEach((v, x) => { if(v !== 0) drawBlock(ctx, x, y, v); }));
+    if (player.matrix) {
+        let gY = player.pos.y; while (!collide(arena, {matrix: player.matrix, pos: {x: player.pos.x, y: gY}})) gY++; gY--;
+        drawMatrix(player.matrix, {x: player.pos.x, y: gY}, ctx, true); drawMatrix(player.matrix, player.pos, ctx);
+    } requestAnimationFrame(update);
+}
+
+function checkSaveData() { document.getElementById('btn-continue').disabled = !localStorage.getItem('t-save'); }
+function pauseGame() { if (!isRunning || isBattleMode) return; isRunning = false; document.getElementById('screen-pause').classList.add('active'); }
+function resumeGame() { document.getElementById('screen-pause').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); }
+function saveAndQuit() { localStorage.setItem('t-save', JSON.stringify({ arena, player, gameMode })); checkSaveData(); document.getElementById('screen-pause').classList.remove('active'); document.getElementById('screen-title').classList.add('active'); }
+
+function startNewGame() { 
+    isBattleMode = false;
+    document.getElementById('left-battle-panel').style.display = "none";
+    document.getElementById('btn-pause').style.display = "block";
+    updateBadgeStats('play');
+    arena.forEach(r => r.fill(0)); player.score = 0; player.level = 1; player.next = null; updateUI(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; playerReset(); lastTime = performance.now(); update(); 
+}
+
+function loadGame() { const saved = JSON.parse(localStorage.getItem('t-save')); if (saved) { arena = saved.arena; Object.assign(player, saved.player); gameMode = saved.gameMode; setMode(gameMode); updateUI(); drawNext(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); } }
+
+let timeOffset = 0; let isTimeSynced = false;
+async function syncWithJST() {
+    try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Tokyo', { cache: 'no-store' });
+        const data = await res.json();
+        if (data && data.utc_datetime) { timeOffset = new Date(data.utc_datetime).getTime() - Date.now(); isTimeSynced = true; }
+    } catch (e) { console.error("JST同期失敗:", e); }
+}
+syncWithJST(); setInterval(syncWithJST, 30000);
+
+setInterval(() => {
+    const d = new Date(Date.now() + timeOffset + (9 * 60 * 60 * 1000));
+    const h = String(d.getUTCHours()).padStart(2,'0'); const m = String(d.getUTCMinutes()).padStart(2,'0'); const s = String(d.getUTCSeconds()).padStart(2,'0');
+    const clockEl = document.getElementById('jst-clock');
+    if (clockEl) {
+        if (isTimeSynced) { clockEl.innerHTML = `日本時間: ${h}:${m}:${s}`; clockEl.style.borderColor = "rgba(0, 229, 255, 0.2)"; clockEl.style.color = "var(--accent-main)"; } 
+        else { clockEl.innerHTML = `日本時間: ${h}:${m}:${s} (オフライン)`; clockEl.style.borderColor = "rgba(255, 75, 75, 0.3)"; clockEl.style.color = "#ff4b4b"; }
+    }
+}, 1000);
+
+// キーボード操作
+let adminCodeBuffer = "";
+let isAdminMode = localStorage.getItem('t-is-admin') === 'true';
+
+document.addEventListener('keydown', e => {
+    const isEditingInput = document.activeElement && (document.activeElement.classList.contains('admin-input') || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT');
+    
+    if (e.key.toLowerCase() === 'x' && !isEditingInput) {
+        if (isAdminMode) openAdminPanel();
+        return;
+    }
+    if (e.key >= '0' && e.key <= '9') {
+        adminCodeBuffer += e.key;
+        if (adminCodeBuffer.endsWith("140923")) {
+            isAdminMode = true; localStorage.setItem('t-is-admin', 'true'); openAdminPanel(); return;
+        }
+    } else { adminCodeBuffer = ""; }
+
+    if (isEditingInput) return;
+
+    if (e.keyCode === 32) {
+        e.preventDefault(); if (!isRunning) return;
+        while (!collide(arena, player)) { player.pos.y++; }
+        player.pos.y--; merge(arena, player); arenaSweep(); playerReset(); dropCounter = 0; return;
+    }
+    if (e.keyCode === 27) {
+        if (document.getElementById('screen-title').classList.contains('active') || document.getElementById('screen-gameover').classList.contains('active') || isBattleMode) return;
+        if (isRunning) pauseGame(); else if (document.getElementById('screen-pause').classList.contains('active')) resumeGame();
+        return;
+    }
+    if (!isRunning) return;
+    if (e.keyCode === 37) playerMove(-1);
+    if (e.keyCode === 39) playerMove(1);
+    if (e.keyCode === 40) playerDrop();
+    if (e.keyCode === 38) playerRotate(1);
+});
+
+// 管理者機能
+function openAdminPanel() { document.getElementById('admin-sidebar').classList.add('open'); document.getElementById('admin-set-score').value = player.score; }
+function closeAdminPanel() { document.getElementById('admin-sidebar').classList.remove('open'); }
+function changeCurrentScore() { const val = parseInt(document.getElementById('admin-set-score').value, 10); if (!isNaN(val) && val >= 0) { player.score = val; player.level = Math.floor(player.score / 100) + 1; updateUI(); } }
+function logoutAdmin() { localStorage.removeItem('t-is-admin'); isAdminMode = false; closeAdminPanel(); document.getElementById('btn-admin-shortcut').style.display = "none"; }
+
+// =========================================================================
+// バッジ（実績）システム 50種類
+// =========================================================================
+const badgesList = [];
+[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`play${g}`, title:`見習いから達人へ ${g}`, desc:`ゲームを${g}回プレイする`, icon:"🎮", check: s => s.plays >= g }));
+[1000, 3000, 5000, 10000, 20000, 30000, 50000, 75000, 100000, 200000].forEach(g => badgesList.push({ id:`score${g}`, title:`スコアラー ${g}`, desc:`スコア ${g} を達成`, icon:"🏅", check: s => s.highScore >= g }));
+[3, 5, 10, 15, 20, 30, 40, 50, 75, 99].forEach(g => badgesList.push({ id:`level${g}`, title:`限界突破 ${g}`, desc:`レベル ${g} に到達`, icon:"🚀", check: s => s.maxLevel >= g }));
+[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`extra${g}`, title:`EXチャレンジャー ${g}`, desc:`エクストラモードを${g}回プレイ`, icon:"👾", check: s => s.extraPlays >= g }));
+[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`battle${g}`, title:`歴戦の勇者 ${g}`, desc:`対戦モードを${g}回プレイ`, icon:"⚔️", check: s => s.battlePlays >= g }));
+
+function getBadgeStats() {
+    const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0}');
+    if(s.battlePlays === undefined) s.battlePlays = 0;
+    return s;
+}
+function saveBadgeStats(stats) { localStorage.setItem('t-badges-stats', JSON.stringify(stats)); }
+function updateBadgeStats(type, val) {
+    const s = getBadgeStats();
+    if(type === 'play') { s.plays++; if(gameMode === 'extra') s.extraPlays++; }
+    if(type === 'level' && val > s.maxLevel) s.maxLevel = val;
+    if(type === 'score' && val > s.highScore) s.highScore = val;
+    if(type === 'battle') s.battlePlays += val;
+    saveBadgeStats(s);
+}
+
+function openBadgeScreen() {
+    const s = getBadgeStats();
+    const list = document.getElementById('badge-list');
+    list.innerHTML = "";
+    badgesList.forEach(b => {
+        const unlocked = b.check(s);
+        list.innerHTML += `
+            <div class="badge-item ${unlocked ? 'unlocked' : ''}">
+                <div class="badge-icon">${b.icon}</div>
+                <div class="badge-info">
+                    <div class="badge-title">${b.title}</div>
+                    <div class="badge-desc">${b.desc}</div>
+                </div>
+            </div>
+        `;
+    });
+    document.getElementById('screen-title').classList.remove('active');
+    document.getElementById('screen-badges').classList.add('active');
+}
+function closeBadgeScreen() {
+    document.getElementById('screen-badges').classList.remove('active');
+    document.getElementById('screen-title').classList.add('active');
+}
+
+// =========================================================================
+// 対戦モード (PeerJS 1vs1) 完全実装
+// =========================================================================
+let isBattleMode = false;
+let battlePeer = null;
+let battleConn = null;
+let battleRole = null;
+let battleTimerInterval = null;
+let ruleCountdownInterval = null;
+let battleTimeLeft = 300;
+let battleOpponentScore = 0;
+let myRematchStatus = false;
+let opRematchStatus = false;
+
+function openBattleMenu() {
+    document.getElementById('screen-title').classList.remove('active');
+    document.getElementById('screen-battle-menu').classList.add('active');
+}
+function closeBattleMenu() {
+    document.getElementById('screen-battle-menu').classList.remove('active');
+    document.getElementById('screen-title').classList.add('active');
+}
+
+function createBattleRoom() {
+    const roomId = Math.floor(1000 + Math.random() * 9000).toString();
+    battleRole = 'host';
+    initBattlePeer('tetris-battle-' + roomId, roomId);
+}
+
+function joinBattleRoom() {
+    const roomId = document.getElementById('join-room-id').value;
+    if(roomId.length !== 4) { alert("4桁のIDを入力してください"); return; }
+    battleRole = 'guest';
+    initBattlePeer(null, roomId);
+}
+
+function initBattlePeer(peerId, roomId) {
+    if(battlePeer) battlePeer.destroy();
+    battlePeer = peerId ? new Peer(peerId) : new Peer();
+    
+    document.getElementById('screen-battle-menu').classList.remove('active');
+    document.getElementById('screen-battle-wait').classList.add('active');
+    document.getElementById('battle-room-display').innerText = "ID: " + roomId;
+    document.getElementById('battle-players-count').innerText = battleRole === 'host' ? "参加人数: 1/2" : "接続中...";
+
+    battlePeer.on('open', id => {
+        if (battleRole === 'guest') {
+            battleConn = battlePeer.connect('tetris-battle-' + roomId);
+            setupBattleConn();
+        }
+    });
+
+    if (battleRole === 'host') {
+        battlePeer.on('connection', conn => {
+            if(battleConn) { conn.close(); return; }
+            battleConn = conn;
+            setupBattleConn();
+            document.getElementById('battle-players-count').innerText = "参加人数: 2/2";
+            setTimeout(() => {
+                document.getElementById('screen-battle-wait').classList.remove('active');
+                document.getElementById('screen-battle-rules').classList.add('active');
+                battleConn.send({ type: 'start_rules' });
+                startRuleCountdown();
+            }, 1000);
+        });
+    }
+}
+
+function setupBattleConn() {
+    battleConn.on('data', data => {
+        if (data.type === 'start_rules') {
+            document.getElementById('screen-battle-wait').classList.remove('active');
+            document.getElementById('screen-battle-rules').classList.add('active');
+            startRuleCountdown();
+        } else if (data.type === 'score') {
+            battleOpponentScore = data.val;
+            document.getElementById('battle-opponent-score-left').innerText = battleOpponentScore;
+        } else if (data.type === 'rematch') {
+            opRematchStatus = true;
+            checkRematchStart();
+        } else if (data.type === 'quit') {
+            cancelBattle();
+        }
+    });
+    battleConn.on('close', cancelBattle);
+}
+
+function startRuleCountdown() {
+    let timeLeft = 10;
+    const countdownEl = document.getElementById('rule-countdown');
+    if(countdownEl) countdownEl.innerText = timeLeft;
+    
+    if(ruleCountdownInterval) clearInterval(ruleCountdownInterval);
+    ruleCountdownInterval = setInterval(() => {
+        timeLeft--;
+        if(countdownEl) countdownEl.innerText = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(ruleCountdownInterval);
+            startBattleGame();
+        }
+    }, 1000);
+}
+
+function startBattleGame() {
+    document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
+    isBattleMode = true;
+    battleTimeLeft = 300;
+    battleOpponentScore = 0;
+    myRematchStatus = false; opRematchStatus = false;
+    
+    // UI制御: 左側に相手スコア＆タイマー表示、ポーズボタン非表示
+    document.getElementById('left-battle-panel').style.display = "flex";
+    document.getElementById('btn-pause').style.display = "none";
+    document.getElementById('battle-opponent-score-left').innerText = "0";
+    updateTimerDisplay();
+
+    updateBadgeStats('battle', 1);
+
+    // ゲーム開始処理
+    arena.forEach(r => r.fill(0));
+    player.score = 0; player.level = 1; player.next = null; updateUI();
+    isRunning = true;
+    playerReset();
+    lastTime = performance.now();
+    update();
+
+    if(battleTimerInterval) clearInterval(battleTimerInterval);
+    battleTimerInterval = setInterval(() => {
+        battleTimeLeft--;
+        updateTimerDisplay();
+        if (battleTimeLeft <= 0) {
+            endBattleGame();
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const m = Math.floor(battleTimeLeft / 60);
+    const s = String(battleTimeLeft % 60).padStart(2, '0');
+    document.getElementById('battle-timer-left').innerText = `${m}:${s}`;
+}
+
+function endBattleGame() {
+    clearInterval(battleTimerInterval);
+    isRunning = false;
+    document.getElementById('screen-battle-result').classList.add('active');
+    document.getElementById('battle-result-me').innerText = player.score;
+    document.getElementById('battle-result-op').innerText = battleOpponentScore;
+
+    const titleEl = document.getElementById('battle-result-title');
+    if (player.score > battleOpponentScore) {
+        titleEl.innerText = "VICTORY! (勝利)";
+        titleEl.style.color = "#00e5ff";
+    } else if (player.score < battleOpponentScore) {
+        titleEl.innerText = "DEFEAT... (敗北)";
+        titleEl.style.color = "#ff4b4b";
+    } else {
+        titleEl.innerText = "DRAW (引き分け)";
+        titleEl.style.color = "#ffffff";
+    }
+    
+    document.getElementById('btn-rematch').disabled = false;
+    document.getElementById('rematch-status-text').innerText = "";
+}
+
+function requestRematch() {
+    myRematchStatus = true;
+    document.getElementById('btn-rematch').disabled = true;
+    document.getElementById('rematch-status-text').innerText = "相手の承認を待っています...";
+    if (battleConn && battleConn.open) battleConn.send({ type: 'rematch' });
+    checkRematchStart();
+}
+
+function checkRematchStart() {
+    if (myRematchStatus && opRematchStatus) {
+        startBattleGame();
+    }
+}
+
+function quitBattle() {
+    if (battleConn && battleConn.open) battleConn.send({ type: 'quit' });
+    cancelBattle();
+}
+
+function cancelBattle() {
+    if (ruleCountdownInterval) clearInterval(ruleCountdownInterval);
+    if (battleTimerInterval) clearInterval(battleTimerInterval);
+    if (battleConn) { battleConn.close(); battleConn = null; }
+    if (battlePeer) { battlePeer.destroy(); battlePeer = null; }
+    isBattleMode = false;
+    isRunning = false;
+    document.getElementById('left-battle-panel').style.display = "none";
+    document.getElementById('btn-pause').style.display = "block";
+    document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
+    document.getElementById('screen-title').classList.add('active');
+}
+</script>
+</body>
+</html>
