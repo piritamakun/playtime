@@ -12,7 +12,7 @@
         .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
         h1 { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; letter-spacing: 2px; margin: 0; background: linear-gradient(to right, var(--accent-main), var(--accent-sub)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        /* 画面レイアウト：ゲーム画面を少し下へ調整 */
+        /* 画面レイアウト */
         #game-layout { display: flex; gap: 15px; margin-top: calc(35px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; }
         .canvas-container { position: relative; border-radius: 12px; padding: 4px; background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
         #tetris { background: #000; border-radius: 8px; height: 100%; width: auto; max-height: 65vh; image-rendering: pixelated; display: block; }
@@ -25,11 +25,8 @@
         #next-canvas { background: transparent; width: 60px; height: 60px; image-rendering: pixelated; }
         
         .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 12px; padding: 12px 0; font-size: 14px; cursor: pointer; transition: all 0.2s; font-weight: bold; margin-top: auto; }
-        
-        /* 仮想コントロールボタンの削除・非表示化 */
         .controls { display: none !important; }
         
-        /* タブレット・スマホ用の重なり修正 */
         @media (max-width: 800px) {
             #game-layout { flex-wrap: wrap; flex-direction: row; justify-content: center; align-items: flex-start; margin-top: calc(25px + env(safe-area-inset-top)); }
             .side-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 100%; min-width: auto; gap: 8px; }
@@ -53,7 +50,7 @@
         .btn-danger { color: #ff4b4b !important; border-color: rgba(255, 75, 75, 0.4) !important; background: rgba(255, 75, 75, 0.05) !important; }
         .admin-input { width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: white; border-radius: 8px; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
 
-        /* バッジ用のスタイル */
+        /* バッジ用スタイル */
         .badge-item { display: flex; align-items: center; gap: 15px; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 12px; border: 1px solid var(--glass-border); text-align: left; margin-bottom: 8px; }
         .badge-icon { font-size: 28px; opacity: 0.2; filter: grayscale(100%); transition: all 0.3s; min-width: 35px; text-align: center; }
         .badge-item.unlocked { border-color: rgba(255, 215, 0, 0.4); background: rgba(255, 215, 0, 0.05); }
@@ -64,7 +61,7 @@
         .badge-item.unlocked .badge-title { color: #FFD700; }
         .badge-item.unlocked .badge-desc { color: var(--text-main); }
 
-        /* リアルタイムランキング用オーバーレイ */
+        /* リアルタイムランキング */
         #live-ranking-overlay { position: absolute; top: 15px; right: 15px; background: rgba(10, 15, 25, 0.9); backdrop-filter: blur(10px); border: 1px solid var(--accent-main); border-radius: 12px; padding: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.8); z-index: 1000; display: none; min-width: 170px; text-align: left; }
         .live-rank-item { display: flex; justify-content: space-between; gap: 15px; font-size: 14px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
@@ -73,9 +70,24 @@
         #admin-sidebar.open { display: flex; }
         .admin-header { padding: 12px 15px; font-size: 16px; font-weight: 900; color: var(--accent-sub); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; cursor: move; }
         .admin-content { padding: 15px; text-align: left; }
+
+        /* 大会結果演出用 */
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; }
+        .podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin: 15px 0 10px 0; height: 110px; }
+        .podium-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; border-radius: 8px 8px 0 0; padding: 5px; box-sizing: border-box; font-weight: bold; animation: popUp 0.6s ease-out; }
+        .podium-1 { background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%); color: #000; height: 100%; width: 32%; box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+        .podium-2 { background: linear-gradient(180deg, #e0e0e0 0%, #757575 100%); color: #000; height: 80%; width: 28%; }
+        .podium-3 { background: linear-gradient(180deg, #cd7f32 0%, #8b4513 100%); color: #fff; height: 65%; width: 28%; }
+        .podium-rank { font-size: 18px; font-weight: 900; }
+        .podium-name { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .podium-score { font-size: 13px; font-weight: 900; }
+        @keyframes popUp { from { transform: scaleY(0); transform-origin: bottom; } to { transform: scaleY(1); } }
     </style>
 </head>
 <body>
+
+    <!-- 紙吹雪キャンバス -->
+    <canvas id="confetti-canvas"></canvas>
 
     <!-- タイトル画面 -->
     <div id="screen-title" class="screen-overlay active">
@@ -86,20 +98,20 @@
                 <div class="menu-subtitle">最高得点: <span id="hi-display" style="color:var(--accent-main); font-size:18px;">0</span></div>
             </div>
             <div class="mode-toggle">
-                <div id="mode-normal" class="mode-btn active" onclick="setMode('normal')">ノーマル</div>
-                <div id="mode-extra" class="mode-btn" onclick="setMode('extra')">エクストラ</div>
+                <div id="mode-normal" class="mode-btn active" onclick="playSE('click'); setMode('normal')">ノーマル</div>
+                <div id="mode-extra" class="mode-btn" onclick="playSE('click'); setMode('extra')">エクストラ</div>
             </div>
-            <button class="btn-primary" onclick="openSubModeScreen()">はじめから</button>
-            <button id="btn-continue" class="btn-primary" style="background:var(--accent-sub); color:#fff;" onclick="loadGame()" disabled>つづきから</button>
+            <button class="btn-primary" onclick="playSE('click'); openSubModeScreen()">はじめから</button>
+            <button id="btn-continue" class="btn-primary" style="background:var(--accent-sub); color:#fff;" onclick="playSE('click'); loadGame()" disabled>つづきから</button>
             
-            <button class="btn-primary" style="background:#00e5ff; color:#000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);" onclick="openBattleMenu()">⚔️ PVPモード</button>
-            <button class="btn-primary" style="background:#FFD700; color:#000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);" onclick="openBadgeScreen()">🏅 バッジ</button>
-            <button class="btn-primary" style="background:#8a2be2; color:#fff; box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);" onclick="openSettingsScreen()">⚙️ 設定</button>
-            <button id="btn-admin-shortcut" class="btn-secondary" style="display:none; border-color:var(--accent-sub); color:var(--accent-sub);" onclick="openAdminPanel()">🛠️ 管理者パネル</button>
+            <button class="btn-primary" style="background:#00e5ff; color:#000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);" onclick="playSE('click'); openBattleMenu()">⚔️ PVPモード</button>
+            <button class="btn-primary" style="background:#FFD700; color:#000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);" onclick="playSE('click'); openBadgeScreen()">🏅 バッジ</button>
+            <button class="btn-primary" style="background:#8a2be2; color:#fff; box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);" onclick="playSE('click'); openSettingsScreen()">⚙️ 設定</button>
+            <button id="btn-admin-shortcut" class="btn-secondary" style="display:none; border-color:var(--accent-sub); color:var(--accent-sub);" onclick="playSE('click'); openAdminPanel()">🛠️ 管理者パネル</button>
         </div>
     </div>
 
-    <!-- 設定画面 (新規追加) -->
+    <!-- 設定画面 -->
     <div id="screen-settings" class="screen-overlay">
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:32px;">設定</h1>
@@ -108,7 +120,14 @@
                 <input type="text" id="setting-user-id" class="admin-input" placeholder="IDを入力してください" maxlength="15" style="margin-bottom:0; text-align:center;">
                 <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">※大会やPVPモードの待機画面・ランキングに表示されます</div>
             </div>
-            <button class="btn-primary" onclick="saveSettings()">保存して戻る</button>
+
+            <!-- 効果音 ON/OFF 切り替え -->
+            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:15px; font-weight:bold;">効果音 (SE)</span>
+                <button id="btn-se-toggle" class="btn-secondary" style="padding:8px 16px; min-width:80px;" onclick="toggleSE()">OFF</button>
+            </div>
+
+            <button class="btn-primary" onclick="playSE('click'); saveSettings()">保存して戻る</button>
         </div>
     </div>
 
@@ -116,15 +135,15 @@
     <div id="screen-sub-mode" class="screen-overlay">
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:26px;">プレイスタイル</h1>
-            <button class="btn-primary" onclick="startGameWithSubMode('normal')">普通にプレイ</button>
-            <button class="btn-primary" style="background:#ff9500;" onclick="startGameWithSubMode('timeattack')">タイムアタック (3分間)</button>
+            <button class="btn-primary" onclick="playSE('click'); startGameWithSubMode('normal')">普通にプレイ</button>
+            <button class="btn-primary" style="background:#ff9500;" onclick="playSE('click'); startGameWithSubMode('timeattack')">タイムアタック (3分間)</button>
             
             <div style="margin-top:10px; background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
                 <label style="font-size:14px; font-weight:bold; color:var(--accent-sub);">倍速モード (<span id="speed-val">2倍</span>)</label>
                 <input type="range" id="speed-multiplier" min="2" max="10" value="2" style="width:100%; margin:10px 0;" oninput="document.getElementById('speed-val').innerText=this.value+'倍'">
-                <button class="btn-primary" style="width:100%; background:var(--accent-sub); padding:10px; font-size:15px;" onclick="startGameWithSubMode('speed')">倍速で開始</button>
+                <button class="btn-primary" style="width:100%; background:var(--accent-sub); padding:10px; font-size:15px;" onclick="playSE('click'); startGameWithSubMode('speed')">倍速で開始</button>
             </div>
-            <button class="btn-secondary" onclick="document.getElementById('screen-sub-mode').classList.remove('active'); document.getElementById('screen-title').classList.add('active');">戻る</button>
+            <button class="btn-secondary" onclick="playSE('click'); document.getElementById('screen-sub-mode').classList.remove('active'); document.getElementById('screen-title').classList.add('active');">戻る</button>
         </div>
     </div>
 
@@ -134,7 +153,7 @@
             <div id="trophy-area"></div>
             <h1 style="font-size: 28px; background: none; color: #FFD700; margin-bottom: 12px;">バッジ コレクション</h1>
             <div id="badge-list" style="overflow-y: auto; flex: 1; padding-right: 5px; margin-bottom: 12px;"></div>
-            <button class="btn-secondary" onclick="closeBadgeScreen()">タイトルへ戻る</button>
+            <button class="btn-secondary" onclick="playSE('click'); closeBadgeScreen()">タイトルへ戻る</button>
         </div>
     </div>
 
@@ -143,23 +162,23 @@
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:32px;">PVPモード</h1>
             
-            <!-- 参加人数設定 -->
-            <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; margin-bottom:10px;">
-                <label style="font-size: 13px; color: var(--accent-main); font-weight: bold;">参加人数上限 (2-100人):</label>
-                <input type="number" id="input-max-players" class="admin-input" value="2" min="2" max="100" style="text-align:center; font-size:20px; margin-top:5px; margin-bottom:0;">
+            <!-- 1v1用 人数設定 -->
+            <div id="container-max-players" style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; margin-bottom:10px;">
+                <label style="font-size: 13px; color: var(--accent-main); font-weight: bold;">参加人数上限 (2-10人):</label>
+                <input type="number" id="input-max-players" class="admin-input" value="2" min="2" max="10" style="text-align:center; font-size:20px; margin-top:5px; margin-bottom:0;">
                 <div style="font-size:11px; color:var(--text-muted); margin-top:5px;">※全員が敵のバトルロイヤル形式です</div>
             </div>
 
-            <button id="btn-create-tourney" class="btn-primary" style="display:none; background:#ff9500; color:#000;" onclick="createTourneyRoom()">🏆 大会を作成する</button>
-            <button class="btn-primary" onclick="createBattleRoom()">部屋を作成する</button>
+            <button id="btn-create-tourney" class="btn-primary" style="display:none; background:#ff9500; color:#000;" onclick="playSE('click'); createTourneyRoom()">🏆 大会を作成する (無制限)</button>
+            <button class="btn-primary" onclick="playSE('click'); createBattleRoom()">部屋を作成する</button>
             
             <hr style="border:0; border-top:1px solid var(--glass-border); width:100%; margin:10px 0;">
             
             <div>
                 <input type="text" id="join-room-id" class="admin-input" placeholder="4桁の部屋ID" maxlength="4" style="text-align:center; font-size:22px; letter-spacing:4px;">
-                <button class="btn-primary" style="width:100%; margin-top:5px; background:var(--accent-sub); color:white;" onclick="joinBattleRoom()">参加する</button>
+                <button class="btn-primary" style="width:100%; margin-top:5px; background:var(--accent-sub); color:white;" onclick="playSE('click'); joinBattleRoom()">参加する</button>
             </div>
-            <button class="btn-secondary" onclick="closeBattleMenu()">戻る</button>
+            <button class="btn-secondary" onclick="playSE('click'); closeBattleMenu()">戻る</button>
         </div>
     </div>
 
@@ -170,8 +189,8 @@
             <div id="battle-room-display" style="font-size: 32px; color: var(--accent-main); font-weight: bold; letter-spacing: 4px; margin: 10px 0;">ID: ----</div>
             <div id="battle-my-id-display" style="font-size: 14px; color: #FFD700; font-weight: bold; margin-bottom: 8px;">自分のID: 未設定</div>
             <div id="battle-players-count" style="font-size: 16px; margin-bottom: 15px;">参加人数: 1/2</div>
-            <button id="btn-start-tourney" class="btn-primary" style="display:none; margin-bottom:10px; width:100%;" onclick="startTourney()">ゲームを始める</button>
-            <button class="btn-secondary btn-danger" onclick="cancelBattle()">キャンセル</button>
+            <button id="btn-start-tourney" class="btn-primary" style="display:none; margin-bottom:10px; width:100%;" onclick="playSE('click'); startTourney()">ゲームを始める</button>
+            <button class="btn-secondary btn-danger" onclick="playSE('click'); cancelBattle()">キャンセル</button>
         </div>
     </div>
 
@@ -199,20 +218,24 @@
                 <div><span id="label-result-me">あなた</span><br><span id="battle-result-me" style="color:var(--accent-main); font-size:26px; font-weight:bold;">0</span></div>
                 <div><span id="label-result-op">相手</span><br><span id="battle-result-op" style="color:var(--accent-sub); font-size:26px; font-weight:bold;">0</span></div>
             </div>
-            <button class="btn-primary" id="btn-rematch" onclick="requestRematch()">もう一回</button>
-            <button class="btn-secondary btn-danger" onclick="quitBattle()">終わる</button>
+            <button class="btn-primary" id="btn-rematch" onclick="playSE('click'); requestRematch()">もう一回</button>
+            <button class="btn-secondary btn-danger" onclick="playSE('click'); quitBattle()">終わる</button>
             <div id="rematch-status-text" style="font-size:13px; color:var(--text-muted); margin-top:5px;"></div>
         </div>
     </div>
 
-    <!-- 大会モード ランキング画面 -->
+    <!-- 大会モード ランキング画面（演出強化） -->
     <div id="screen-tourney-result" class="screen-overlay">
-        <div class="glass-panel menu-card" style="max-height: 85vh; width: 90%; max-width: 400px; display: flex; flex-direction: column;">
-            <h1 class="menu-title" style="font-size:32px; color:#FFD700;">最終ランキング</h1>
-            <div id="tourney-ranking-list" style="overflow-y: auto; flex: 1; margin: 15px 0; text-align:left; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px;">
-                <!-- ランキングがここに挿入されます -->
+        <div class="glass-panel menu-card" style="max-height: 88vh; width: 90%; max-width: 420px; display: flex; flex-direction: column;">
+            <h1 class="menu-title" style="font-size:30px; color:#FFD700; text-shadow:0 0 20px gold;">🏆 大会結果発表 🏆</h1>
+            
+            <!-- 表彰台演出エリア -->
+            <div id="podium-area" class="podium-container"></div>
+
+            <div id="tourney-ranking-list" style="overflow-y: auto; flex: 1; margin: 10px 0; text-align:left; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px;">
+                <!-- ランキング -->
             </div>
-            <button class="btn-primary" onclick="cancelBattle()">タイトルへ戻る</button>
+            <button class="btn-primary" onclick="playSE('click'); cancelBattle()">タイトルへ戻る</button>
         </div>
     </div>
 
@@ -220,8 +243,8 @@
     <div id="screen-pause" class="screen-overlay">
         <div class="glass-panel menu-card">
             <h1 style="font-size: 32px; background: none; color: white;">一時停止中</h1>
-            <button class="btn-primary" onclick="resumeGame()">ゲームに戻る</button>
-            <button class="btn-secondary" onclick="saveAndQuit()">タイトルへ戻る</button>
+            <button class="btn-primary" onclick="playSE('click'); resumeGame()">ゲームに戻る</button>
+            <button class="btn-secondary" onclick="playSE('click'); saveAndQuit()">タイトルへ戻る</button>
         </div>
     </div>
 
@@ -230,7 +253,7 @@
         <div class="glass-panel menu-card">
             <h1 style="font-size: 36px; background: none; color: #ff4b4b;">ゲームオーバー</h1>
             <div style="font-size: 16px; margin: 10px 0;">得点: <span id="final-score" style="color:var(--accent-main); font-size:26px;">0</span></div>
-            <button class="btn-secondary" onclick="document.getElementById('screen-gameover').classList.remove('active'); document.getElementById('screen-title').classList.add('active');">タイトルへ</button>
+            <button class="btn-secondary" onclick="playSE('click'); document.getElementById('screen-gameover').classList.remove('active'); document.getElementById('screen-title').classList.add('active');">タイトルへ</button>
         </div>
     </div>
 
@@ -274,13 +297,12 @@
         <div id="side-panel" class="side-panel">
             <div class="glass-panel status-box"><div class="status-label">次</div><canvas id="next-canvas" width="60" height="60"></canvas></div>
             <div class="glass-panel status-box"><div class="status-label">得点</div><div id="score" class="status-val">0</div></div>
-            <!-- レベル表示を非表示化 -->
             <div id="level-container" class="glass-panel status-box" style="display:none;">
                 <div class="status-label">レベル</div><div id="level" class="status-val">1</div>
             </div>
 
             <!-- 一時停止ボタン -->
-            <button id="btn-pause" class="btn-icon glass-panel" onclick="pauseGame()">⏸ 一時停止</button>
+            <button id="btn-pause" class="btn-icon glass-panel" onclick="playSE('click'); pauseGame()">⏸ 一時停止</button>
         </div>
     </div>
 
@@ -289,6 +311,136 @@
 const DEFAULT_SETTINGS = {"gameId":""};
 /* --- CONFIG END --- */
 
+// =========================================================================
+// 効果音 (SE) システム (Web Audio API)
+// =========================================================================
+let seEnabled = localStorage.getItem('t-se-enabled') === 'true'; // 初期値: OFF
+let audioCtx = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function updateSEButtonUI() {
+    const btn = document.getElementById('btn-se-toggle');
+    if (btn) {
+        btn.innerText = seEnabled ? "ON" : "OFF";
+        btn.style.background = seEnabled ? "var(--accent-main)" : "rgba(255,255,255,0.05)";
+        btn.style.color = seEnabled ? "#000" : "var(--text-main)";
+    }
+}
+
+function toggleSE() {
+    seEnabled = !seEnabled;
+    localStorage.setItem('t-se-enabled', seEnabled ? 'true' : 'false');
+    updateSEButtonUI();
+    if (seEnabled) playSE('click');
+}
+
+function playSE(type) {
+    if (!seEnabled) return;
+    try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'move') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.05);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now); osc.stop(now + 0.05);
+        } else if (type === 'rotate') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(500, now + 0.07);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+            osc.start(now); osc.stop(now + 0.07);
+        } else if (type === 'drop') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.start(now); osc.stop(now + 0.08);
+        } else if (type === 'harddrop') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            osc.start(now); osc.stop(now + 0.12);
+        } else if (type === 'clear') {
+            const freqs = [523.25, 659.25, 783.99, 1046.50];
+            freqs.forEach((f, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.type = 'sine';
+                o.frequency.setValueAtTime(f, now + i * 0.05);
+                g.gain.setValueAtTime(0.2, now + i * 0.05);
+                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.15);
+                o.start(now + i * 0.05); o.stop(now + i * 0.05 + 0.15);
+            });
+        } else if (type === 'click') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+            osc.start(now); osc.stop(now + 0.03);
+        } else if (type === 'count') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'go') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'gameover') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now); osc.stop(now + 0.4);
+        } else if (type === 'fanfare') {
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((f, i) => {
+                const o = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.type = 'triangle';
+                o.frequency.setValueAtTime(f, now + i * 0.1);
+                g.gain.setValueAtTime(0.25, now + i * 0.1);
+                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+                o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.3);
+            });
+        }
+    } catch (e) { console.error("SE Error:", e); }
+}
+
+// フォーカス解除用関数（操作不能バグ対策）
+function releaseFocus() {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+    window.focus();
+}
+
 const canvas = document.getElementById('tetris'); const ctx = canvas.getContext('2d'); ctx.scale(20, 20);
 const nCanvas = document.getElementById('next-canvas'); const nCtx = nCanvas.getContext('2d'); nCtx.scale(15, 15);
 const colors = [null, '#FF2D55', '#007AFF', '#4CD964', '#AF52DE', '#FF9500', '#FFCC00', '#5856D6', '#00E5FF', '#FF3B30', '#FF00EA', '#5AC8FA', '#F0E68C'];
@@ -296,20 +448,18 @@ let isRunning = false; let gameMode = 'normal'; let arena = Array.from({length: 
 const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0, level: 1 };
 let dropCounter = 0, lastTime = 0; let highScore = localStorage.getItem('t-hi') || 0;
 
-// ユーザーIDの設定・取得
 let myUserId = localStorage.getItem('t-user-id') || ("Player_" + Math.floor(1000 + Math.random() * 9000));
 
-// サブモード変数
 let subMode = 'normal';
 let speedMultiplier = 1;
 let timeAttackLeft = 0;
 let timeAttackInterval = null;
 
-document.getElementById('hi-display').innerText = highScore; checkSaveData();
+document.getElementById('hi-display').innerText = highScore; checkSaveData(); updateSEButtonUI();
 
-// 設定画面関連処理
 function openSettingsScreen() {
     document.getElementById('setting-user-id').value = myUserId;
+    updateSEButtonUI();
     document.getElementById('screen-title').classList.remove('active');
     document.getElementById('screen-settings').classList.add('active');
 }
@@ -355,10 +505,20 @@ function collide(a, p) {
 function merge(a, p) { p.matrix.forEach((row, y) => { row.forEach((value, x) => { if (value !== 0) { if (a[y + p.pos.y]) a[y + p.pos.y][x + p.pos.x] = value; } }); }); }
 
 function arenaSweep() {
-    let rowCount = 1;
+    let rowCount = 1; let cleared = false;
     for (let y = arena.length - 1; y >= 0; --y) {
-        if (arena[y].every(v => v !== 0)) { arena.splice(y, 1); arena.unshift(new Array(12).fill(0)); ++y; player.score += rowCount * 10; rowCount *= 2; }
+        if (arena[y].every(v => v !== 0)) { 
+            arena.splice(y, 1); 
+            arena.unshift(new Array(12).fill(0)); 
+            ++y; 
+            player.score += rowCount * 10; 
+            rowCount *= 2; 
+            cleared = true;
+        }
     } 
+    if (cleared) playSE('clear');
+    else playSE('drop');
+    
     player.level = Math.floor(player.score / 100) + 1; updateUI();
 }
 
@@ -383,6 +543,7 @@ function gameOver() {
         playerReset();
         return;
     }
+    playSE('gameover');
     isRunning = false; localStorage.removeItem('t-save'); checkSaveData(); 
     if(timeAttackInterval) clearInterval(timeAttackInterval);
     if(player.score > highScore) { highScore = player.score; localStorage.setItem('t-hi', highScore); document.getElementById('hi-display').innerText = highScore; } 
@@ -390,12 +551,24 @@ function gameOver() {
     document.getElementById('screen-gameover').classList.add('active'); 
 }
 
-function playerDrop() { if (!isRunning) return; player.pos.y++; if (collide(arena, player)) { player.pos.y--; merge(arena, player); playerReset(); arenaSweep(); } dropCounter = 0; }
-function playerMove(d) { if (!isRunning) return; player.pos.x += d; if (collide(arena, player)) player.pos.x -= d; }
+function playerDrop() { 
+    if (!isRunning) return; 
+    player.pos.y++; 
+    if (collide(arena, player)) { 
+        player.pos.y--; 
+        merge(arena, player); 
+        arenaSweep(); 
+        playerReset(); 
+    } 
+    dropCounter = 0; 
+}
+
+function playerMove(d) { if (!isRunning) return; player.pos.x += d; if (!collide(arena, player)) playSE('move'); if (collide(arena, player)) player.pos.x -= d; }
 function playerRotate(d) {
     if (!isRunning) return; const m = player.matrix; for (let y = 0; y < m.length; ++y) for (let x = 0; x < y; ++x) [m[x][y], m[y][x]] = [m[y][x], m[x][y]];
     if (d > 0) m.forEach(r => r.reverse()); else m.reverse(); let o = 1; const pos = player.pos.x;
     while (collide(arena, player)) { player.pos.x += o; o = -(o + (o > 0 ? 1 : -1)); if (o > m[0].length) { playerRotate(-d); player.pos.x = pos; return; } }
+    playSE('rotate');
 }
 
 function drawBlock(c, x, y, v, isGhost = false) { if (isGhost) { c.fillStyle = colors[v] + '20'; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.strokeStyle = colors[v] + '80'; c.lineWidth = 0.05; c.strokeRect(x+0.05, y+0.05, 0.9, 0.9); } else { c.fillStyle = colors[v]; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x+0.05, y+0.05, 0.9, 0.15); } }
@@ -405,7 +578,7 @@ function drawNext() { nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height); if (p
 function update(time = 0) {
     if (!isRunning) return; const dt = time - lastTime; lastTime = time; dropCounter += dt;
     
-    let dropInterval = Math.max(80, 1000 - (player.level - 1) * 100);
+    let dropInterval = 1000;
     if (subMode === 'speed') dropInterval /= speedMultiplier;
     
     if (dropCounter > dropInterval) playerDrop();
@@ -420,7 +593,7 @@ function update(time = 0) {
 
 function checkSaveData() { document.getElementById('btn-continue').disabled = !localStorage.getItem('t-save'); }
 function pauseGame() { if (!isRunning || isBattleMode || subMode === 'timeattack') return; isRunning = false; document.getElementById('screen-pause').classList.add('active'); }
-function resumeGame() { document.getElementById('screen-pause').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); }
+function resumeGame() { releaseFocus(); document.getElementById('screen-pause').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); }
 function saveAndQuit() { localStorage.setItem('t-save', JSON.stringify({ arena, player, gameMode })); checkSaveData(); document.getElementById('screen-pause').classList.remove('active'); document.getElementById('screen-title').classList.add('active'); }
 
 function openSubModeScreen() {
@@ -463,13 +636,14 @@ function updateTimeAttackTimer() {
 }
 
 function startNewGame() { 
+    releaseFocus();
     isBattleMode = false;
     document.getElementById('btn-pause').style.display = subMode === 'timeattack' ? "none" : "block";
     updateBadgeStats('play');
     arena.forEach(r => r.fill(0)); player.score = 0; player.level = 1; player.next = null; updateUI(); isRunning = true; playerReset(); lastTime = performance.now(); update(); 
 }
 
-function loadGame() { const saved = JSON.parse(localStorage.getItem('t-save')); if (saved) { arena = saved.arena; Object.assign(player, saved.player); gameMode = saved.gameMode; setMode(gameMode); updateUI(); drawNext(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); } }
+function loadGame() { releaseFocus(); const saved = JSON.parse(localStorage.getItem('t-save')); if (saved) { arena = saved.arena; Object.assign(player, saved.player); gameMode = saved.gameMode; setMode(gameMode); updateUI(); drawNext(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); } }
 
 let timeOffset = 0; let isTimeSynced = false;
 async function syncWithJST() {
@@ -491,19 +665,28 @@ setInterval(() => {
     }
 }, 1000);
 
-// キーボード操作と隠しコマンド
+// キーボード操作・修正版（操作不能バグ対策）
 let adminCodeBuffer = "";
 let isAdminMode = localStorage.getItem('t-is-admin') === 'true';
 
 document.addEventListener('keydown', e => {
-    const isEditingInput = document.activeElement && (document.activeElement.classList.contains('admin-input') || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT');
+    // アクティブなオーバーレイパネルがあるかチェック
+    const activeOverlay = document.querySelector('.screen-overlay.active');
     
-    if (e.key.toLowerCase() === 'x' && !isEditingInput) {
+    // オーバーレイパネルが表示されていない場合、フォーカスを外してキー操作を有効化
+    if (!activeOverlay && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+        document.activeElement.blur();
+    }
+    
+    const isEditingInput = activeOverlay && document.activeElement && (document.activeElement.classList.contains('admin-input') || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT');
+    if (isEditingInput) return;
+
+    if (e.key.toLowerCase() === 'x') {
         if (isAdminMode) openAdminPanel();
         return;
     }
     
-    if (e.key.toLowerCase() === 'r' && !isEditingInput && isBattleMode) {
+    if (e.key.toLowerCase() === 'r' && isBattleMode) {
         toggleLiveRankingOverlay();
         return;
     }
@@ -518,12 +701,17 @@ document.addEventListener('keydown', e => {
         }
     } else { adminCodeBuffer = ""; }
 
-    if (isEditingInput) return;
+    // 矢印キーやスペースキーでブラウザがスクロールするのを防ぐ
+    if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
+        e.preventDefault();
+    }
 
     if (e.keyCode === 32) {
-        e.preventDefault(); if (!isRunning) return;
+        if (!isRunning) return;
         while (!collide(arena, player)) { player.pos.y++; }
-        player.pos.y--; merge(arena, player); arenaSweep(); playerReset(); dropCounter = 0; return;
+        player.pos.y--; merge(arena, player); arenaSweep(); playerReset(); dropCounter = 0; 
+        playSE('harddrop');
+        return;
     }
     if (e.keyCode === 27) {
         if (document.getElementById('screen-title').classList.contains('active') || document.getElementById('screen-gameover').classList.contains('active') || isBattleMode) return;
@@ -544,18 +732,18 @@ function changeCurrentScore() { const val = parseInt(document.getElementById('ad
 function logoutAdmin() { localStorage.removeItem('t-is-admin'); isAdminMode = false; closeAdminPanel(); document.getElementById('btn-admin-shortcut').style.display = "none"; }
 
 // =========================================================================
-// バッジ（実績）システム
+// バッジ（実績）システム（調整版：無理なバッジを削除）
 // =========================================================================
 const badgesList = [];
-[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`play${g}`, title:`見習いから達人へ ${g}`, desc:`ゲームを${g}回プレイする`, icon:"🎮", check: s => s.plays >= g }));
-[1000, 3000, 5000, 10000, 20000, 30000, 50000, 75000, 100000, 200000].forEach(g => badgesList.push({ id:`score${g}`, title:`スコアラー ${g}`, desc:`スコア ${g} を達成`, icon:"🏅", check: s => s.highScore >= g }));
-[3, 5, 10, 15, 20, 30, 40, 50, 75, 99].forEach(g => badgesList.push({ id:`level${g}`, title:`限界突破 ${g}`, desc:`レベル ${g} に到達`, icon:"🚀", check: s => s.maxLevel >= g }));
-[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`extra${g}`, title:`EXチャレンジャー ${g}`, desc:`エクストラを${g}回プレイ`, icon:"👾", check: s => s.extraPlays >= g }));
-[1, 5, 10, 20, 30, 40, 50, 75, 100, 200].forEach(g => badgesList.push({ id:`battle${g}`, title:`歴戦の勇者 ${g}`, desc:`PVPモードを${g}回プレイ`, icon:"⚔️", check: s => s.battlePlays >= g }));
+[1, 5, 10, 20, 50, 100].forEach(g => badgesList.push({ id:`play${g}`, title:`見習いから達人へ ${g}`, desc:`ゲームを${g}回プレイする`, icon:"🎮", check: s => s.plays >= g }));
+[1000, 3000, 5000, 10000, 20000, 30000, 50000].forEach(g => badgesList.push({ id:`score${g}`, title:`スコアラー ${g}`, desc:`スコア ${g} を達成`, icon:"🏅", check: s => s.highScore >= g }));
+[3, 5, 10, 15, 20, 25, 30].forEach(g => badgesList.push({ id:`level${g}`, title:`限界突破 ${g}`, desc:`レベル ${g} に到達`, icon:"🚀", check: s => s.maxLevel >= g }));
+[1, 5, 10, 20, 50].forEach(g => badgesList.push({ id:`extra${g}`, title:`EXチャレンジャー ${g}`, desc:`エクストラを${g}回プレイ`, icon:"👾", check: s => s.extraPlays >= g }));
+[1, 5, 10, 20, 50].forEach(g => badgesList.push({ id:`battle${g}`, title:`歴戦の勇者 ${g}`, desc:`PVPモードを${g}回プレイ`, icon:"⚔️", check: s => s.battlePlays >= g }));
 
-[1, 5, 10, 20].forEach(g => badgesList.push({ id:`tourney${g}`, title:`大会出場者 ${g}`, desc:`大会モードに${g}回参加する`, icon:"🎫", check: s => s.tourneyPlays >= g }));
-[1, 3, 5, 10].forEach(g => badgesList.push({ id:`tourneyWin${g}`, title:`大会の覇者 ${g}`, desc:`大会で${g}回優勝する`, icon:"🏆", check: s => s.tourneyWins >= g }));
-[1, 5, 10, 50, 100].forEach(g => badgesList.push({ id:`battleWin${g}`, title:`決闘者 ${g}`, desc:`PVP対戦で${g}勝する`, icon:"🔥", check: s => s.battleWins >= g }));
+[1, 3, 5, 10].forEach(g => badgesList.push({ id:`tourney${g}`, title:`大会出場者 ${g}`, desc:`大会モードに${g}回参加する`, icon:"🎫", check: s => s.tourneyPlays >= g }));
+[1, 3, 5].forEach(g => badgesList.push({ id:`tourneyWin${g}`, title:`大会の覇者 ${g}`, desc:`大会で${g}回優勝する`, icon:"🏆", check: s => s.tourneyWins >= g }));
+[1, 5, 10, 20].forEach(g => badgesList.push({ id:`battleWin${g}`, title:`決闘者 ${g}`, desc:`PVP対戦で${g}勝する`, icon:"🔥", check: s => s.battleWins >= g }));
 
 function getBadgeStats() {
     const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0, "tourneyPlays":0, "tourneyWins":0, "battleWins":0}');
@@ -611,7 +799,7 @@ function closeBadgeScreen() {
 }
 
 // =========================================================================
-// PVPモード / 大会モード (PeerJS) 拡張版
+// PVPモード / 大会モード (PeerJS) 拡張・修正版
 // =========================================================================
 let isBattleMode = false;
 let battlePeer = null;
@@ -628,7 +816,6 @@ let myRematchStatus = false;
 let opRematchStatus = false;
 let maxBattlePlayers = 2;
 
-// 大会用ホスト変数
 let tourneyConns = [];
 let tourneyPlayers = {}; 
 let currentLiveRankings = [];
@@ -644,10 +831,14 @@ function closeBattleMenu() {
 }
 
 function getSettingsAndInit(roomId, type) {
-    maxBattlePlayers = parseInt(document.getElementById('input-max-players').value) || 2;
-    if(maxBattlePlayers < 2) maxBattlePlayers = 2;
+    if (type === 'tourney') {
+        maxBattlePlayers = Infinity; // 大会モードは参加人数無制限！
+    } else {
+        maxBattlePlayers = parseInt(document.getElementById('input-max-players').value) || 2;
+        if(maxBattlePlayers < 2) maxBattlePlayers = 2;
+    }
     
-    battleType = maxBattlePlayers > 2 ? 'tourney' : type;
+    battleType = type;
     battleRole = 'host';
     
     document.getElementById('btn-start-tourney').style.display = battleType === 'tourney' ? 'block' : 'none';
@@ -675,7 +866,8 @@ function initBattlePeer(peerId, roomId) {
     document.getElementById('battle-my-id-display').innerText = "自分のID: " + myUserId;
     
     if(battleRole === 'host') {
-        document.getElementById('battle-players-count').innerText = `参加人数: 1/${maxBattlePlayers}`;
+        const maxStr = maxBattlePlayers === Infinity ? "無制限" : maxBattlePlayers;
+        document.getElementById('battle-players-count').innerText = `参加人数: 1 / ${maxStr}`;
     } else {
         document.getElementById('battle-players-count').innerText = "接続中...";
     }
@@ -688,9 +880,16 @@ function initBattlePeer(peerId, roomId) {
         }
     });
 
+    // 通信エラーハンドリング追加
+    battlePeer.on('error', err => {
+        console.error("PeerJS Error:", err);
+        alert("通信エラーが発生しました: " + err.type);
+        cancelBattle();
+    });
+
     if (battleRole === 'host') {
         battlePeer.on('connection', conn => {
-            if (tourneyConns.length + 1 >= maxBattlePlayers) {
+            if (battleType !== 'tourney' && tourneyConns.length + 1 >= maxBattlePlayers) {
                 conn.on('open', () => { conn.send({ type: 'room_full' }); setTimeout(()=>conn.close(), 500); });
                 return;
             }
@@ -701,17 +900,17 @@ function initBattlePeer(peerId, roomId) {
                 setupBattleConn(conn);
                 
                 conn.on('open', () => {
-                    conn.send({ type: 'tourney_init', max: maxBattlePlayers });
-                    conn.send({ type: 'user_info_req' }); // ID情報を要求
+                    conn.send({ type: 'tourney_init', max: '無制限' });
+                    conn.send({ type: 'user_info_req' });
                     conn.send({ type: 'user_info', name: myUserId });
-                    broadcastTourney({ type: 'player_count', count: tourneyConns.length + 1, max: maxBattlePlayers });
-                    document.getElementById('battle-players-count').innerText = `参加人数: ${tourneyConns.length + 1}/${maxBattlePlayers}`;
+                    broadcastTourney({ type: 'player_count', count: tourneyConns.length + 1, max: '無制限' });
+                    document.getElementById('battle-players-count').innerText = `参加人数: ${tourneyConns.length + 1}人 (無制限)`;
                 });
             } else {
                 if(battleConn) { conn.close(); return; } 
                 battleConn = conn;
                 setupBattleConn(conn);
-                document.getElementById('battle-players-count').innerText = "参加人数: 2/2";
+                document.getElementById('battle-players-count').innerText = `参加人数: 2 / ${maxBattlePlayers}`;
                 
                 conn.on('open', () => {
                     conn.send({ type: 'user_info', name: myUserId });
@@ -741,9 +940,10 @@ function setupBattleConn(conn) {
         } else if (data.type === 'user_info_req') {
             conn.send({ type: 'user_info', name: myUserId });
         } else if (data.type === 'tourney_init') {
-            battleType = 'tourney'; maxBattlePlayers = data.max;
+            battleType = 'tourney'; maxBattlePlayers = Infinity;
         } else if (data.type === 'player_count') {
-            document.getElementById('battle-players-count').innerText = `参加人数: ${data.count}/${data.max}`;
+            const maxStr = data.max === '無制限' ? '人 (無制限)' : `/${data.max}`;
+            document.getElementById('battle-players-count').innerText = `参加人数: ${data.count}${maxStr}`;
         } else if (data.type === 'start_rules') {
             document.getElementById('screen-battle-wait').classList.remove('active');
             document.getElementById('screen-battle-rules').classList.add('active');
@@ -773,8 +973,8 @@ function setupBattleConn(conn) {
         if (battleRole === 'host' && battleType === 'tourney') {
             tourneyConns = tourneyConns.filter(c => c !== conn);
             delete tourneyPlayers[conn.peer];
-            broadcastTourney({ type: 'player_count', count: tourneyConns.length + 1, max: maxBattlePlayers });
-            document.getElementById('battle-players-count').innerText = `参加人数: ${tourneyConns.length + 1}/${maxBattlePlayers}`;
+            broadcastTourney({ type: 'player_count', count: tourneyConns.length + 1, max: '無制限' });
+            document.getElementById('battle-players-count').innerText = `参加人数: ${tourneyConns.length + 1}人 (無制限)`;
         } else {
             cancelBattle();
         }
@@ -824,19 +1024,23 @@ function startRuleCountdown() {
     let timeLeft = 10;
     const countdownEl = document.getElementById('rule-countdown');
     if(countdownEl) countdownEl.innerText = timeLeft;
+    playSE('count');
     
     if(ruleCountdownInterval) clearInterval(ruleCountdownInterval);
     ruleCountdownInterval = setInterval(() => {
         timeLeft--;
         if(countdownEl) countdownEl.innerText = timeLeft;
+        if (timeLeft > 0) playSE('count');
         if (timeLeft <= 0) {
             clearInterval(ruleCountdownInterval);
+            playSE('go');
             startBattleGame();
         }
     }, 1000);
 }
 
 function startBattleGame() {
+    releaseFocus();
     document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     isBattleMode = true;
     battleTimeLeft = 300; 
@@ -905,10 +1109,13 @@ function endBattleGame() {
         if (player.score > battleOpponentScore) {
             titleEl.innerText = "VICTORY! (勝利)";
             titleEl.style.color = "#00e5ff";
+            playSE('fanfare');
+            startConfetti();
             updateBadgeStats('battleWin', 1);
         } else if (player.score < battleOpponentScore) {
             titleEl.innerText = "DEFEAT... (敗北)";
             titleEl.style.color = "#ff4b4b";
+            playSE('gameover');
         } else {
             titleEl.innerText = "DRAW (引き分け)";
             titleEl.style.color = "#ffffff";
@@ -919,19 +1126,45 @@ function endBattleGame() {
     }
 }
 
+// 大会結果発表（演出強化）
 function showTourneyRankings(rankings) {
+    playSE('fanfare');
+    startConfetti();
     document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     document.getElementById('screen-tourney-result').classList.add('active');
     
+    // 表彰台の描画
+    const pArea = document.getElementById('podium-area');
+    pArea.innerHTML = "";
+    
+    const p1 = rankings.find(r => r.rank === 1);
+    const p2 = rankings.find(r => r.rank === 2);
+    const p3 = rankings.find(r => r.rank === 3);
+
+    let podiumHTML = "";
+    if (p2) {
+        podiumHTML += `<div class="podium-box podium-2"><div>🥈 2位</div><div class="podium-name">${p2.name}</div><div class="podium-score">${p2.score}</div></div>`;
+    }
+    if (p1) {
+        podiumHTML += `<div class="podium-box podium-1"><div>👑 1位</div><div class="podium-name">${p1.name}</div><div class="podium-score">${p1.score}</div></div>`;
+    }
+    if (p3) {
+        podiumHTML += `<div class="podium-box podium-3"><div>🥉 3位</div><div class="podium-name">${p3.name}</div><div class="podium-score">${p3.score}</div></div>`;
+    }
+    pArea.innerHTML = podiumHTML;
+
+    // 4位以降を含む全リストの描画
     let listHTML = "";
     rankings.forEach(r => {
         let isMe = r.id === myPeerId;
         let color = isMe ? "var(--accent-main)" : "var(--text-main)";
         let displayName = isMe ? `${r.name || myUserId} (自分)` : (r.name || `プレイヤー (${r.id.substring(0, 4)})`);
+        let rankBadge = r.rank === 1 ? "🥇" : (r.rank === 2 ? "🥈" : (r.rank === 3 ? "🥉" : `${r.rank}位`));
+
         listHTML += `
-            <div style="display:flex; justify-content:space-between; color:${color}; font-size:16px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
-                <span>${r.rank}位: ${displayName}</span>
-                <span style="font-weight:bold;">${r.score}</span>
+            <div style="display:flex; justify-content:space-between; color:${color}; font-size:15px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
+                <span>${rankBadge} : ${displayName}</span>
+                <span style="font-weight:bold;">${r.score} pts</span>
             </div>`;
         
         if (isMe && r.rank === 1) {
@@ -939,6 +1172,50 @@ function showTourneyRankings(rankings) {
         }
     });
     document.getElementById('tourney-ranking-list').innerHTML = listHTML;
+}
+
+// 紙吹雪 (Confetti) アニメーション演出
+function startConfetti() {
+    const cCanvas = document.getElementById('confetti-canvas');
+    const cCtx = cCanvas.getContext('2d');
+    cCanvas.width = window.innerWidth;
+    cCanvas.height = window.innerHeight;
+
+    const particles = [];
+    const colors = ['#00e5ff', '#ff00ea', '#ffd700', '#ffffff', '#ff9500'];
+
+    for (let i = 0; i < 120; i++) {
+        particles.push({
+            x: Math.random() * cCanvas.width,
+            y: Math.random() * cCanvas.height - cCanvas.height,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 3,
+            vy: Math.random() * 3 + 2,
+            rot: Math.random() * 360,
+            vRot: (Math.random() - 0.5) * 10
+        });
+    }
+
+    let frames = 0;
+    function animateConfetti() {
+        cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.rot += p.vRot;
+            cCtx.save();
+            cCtx.translate(p.x, p.y);
+            cCtx.rotate((p.rot * Math.PI) / 180);
+            cCtx.fillStyle = p.color;
+            cCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            cCtx.restore();
+        });
+        frames++;
+        if (frames < 200) requestAnimationFrame(animateConfetti);
+        else cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+    }
+    animateConfetti();
 }
 
 function requestRematch() {
