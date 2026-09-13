@@ -104,10 +104,29 @@
             <button class="btn-primary" onclick="playSE('click'); openSubModeScreen()">はじめから</button>
             <button id="btn-continue" class="btn-primary" style="background:var(--accent-sub); color:#fff;" onclick="playSE('click'); loadGame()" disabled>つづきから</button>
             
+            <!-- 追加されたニュースボタン -->
+            <button class="btn-primary" style="background:#ff3b30; color:#fff; box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);" onclick="playSE('click'); openNewsScreen()">📰 ニュース</button>
+            
             <button class="btn-primary" style="background:#00e5ff; color:#000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);" onclick="playSE('click'); openBattleMenu()">⚔️ PVPモード</button>
             <button class="btn-primary" style="background:#FFD700; color:#000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);" onclick="playSE('click'); openBadgeScreen()">🏅 バッジ</button>
             <button class="btn-primary" style="background:#8a2be2; color:#fff; box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);" onclick="playSE('click'); openSettingsScreen()">⚙️ 設定</button>
             <button id="btn-admin-shortcut" class="btn-secondary" style="display:none; border-color:var(--accent-sub); color:var(--accent-sub);" onclick="playSE('click'); openAdminPanel()">🛠️ 管理者パネル</button>
+        </div>
+    </div>
+
+    <!-- ニュース画面 -->
+    <div id="screen-news" class="screen-overlay">
+        <div class="glass-panel menu-card">
+            <h1 class="menu-title" style="font-size:32px; color:var(--accent-main);">ニュース</h1>
+            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; text-align:center;">
+                <p style="font-size: 16px; font-weight: bold; color: #ff00ea; margin-top: 0; line-height: 1.4;">テトリスのブロックライバル登場!</p>
+                <p style="font-size: 15px; font-weight: bold; color: white;">9月15日登場</p>
+                <div style="margin-top: 20px; font-size: 13px; color: var(--text-muted);">
+                    登場まであと...<br>
+                    <div id="news-countdown" style="font-size: 24px; color: var(--accent-main); font-weight: 900; letter-spacing: 2px; margin-top: 5px;">計算中...</div>
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="playSE('click'); closeNewsScreen()">戻る</button>
         </div>
     </div>
 
@@ -456,6 +475,55 @@ let timeAttackLeft = 0;
 let timeAttackInterval = null;
 
 document.getElementById('hi-display').innerText = highScore; checkSaveData(); updateSEButtonUI();
+
+// =========================================================================
+// ニュース画面 (News Screen)
+// =========================================================================
+let newsCountdownInterval = null;
+
+function openNewsScreen() {
+    document.getElementById('screen-title').classList.remove('active');
+    document.getElementById('screen-news').classList.add('active');
+    startNewsCountdown();
+}
+
+function closeNewsScreen() {
+    document.getElementById('screen-news').classList.remove('active');
+    document.getElementById('screen-title').classList.add('active');
+    if (newsCountdownInterval) clearInterval(newsCountdownInterval);
+}
+
+function startNewsCountdown() {
+    const targetDate = new Date('2026-09-15T00:00:00+09:00').getTime();
+    const el = document.getElementById('news-countdown');
+    
+    function updateCountdown() {
+        const nowUtc = Date.now() + timeOffset; // timeOffsetにより正確なUTC時間を取得
+        const diff = targetDate - nowUtc;
+        
+        if (diff <= 0) {
+            el.innerText = "登場しました!";
+            if (newsCountdownInterval) clearInterval(newsCountdownInterval);
+            return;
+        }
+        
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        let text = "";
+        if (d > 0) text += d + "日 ";
+        text += String(h).padStart(2, '0') + "時間 ";
+        text += String(m).padStart(2, '0') + "分 ";
+        text += String(s).padStart(2, '0') + "秒";
+        el.innerText = text;
+    }
+    
+    updateCountdown();
+    if (newsCountdownInterval) clearInterval(newsCountdownInterval);
+    newsCountdownInterval = setInterval(updateCountdown, 1000);
+}
 
 function openSettingsScreen() {
     document.getElementById('setting-user-id').value = myUserId;
