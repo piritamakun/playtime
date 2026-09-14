@@ -3,19 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>テトリス 完全版 - PVP対応</title>
+    <title>テトリス 完全版 - PVP対応 & ブロックブラスト</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
         :root { --bg-base: #050508; --bg-grad: linear-gradient(135deg, #0f111a 0%, #050508 100%); --glass-bg: rgba(20, 22, 35, 0.6); --glass-border: rgba(255, 255, 255, 0.08); --accent-main: #00e5ff; --accent-sub: #ff00ea; --text-main: #ffffff; --text-muted: #8c92a6; }
-        body { background: var(--bg-grad); background-attachment: fixed; color: var(--text-main); text-align: center; font-family: 'Noto Sans JP', sans-serif; margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; }
+        body { background: var(--bg-grad); background-attachment: fixed; color: var(--text-main); text-align: center; font-family: 'Noto Sans JP', sans-serif; margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; }
         .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
         h1 { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; letter-spacing: 2px; margin: 0; background: linear-gradient(to right, var(--accent-main), var(--accent-sub)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         /* 画面レイアウト */
-        #game-layout { display: flex; gap: 15px; margin-top: calc(35px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; }
+        #game-layout, #bb-layout { display: flex; gap: 15px; margin-top: calc(35px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; }
         .canvas-container { position: relative; border-radius: 12px; padding: 4px; background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
         #tetris { background: #000; border-radius: 8px; height: 100%; width: auto; max-height: 65vh; image-rendering: pixelated; display: block; }
+        #bb-board { background: #0a0c14; border-radius: 8px; height: auto; width: 100%; max-width: 320px; display: block; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
         
         /* サイドパネル（左右） */
         .side-panel { display: flex; flex-direction: column; gap: 12px; min-width: 90px; }
@@ -25,10 +26,9 @@
         #next-canvas { background: transparent; width: 60px; height: 60px; image-rendering: pixelated; }
         
         .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); border-radius: 12px; padding: 12px 0; font-size: 14px; cursor: pointer; transition: all 0.2s; font-weight: bold; margin-top: auto; }
-        .controls { display: none !important; }
         
         @media (max-width: 800px) {
-            #game-layout { flex-wrap: wrap; flex-direction: row; justify-content: center; align-items: flex-start; margin-top: calc(25px + env(safe-area-inset-top)); }
+            #game-layout, #bb-layout { flex-wrap: wrap; flex-direction: row; justify-content: center; align-items: flex-start; margin-top: calc(25px + env(safe-area-inset-top)); }
             .side-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 100%; min-width: auto; gap: 8px; }
             .side-panel .status-box { flex: 1; min-width: 80px; padding: 8px; }
             #tetris { max-height: 55vh; max-width: 100%; height: auto; }
@@ -61,11 +61,10 @@
         .badge-item.unlocked .badge-title { color: #FFD700; }
         .badge-item.unlocked .badge-desc { color: var(--text-main); }
 
-        /* リアルタイムランキング */
+        /* 大会結果・ランキング系 */
         #live-ranking-overlay { position: absolute; top: 15px; right: 15px; background: rgba(10, 15, 25, 0.9); backdrop-filter: blur(10px); border: 1px solid var(--accent-main); border-radius: 12px; padding: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.8); z-index: 1000; display: none; min-width: 170px; text-align: left; }
         .live-rank-item { display: flex; justify-content: space-between; gap: 15px; font-size: 14px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         
-        /* 管理者サイドバー */
         #admin-sidebar { position: absolute; top: 20px; left: 20px; width: 300px; max-width: 92vw; background: rgba(10, 15, 25, 0.95); backdrop-filter: blur(25px); border: 2px solid var(--accent-sub); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000; display: none; flex-direction: column; }
         #admin-sidebar.open { display: flex; }
         .admin-header { padding: 12px 15px; font-size: 16px; font-weight: 900; color: var(--accent-sub); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; cursor: move; }
@@ -89,6 +88,16 @@
     <!-- 紙吹雪キャンバス -->
     <canvas id="confetti-canvas"></canvas>
 
+    <!-- BAN警告画面 -->
+    <div id="screen-banned" class="screen-overlay" style="z-index: 99999;">
+        <div class="glass-panel menu-card" style="border-color:#ff4b4b;">
+            <h1 style="font-size:32px; color:#ff4b4b;">アカウント停止</h1>
+            <p style="font-size:14px; color:var(--text-main); margin:15px 0; line-height:1.6;">
+                このアカウント (ID: <span id="banned-my-id" style="color:var(--accent-main); font-weight:bold;"></span>) は管理者によってBAN（利用停止）されています。
+            </p>
+        </div>
+    </div>
+
     <!-- タイトル画面 -->
     <div id="screen-title" class="screen-overlay active">
         <div class="glass-panel menu-card">
@@ -104,9 +113,7 @@
             <button class="btn-primary" onclick="playSE('click'); openSubModeScreen()">はじめから</button>
             <button id="btn-continue" class="btn-primary" style="background:var(--accent-sub); color:#fff;" onclick="playSE('click'); loadGame()" disabled>つづきから</button>
             
-            <!-- 追加されたニュースボタン -->
             <button class="btn-primary" style="background:#ff3b30; color:#fff; box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);" onclick="playSE('click'); openNewsScreen()">📰 ニュース</button>
-            
             <button class="btn-primary" style="background:#00e5ff; color:#000; box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);" onclick="playSE('click'); openBattleMenu()">⚔️ PVPモード</button>
             <button class="btn-primary" style="background:#FFD700; color:#000; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);" onclick="playSE('click'); openBadgeScreen()">🏅 バッジ</button>
             <button class="btn-primary" style="background:#8a2be2; color:#fff; box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);" onclick="playSE('click'); openSettingsScreen()">⚙️ 設定</button>
@@ -119,10 +126,10 @@
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:32px; color:var(--accent-main);">ニュース</h1>
             <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; text-align:center;">
-                <p style="font-size: 16px; font-weight: bold; color: #ff00ea; margin-top: 0; line-height: 1.4;">テトリスのブロックライバル登場!</p>
-                <p style="font-size: 15px; font-weight: bold; color: white;">9月15日登場</p>
+                <p id="news-title-text" style="font-size: 16px; font-weight: bold; color: #ff00ea; margin-top: 0; line-height: 1.4;">テトリスのブロックライバル登場!</p>
+                <p id="news-date-text" style="font-size: 15px; font-weight: bold; color: white;">9月15日 8:30登場</p>
                 <div style="margin-top: 20px; font-size: 13px; color: var(--text-muted);">
-                    登場まであと...<br>
+                    <span id="news-sub-text">登場まであと...</span><br>
                     <div id="news-countdown" style="font-size: 24px; color: var(--accent-main); font-weight: 900; letter-spacing: 2px; margin-top: 5px;">計算中...</div>
                 </div>
             </div>
@@ -140,13 +147,22 @@
                 <div style="font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.4;">※大会やPVPモードの待機画面・ランキングに表示されます</div>
             </div>
 
-            <!-- 効果音 ON/OFF 切り替え -->
             <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:15px; font-weight:bold;">効果音 (SE)</span>
                 <button id="btn-se-toggle" class="btn-secondary" style="padding:8px 16px; min-width:80px;" onclick="toggleSE()">OFF</button>
             </div>
 
-            <button class="btn-primary" onclick="playSE('click'); saveSettings()">保存して戻る</button>
+            <button class="btn-primary btn-save-settings" onclick="playSE('click'); saveSettings()">保存して戻る</button>
+        </div>
+    </div>
+
+    <!-- プレイヤー一覧画面 -->
+    <div id="screen-player-list" class="screen-overlay" style="z-index: 10001;">
+        <div class="glass-panel menu-card" style="max-width: 450px; width: 90%; max-height: 80vh; display:flex; flex-direction:column;">
+            <h1 class="menu-title" style="font-size:26px; color:var(--accent-main);">👥 プレイヤー一覧</h1>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">P2Pで集約された全プレイヤー (オンライン/オフライン)</div>
+            <div id="player-list-container" style="overflow-y:auto; flex:1; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; text-align:left;"></div>
+            <button class="btn-secondary" style="margin-top:10px;" onclick="closePlayerListScreen()">閉じる</button>
         </div>
     </div>
 
@@ -181,7 +197,6 @@
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:32px;">PVPモード</h1>
             
-            <!-- 1v1用 人数設定 -->
             <div id="container-max-players" style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; margin-bottom:10px;">
                 <label style="font-size: 13px; color: var(--accent-main); font-weight: bold;">参加人数上限 (2-10人):</label>
                 <input type="number" id="input-max-players" class="admin-input" value="2" min="2" max="10" style="text-align:center; font-size:20px; margin-top:5px; margin-bottom:0;">
@@ -243,17 +258,12 @@
         </div>
     </div>
 
-    <!-- 大会モード ランキング画面（演出強化） -->
+    <!-- 大会モード ランキング画面 -->
     <div id="screen-tourney-result" class="screen-overlay">
         <div class="glass-panel menu-card" style="max-height: 88vh; width: 90%; max-width: 420px; display: flex; flex-direction: column;">
             <h1 class="menu-title" style="font-size:30px; color:#FFD700; text-shadow:0 0 20px gold;">🏆 大会結果発表 🏆</h1>
-            
-            <!-- 表彰台演出エリア -->
             <div id="podium-area" class="podium-container"></div>
-
-            <div id="tourney-ranking-list" style="overflow-y: auto; flex: 1; margin: 10px 0; text-align:left; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px;">
-                <!-- ランキング -->
-            </div>
+            <div id="tourney-ranking-list" style="overflow-y: auto; flex: 1; margin: 10px 0; text-align:left; background:rgba(0,0,0,0.5); padding:10px; border-radius:10px;"></div>
             <button class="btn-primary" onclick="playSE('click'); cancelBattle()">タイトルへ戻る</button>
         </div>
     </div>
@@ -276,7 +286,7 @@
         </div>
     </div>
 
-    <!-- リアルタイムランキング表示 (Rキーでトグル) -->
+    <!-- リアルタイムランキング表示 -->
     <div id="live-ranking-overlay">
         <div style="font-weight:900; color:var(--accent-main); margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:5px;">現在ランキング</div>
         <div id="live-ranking-content"></div>
@@ -286,6 +296,9 @@
     <div id="admin-sidebar">
         <div class="admin-header" id="admin-drag-handle">≡ 管理者パネル <button style="background:none; border:none; color:white; font-size:20px; cursor:pointer;" onclick="closeAdminPanel()">×</button></div>
         <div class="admin-content">
+            <button class="btn-primary" style="width:100%; margin-bottom:8px; background:#ff9500; color:#000; font-size:13px; padding:8px;" onclick="unlockBlockBlastAdmin()">💣 ブロックブラスト解禁</button>
+            <button class="btn-primary" style="width:100%; margin-bottom:12px; background:var(--accent-main); color:#000; font-size:13px; padding:8px;" onclick="openPlayerListScreen()">👥 プレイヤー一覧</button>
+
             <label style="font-size:12px; color:var(--accent-main); font-weight:bold;">スコア強制変更:</label>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
                 <input type="number" id="admin-set-score" class="admin-input" placeholder="数値">
@@ -297,7 +310,6 @@
 
     <!-- ゲームレイアウト -->
     <div id="game-layout">
-        <!-- 画面左側のスコア＆時間表示パネル -->
         <div id="left-battle-panel" class="side-panel" style="display:none;">
             <div id="battle-score-box" class="glass-panel status-box" style="border-color: rgba(255, 0, 234, 0.4);">
                 <div class="status-label" style="color: var(--accent-sub);">相手得点</div>
@@ -309,10 +321,8 @@
             </div>
         </div>
 
-        <!-- 自分のキャンバス -->
         <div class="canvas-container"><canvas id="tetris" width="240" height="400"></canvas></div>
 
-        <!-- 右側パネル -->
         <div id="side-panel" class="side-panel">
             <div class="glass-panel status-box"><div class="status-label">次</div><canvas id="next-canvas" width="60" height="60"></canvas></div>
             <div class="glass-panel status-box"><div class="status-label">得点</div><div id="score" class="status-val">0</div></div>
@@ -320,7 +330,6 @@
                 <div class="status-label">レベル</div><div id="level" class="status-val">1</div>
             </div>
 
-            <!-- 一時停止ボタン -->
             <button id="btn-pause" class="btn-icon glass-panel" onclick="playSE('click'); pauseGame()">⏸ 一時停止</button>
         </div>
     </div>
@@ -330,19 +339,12 @@
 const DEFAULT_SETTINGS = {"gameId":""};
 /* --- CONFIG END --- */
 
-// =========================================================================
-// 効果音 (SE) システム (Web Audio API)
-// =========================================================================
-let seEnabled = localStorage.getItem('t-se-enabled') === 'true'; // 初期値: OFF
+let seEnabled = localStorage.getItem('t-se-enabled') === 'true';
 let audioCtx = null;
 
 function initAudio() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
+    if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 }
 
 function updateSEButtonUI() {
@@ -368,95 +370,58 @@ function playSE(type) {
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        osc.connect(gain); gain.connect(audioCtx.destination);
 
         if (type === 'move') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(220, now);
-            osc.frequency.exponentialRampToValueAtTime(110, now + 0.05);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(110, now + 0.05);
+            gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
             osc.start(now); osc.stop(now + 0.05);
         } else if (type === 'rotate') {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.exponentialRampToValueAtTime(500, now + 0.07);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(500, now + 0.07);
+            gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
             osc.start(now); osc.stop(now + 0.07);
         } else if (type === 'drop') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(150, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
             osc.start(now); osc.stop(now + 0.08);
         } else if (type === 'harddrop') {
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(200, now);
-            osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            osc.type = 'square'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+            gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
             osc.start(now); osc.stop(now + 0.12);
         } else if (type === 'clear') {
             const freqs = [523.25, 659.25, 783.99, 1046.50];
             freqs.forEach((f, i) => {
-                const o = audioCtx.createOscillator();
-                const g = audioCtx.createGain();
-                o.connect(g); g.connect(audioCtx.destination);
-                o.type = 'sine';
-                o.frequency.setValueAtTime(f, now + i * 0.05);
-                g.gain.setValueAtTime(0.2, now + i * 0.05);
-                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.15);
-                o.start(now + i * 0.05); o.stop(now + i * 0.05 + 0.15);
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination); o.type = 'sine';
+                o.frequency.setValueAtTime(f, now + i * 0.05); g.gain.setValueAtTime(0.2, now + i * 0.05);
+                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.05 + 0.15); o.start(now + i * 0.05); o.stop(now + i * 0.05 + 0.15);
             });
         } else if (type === 'click') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(800, now);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
-            osc.start(now); osc.stop(now + 0.03);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03); osc.start(now); osc.stop(now + 0.03);
         } else if (type === 'count') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(440, now);
-            gain.gain.setValueAtTime(0.15, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            osc.start(now); osc.stop(now + 0.1);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(440, now); gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1); osc.start(now); osc.stop(now + 0.1);
         } else if (type === 'go') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, now);
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-            osc.start(now); osc.stop(now + 0.3);
+            osc.type = 'sine'; osc.frequency.setValueAtTime(880, now); gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3); osc.start(now); osc.stop(now + 0.3);
         } else if (type === 'gameover') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, now);
-            osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
-            gain.gain.setValueAtTime(0.25, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-            osc.start(now); osc.stop(now + 0.4);
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.4);
+            gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4); osc.start(now); osc.stop(now + 0.4);
         } else if (type === 'fanfare') {
             const notes = [523.25, 659.25, 783.99, 1046.50];
             notes.forEach((f, i) => {
-                const o = audioCtx.createOscillator();
-                const g = audioCtx.createGain();
-                o.connect(g); g.connect(audioCtx.destination);
-                o.type = 'triangle';
-                o.frequency.setValueAtTime(f, now + i * 0.1);
-                g.gain.setValueAtTime(0.25, now + i * 0.1);
-                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
-                o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.3);
+                const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination); o.type = 'triangle';
+                o.frequency.setValueAtTime(f, now + i * 0.1); g.gain.setValueAtTime(0.25, now + i * 0.1);
+                g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3); o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.3);
             });
         }
     } catch (e) { console.error("SE Error:", e); }
 }
 
-// フォーカス解除用関数（操作不能バグ対策）
 function releaseFocus() {
-    if (document.activeElement && typeof document.activeElement.blur === 'function') {
-        document.activeElement.blur();
-    }
+    if (document.activeElement && typeof document.activeElement.blur === 'function') { document.activeElement.blur(); }
     window.focus();
 }
 
@@ -474,11 +439,85 @@ let speedMultiplier = 1;
 let timeAttackLeft = 0;
 let timeAttackInterval = null;
 
+// --- プレイヤー一覧 ＆ BAN管理システム ---
+let knownPlayers = JSON.parse(localStorage.getItem('t-known-players') || '{}');
+let bannedPlayers = JSON.parse(localStorage.getItem('t-banned-players') || '[]');
+
+function registerPlayer(id, peerId = "", isOnline = false) {
+    if (!id) return;
+    knownPlayers[id] = { id: id, peerId: peerId || (knownPlayers[id] ? knownPlayers[id].peerId : ""), lastSeen: Date.now(), isOnline: isOnline };
+    localStorage.setItem('t-known-players', JSON.stringify(knownPlayers));
+}
+
+function checkSelfBan() {
+    bannedPlayers = JSON.parse(localStorage.getItem('t-banned-players') || '[]');
+    if (bannedPlayers.includes(myUserId)) {
+        document.getElementById('banned-my-id').innerText = myUserId;
+        document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
+        document.getElementById('screen-banned').classList.add('active');
+        isRunning = false;
+        return true;
+    }
+    return false;
+}
+
+function banPlayer(id) {
+    if (!bannedPlayers.includes(id)) {
+        bannedPlayers.push(id);
+        localStorage.setItem('t-banned-players', JSON.stringify(bannedPlayers));
+    }
+    if (typeof broadcastTourney === 'function') { broadcastTourney({ type: 'ban_user', targetId: id }); }
+    if (battleConn && battleConn.open) { battleConn.send({ type: 'ban_user', targetId: id }); }
+    renderPlayerList();
+    if (id === myUserId) checkSelfBan();
+}
+
+function renderPlayerList() {
+    const container = document.getElementById('player-list-container');
+    if (!container) return;
+    container.innerHTML = "";
+    registerPlayer(myUserId, myPeerId, true);
+    
+    const keys = Object.keys(knownPlayers);
+    if (keys.length === 0) {
+        container.innerHTML = "<div style='text-align:center; color:#8c92a6;'>プレイヤーデータがありません</div>";
+        return;
+    }
+
+    keys.forEach(id => {
+        const p = knownPlayers[id];
+        const isBanned = bannedPlayers.includes(id);
+        const isMe = id === myUserId;
+        const statusText = isBanned ? "<span style='color:#ff4b4b; font-weight:bold;'>[BAN済]</span>" : (p.isOnline ? "<span style='color:#4cd964;'>[オンライン]</span>" : "<span style='color:#8c92a6;'>[オフライン]</span>");
+        
+        const item = document.createElement('div');
+        item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid rgba(255,255,255,0.1); font-size:14px;";
+        item.innerHTML = `
+            <div>
+                <div style="font-weight:bold; color:${isMe ? 'var(--accent-main)' : 'white'};">${p.id} ${isMe ? '(自分)' : ''} ${statusText}</div>
+                <div style="font-size:10px; color:#8c92a6;">PeerID: ${p.peerId || 'N/A'}</div>
+            </div>
+            <div>
+                ${!isMe ? `<button onclick="banPlayer('${p.id}')" class="btn-secondary btn-danger" style="padding:4px 10px; font-size:12px;" ${isBanned ? 'disabled style="opacity:0.5;"' : ''}>BAN</button>` : ''}
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function openPlayerListScreen() {
+    renderPlayerList();
+    document.getElementById('screen-player-list').classList.add('active');
+}
+function closePlayerListScreen() {
+    document.getElementById('screen-player-list').classList.remove('active');
+}
+
+registerPlayer(myUserId, "", true);
+checkSelfBan();
+
 document.getElementById('hi-display').innerText = highScore; checkSaveData(); updateSEButtonUI();
 
-// =========================================================================
-// ニュース画面 (News Screen)
-// =========================================================================
 let newsCountdownInterval = null;
 
 function openNewsScreen() {
@@ -494,15 +533,33 @@ function closeNewsScreen() {
 }
 
 function startNewsCountdown() {
-    const targetDate = new Date('2026-09-15T00:00:00+09:00').getTime();
+    const target1 = new Date('2026-09-15T08:30:00+09:00').getTime();
+    const target2 = new Date('2026-09-24T08:30:00+09:00').getTime();
     const el = document.getElementById('news-countdown');
+    const titleEl = document.getElementById('news-title-text');
+    const dateEl = document.getElementById('news-date-text');
+    const subEl = document.getElementById('news-sub-text');
     
     function updateCountdown() {
-        const nowUtc = Date.now() + timeOffset; // timeOffsetにより正確なUTC時間を取得
-        const diff = targetDate - nowUtc;
+        const nowUtc = Date.now() + timeOffset;
+        let diff = target1 - nowUtc;
+        let currentPhase = 1;
         
         if (diff <= 0) {
-            el.innerText = "登場しました!";
+            diff = target2 - nowUtc;
+            currentPhase = 2;
+            titleEl.innerText = "9月24日バースデーイベントを開催!";
+            dateEl.innerText = "9月24日 8:30開始";
+            subEl.innerText = "イベント開始まであと...";
+            
+            if(localStorage.getItem('bb-admin-unlocked') !== 'true') {
+                enableBlockBlastMode();
+                localStorage.setItem('bb-admin-unlocked', 'true');
+            }
+        }
+        
+        if (currentPhase === 2 && diff <= 0) {
+            el.innerText = "イベント開催中!";
             if (newsCountdownInterval) clearInterval(newsCountdownInterval);
             return;
         }
@@ -537,6 +594,7 @@ function saveSettings() {
     if (val) {
         myUserId = val;
         localStorage.setItem('t-user-id', myUserId);
+        registerPlayer(myUserId, myPeerId, true);
     }
     document.getElementById('screen-settings').classList.remove('active');
     document.getElementById('screen-title').classList.add('active');
@@ -553,6 +611,7 @@ function createPiece(t) {
 }
 
 function playerReset() {
+    if (checkSelfBan()) return;
     let pieces = (gameMode === 'extra') ? 'ILJOTSZP5DBX' : 'ILJOTSZ';
     if (!player.next) player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
     player.matrix = player.next; player.next = createPiece(pieces[pieces.length * Math.random() | 0]);
@@ -645,10 +704,8 @@ function drawNext() { nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height); if (p
 
 function update(time = 0) {
     if (!isRunning) return; const dt = time - lastTime; lastTime = time; dropCounter += dt;
-    
     let dropInterval = 1000;
     if (subMode === 'speed') dropInterval /= speedMultiplier;
-    
     if (dropCounter > dropInterval) playerDrop();
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -660,11 +717,16 @@ function update(time = 0) {
 }
 
 function checkSaveData() { document.getElementById('btn-continue').disabled = !localStorage.getItem('t-save'); }
-function pauseGame() { if (!isRunning || isBattleMode || subMode === 'timeattack') return; isRunning = false; document.getElementById('screen-pause').classList.add('active'); }
+function pauseGame() { 
+    if (!isRunning || isBattleMode || subMode === 'timeattack') return; 
+    isRunning = false; 
+    document.getElementById('screen-pause').classList.add('active'); 
+}
 function resumeGame() { releaseFocus(); document.getElementById('screen-pause').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); }
 function saveAndQuit() { localStorage.setItem('t-save', JSON.stringify({ arena, player, gameMode })); checkSaveData(); document.getElementById('screen-pause').classList.remove('active'); document.getElementById('screen-title').classList.add('active'); }
 
 function openSubModeScreen() {
+    if (checkSelfBan()) return;
     document.getElementById('screen-title').classList.remove('active');
     document.getElementById('screen-sub-mode').classList.add('active');
 }
@@ -704,6 +766,7 @@ function updateTimeAttackTimer() {
 }
 
 function startNewGame() { 
+    if (checkSelfBan()) return;
     releaseFocus();
     isBattleMode = false;
     document.getElementById('btn-pause').style.display = subMode === 'timeattack' ? "none" : "block";
@@ -711,7 +774,7 @@ function startNewGame() {
     arena.forEach(r => r.fill(0)); player.score = 0; player.level = 1; player.next = null; updateUI(); isRunning = true; playerReset(); lastTime = performance.now(); update(); 
 }
 
-function loadGame() { releaseFocus(); const saved = JSON.parse(localStorage.getItem('t-save')); if (saved) { arena = saved.arena; Object.assign(player, saved.player); gameMode = saved.gameMode; setMode(gameMode); updateUI(); drawNext(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); } }
+function loadGame() { if (checkSelfBan()) return; releaseFocus(); const saved = JSON.parse(localStorage.getItem('t-save')); if (saved) { arena = saved.arena; Object.assign(player, saved.player); gameMode = saved.gameMode; setMode(gameMode); updateUI(); drawNext(); document.getElementById('screen-title').classList.remove('active'); isRunning = true; lastTime = performance.now(); update(); } }
 
 let timeOffset = 0; let isTimeSynced = false;
 async function syncWithJST() {
@@ -733,15 +796,12 @@ setInterval(() => {
     }
 }, 1000);
 
-// キーボード操作・修正版（操作不能バグ対策）
+// --- 管理者パネル / 暗号入力ロジック ---
 let adminCodeBuffer = "";
-let isAdminMode = localStorage.getItem('t-is-admin') === 'true';
+let isAdminMode = false;
 
 document.addEventListener('keydown', e => {
-    // アクティブなオーバーレイパネルがあるかチェック
     const activeOverlay = document.querySelector('.screen-overlay.active');
-    
-    // オーバーレイパネルが表示されていない場合、フォーカスを外してキー操作を有効化
     if (!activeOverlay && document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
         document.activeElement.blur();
     }
@@ -754,25 +814,25 @@ document.addEventListener('keydown', e => {
         return;
     }
     
-    if (e.key.toLowerCase() === 'r' && isBattleMode) {
-        toggleLiveRankingOverlay();
-        return;
-    }
-    
     if (e.key >= '0' && e.key <= '9') {
         adminCodeBuffer += e.key;
-        if (adminCodeBuffer.endsWith("140923")) {
-            isAdminMode = true; localStorage.setItem('t-is-admin', 'true'); openAdminPanel(); return;
+        if (adminCodeBuffer.length > 20) adminCodeBuffer = adminCodeBuffer.slice(-20);
+        
+        if (adminCodeBuffer.includes("140923")) {
+            isAdminMode = true; 
+            const btn = document.getElementById('btn-admin-shortcut');
+            if (btn) btn.style.display = 'block';
+            openAdminPanel(); 
+            adminCodeBuffer = "";
+            return;
         }
-        if (adminCodeBuffer.endsWith("923")) {
-            document.getElementById('btn-create-tourney').style.display = 'block';
+        if (adminCodeBuffer.includes("923")) {
+            const btnT = document.getElementById('btn-create-tourney');
+            if (btnT) btnT.style.display = 'block';
         }
     } else { adminCodeBuffer = ""; }
 
-    // 矢印キーやスペースキーでブラウザがスクロールするのを防ぐ
-    if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
-        e.preventDefault();
-    }
+    if ([32, 37, 38, 39, 40].includes(e.keyCode)) { e.preventDefault(); }
 
     if (e.keyCode === 32) {
         if (!isRunning) return;
@@ -793,32 +853,41 @@ document.addEventListener('keydown', e => {
     if (e.keyCode === 38) playerRotate(1);
 });
 
-// 管理者機能
 function openAdminPanel() { document.getElementById('admin-sidebar').classList.add('open'); document.getElementById('admin-set-score').value = player.score; }
 function closeAdminPanel() { document.getElementById('admin-sidebar').classList.remove('open'); }
 function changeCurrentScore() { const val = parseInt(document.getElementById('admin-set-score').value, 10); if (!isNaN(val) && val >= 0) { player.score = val; player.level = Math.floor(player.score / 100) + 1; updateUI(); } }
-function logoutAdmin() { localStorage.removeItem('t-is-admin'); isAdminMode = false; closeAdminPanel(); document.getElementById('btn-admin-shortcut').style.display = "none"; }
+function logoutAdmin() { isAdminMode = false; closeAdminPanel(); document.getElementById('btn-admin-shortcut').style.display = "none"; }
 
-// =========================================================================
-// バッジ（実績）システム（調整版：無理なバッジを削除）
-// =========================================================================
+function unlockBlockBlastAdmin() {
+    localStorage.setItem('bb-admin-unlocked', 'true');
+    enableBlockBlastMode();
+    alert("ブロックブラストを解禁しました！設定画面からモード切替できます。");
+}
+
 const badgesList = [];
 [1, 5, 10, 20, 50, 100].forEach(g => badgesList.push({ id:`play${g}`, title:`見習いから達人へ ${g}`, desc:`ゲームを${g}回プレイする`, icon:"🎮", check: s => s.plays >= g }));
 [1000, 3000, 5000, 10000, 20000, 30000, 50000].forEach(g => badgesList.push({ id:`score${g}`, title:`スコアラー ${g}`, desc:`スコア ${g} を達成`, icon:"🏅", check: s => s.highScore >= g }));
 [3, 5, 10, 15, 20, 25, 30].forEach(g => badgesList.push({ id:`level${g}`, title:`限界突破 ${g}`, desc:`レベル ${g} に到達`, icon:"🚀", check: s => s.maxLevel >= g }));
 [1, 5, 10, 20, 50].forEach(g => badgesList.push({ id:`extra${g}`, title:`EXチャレンジャー ${g}`, desc:`エクストラを${g}回プレイ`, icon:"👾", check: s => s.extraPlays >= g }));
 [1, 5, 10, 20, 50].forEach(g => badgesList.push({ id:`battle${g}`, title:`歴戦の勇者 ${g}`, desc:`PVPモードを${g}回プレイ`, icon:"⚔️", check: s => s.battlePlays >= g }));
-
 [1, 3, 5, 10].forEach(g => badgesList.push({ id:`tourney${g}`, title:`大会出場者 ${g}`, desc:`大会モードに${g}回参加する`, icon:"🎫", check: s => s.tourneyPlays >= g }));
 [1, 3, 5].forEach(g => badgesList.push({ id:`tourneyWin${g}`, title:`大会の覇者 ${g}`, desc:`大会で${g}回優勝する`, icon:"🏆", check: s => s.tourneyWins >= g }));
 [1, 5, 10, 20].forEach(g => badgesList.push({ id:`battleWin${g}`, title:`決闘者 ${g}`, desc:`PVP対戦で${g}勝する`, icon:"🔥", check: s => s.battleWins >= g }));
 
+[1, 5, 10, 20, 50].forEach(g => badgesList.push({ id:`bbPlay${g}`, title:`ブラスター ${g}`, desc:`ブロックブラストを${g}回プレイする`, icon:"💣", check: s => (s.bbPlays||0) >= g }));
+[1000, 3000, 5000, 10000, 20000].forEach(g => badgesList.push({ id:`bbScore${g}`, title:`BBスコアラー ${g}`, desc:`BBモードでスコア ${g} を達成`, icon:"🌟", check: s => (s.bbHighScore||0) >= g }));
+[1, 3, 5, 10].forEach(g => badgesList.push({ id:`bbPerfect${g}`, title:`全消し職人 ${g}`, desc:`BBモードで盤面を${g}回全消しする`, icon:"✨", check: s => (s.bbPerfect||0) >= g }));
+
+
 function getBadgeStats() {
-    const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0, "tourneyPlays":0, "tourneyWins":0, "battleWins":0}');
+    const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0, "tourneyPlays":0, "tourneyWins":0, "battleWins":0, "bbPlays":0, "bbHighScore":0, "bbPerfect":0}');
     if(s.battlePlays === undefined) s.battlePlays = 0;
     if(s.tourneyPlays === undefined) s.tourneyPlays = 0;
     if(s.tourneyWins === undefined) s.tourneyWins = 0;
     if(s.battleWins === undefined) s.battleWins = 0;
+    if(s.bbPlays === undefined) s.bbPlays = 0;
+    if(s.bbHighScore === undefined) s.bbHighScore = 0;
+    if(s.bbPerfect === undefined) s.bbPerfect = 0;
     return s;
 }
 function saveBadgeStats(stats) { localStorage.setItem('t-badges-stats', JSON.stringify(stats)); }
@@ -831,6 +900,10 @@ function updateBadgeStats(type, val = 1) {
     if(type === 'tourneyPlay') s.tourneyPlays += val;
     if(type === 'tourneyWin') s.tourneyWins += val;
     if(type === 'battleWin') s.battleWins += val;
+    if(type === 'bbPlay') { s.bbPlays += val; }
+    if(type === 'bbScore' && val > s.bbHighScore) { s.bbHighScore = val; }
+    if(type === 'bbPerfect') { s.bbPerfect += val; }
+    
     saveBadgeStats(s);
 }
 
@@ -838,37 +911,28 @@ function openBadgeScreen() {
     const s = getBadgeStats();
     const list = document.getElementById('badge-list');
     list.innerHTML = "";
-    
     const trophyArea = document.getElementById('trophy-area');
     if (s.tourneyWins > 0) {
         trophyArea.innerHTML = `<div style="font-size:50px; text-shadow:0 0 25px gold; margin-bottom:10px;">🏆<div style="font-size:14px; color:gold; font-weight:bold; letter-spacing:2px; margin-top:-5px;">優勝経験者 (${s.tourneyWins}勝)</div></div>`;
-    } else {
-        trophyArea.innerHTML = '';
-    }
+    } else { trophyArea.innerHTML = ''; }
 
     badgesList.forEach(b => {
         const unlocked = b.check(s);
-        list.innerHTML += `
-            <div class="badge-item ${unlocked ? 'unlocked' : ''}">
-                <div class="badge-icon">${b.icon}</div>
-                <div class="badge-info">
-                    <div class="badge-title">${b.title}</div>
-                    <div class="badge-desc">${b.desc}</div>
-                </div>
-            </div>
-        `;
+        list.innerHTML += `<div class="badge-item ${unlocked ? 'unlocked' : ''}"><div class="badge-icon">${b.icon}</div><div class="badge-info"><div class="badge-title">${b.title}</div><div class="badge-desc">${b.desc}</div></div></div>`;
     });
-    document.getElementById('screen-title').classList.remove('active');
+    
+    document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     document.getElementById('screen-badges').classList.add('active');
 }
 function closeBadgeScreen() {
     document.getElementById('screen-badges').classList.remove('active');
-    document.getElementById('screen-title').classList.add('active');
+    if (window.currentAppMode === 'blockblast') {
+        document.getElementById('screen-bb-title').classList.add('active');
+    } else {
+        document.getElementById('screen-title').classList.add('active');
+    }
 }
 
-// =========================================================================
-// PVPモード / 大会モード (PeerJS) 拡張・修正版
-// =========================================================================
 let isBattleMode = false;
 let battlePeer = null;
 let battleConn = null; 
@@ -890,6 +954,7 @@ let currentLiveRankings = [];
 let isRankingVisible = false;
 
 function openBattleMenu() {
+    if (checkSelfBan()) return;
     document.getElementById('screen-title').classList.remove('active');
     document.getElementById('screen-battle-menu').classList.add('active');
 }
@@ -899,16 +964,13 @@ function closeBattleMenu() {
 }
 
 function getSettingsAndInit(roomId, type) {
-    if (type === 'tourney') {
-        maxBattlePlayers = Infinity; // 大会モードは参加人数無制限！
-    } else {
+    if (type === 'tourney') { maxBattlePlayers = Infinity; } 
+    else {
         maxBattlePlayers = parseInt(document.getElementById('input-max-players').value) || 2;
         if(maxBattlePlayers < 2) maxBattlePlayers = 2;
     }
-    
     battleType = type;
     battleRole = 'host';
-    
     document.getElementById('btn-start-tourney').style.display = battleType === 'tourney' ? 'block' : 'none';
     initBattlePeer('tetris-battle-' + roomId, roomId);
 }
@@ -942,13 +1004,13 @@ function initBattlePeer(peerId, roomId) {
 
     battlePeer.on('open', id => {
         myPeerId = id;
+        registerPlayer(myUserId, myPeerId, true);
         if (battleRole === 'guest') {
             battleConn = battlePeer.connect('tetris-battle-' + roomId);
             setupBattleConn(battleConn);
         }
     });
 
-    // 通信エラーハンドリング追加
     battlePeer.on('error', err => {
         console.error("PeerJS Error:", err);
         alert("通信エラーが発生しました: " + err.type);
@@ -971,6 +1033,7 @@ function initBattlePeer(peerId, roomId) {
                     conn.send({ type: 'tourney_init', max: '無制限' });
                     conn.send({ type: 'user_info_req' });
                     conn.send({ type: 'user_info', name: myUserId });
+                    conn.send({ type: 'sync_known_players', players: knownPlayers });
                     broadcastTourney({ type: 'player_count', count: tourneyConns.length + 1, max: '無制限' });
                     document.getElementById('battle-players-count').innerText = `参加人数: ${tourneyConns.length + 1}人 (無制限)`;
                 });
@@ -982,6 +1045,7 @@ function initBattlePeer(peerId, roomId) {
                 
                 conn.on('open', () => {
                     conn.send({ type: 'user_info', name: myUserId });
+                    conn.send({ type: 'sync_known_players', players: knownPlayers });
                 });
 
                 setTimeout(() => {
@@ -1000,6 +1064,10 @@ function setupBattleConn(conn) {
         if (data.type === 'room_full') {
             alert("部屋が満員です"); cancelBattle();
         } else if (data.type === 'user_info') {
+            registerPlayer(data.name, conn.peer, true);
+            if (bannedPlayers.includes(data.name)) {
+                conn.send({ type: 'ban_user', targetId: data.name });
+            }
             if (battleType === 'tourney' && battleRole === 'host') {
                 if(tourneyPlayers[conn.peer]) tourneyPlayers[conn.peer].name = data.name;
             } else {
@@ -1007,6 +1075,15 @@ function setupBattleConn(conn) {
             }
         } else if (data.type === 'user_info_req') {
             conn.send({ type: 'user_info', name: myUserId });
+        } else if (data.type === 'sync_known_players') {
+            if (data.players) {
+                Object.keys(data.players).forEach(k => {
+                    if (!knownPlayers[k]) knownPlayers[k] = data.players[k];
+                });
+                localStorage.setItem('t-known-players', JSON.stringify(knownPlayers));
+            }
+        } else if (data.type === 'ban_user') {
+            banPlayer(data.targetId);
         } else if (data.type === 'tourney_init') {
             battleType = 'tourney'; maxBattlePlayers = Infinity;
         } else if (data.type === 'player_count') {
@@ -1108,6 +1185,7 @@ function startRuleCountdown() {
 }
 
 function startBattleGame() {
+    if (checkSelfBan()) return;
     releaseFocus();
     document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     isBattleMode = true;
@@ -1194,14 +1272,12 @@ function endBattleGame() {
     }
 }
 
-// 大会結果発表（演出強化）
 function showTourneyRankings(rankings) {
     playSE('fanfare');
     startConfetti();
     document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     document.getElementById('screen-tourney-result').classList.add('active');
     
-    // 表彰台の描画
     const pArea = document.getElementById('podium-area');
     pArea.innerHTML = "";
     
@@ -1210,18 +1286,11 @@ function showTourneyRankings(rankings) {
     const p3 = rankings.find(r => r.rank === 3);
 
     let podiumHTML = "";
-    if (p2) {
-        podiumHTML += `<div class="podium-box podium-2"><div>🥈 2位</div><div class="podium-name">${p2.name}</div><div class="podium-score">${p2.score}</div></div>`;
-    }
-    if (p1) {
-        podiumHTML += `<div class="podium-box podium-1"><div>👑 1位</div><div class="podium-name">${p1.name}</div><div class="podium-score">${p1.score}</div></div>`;
-    }
-    if (p3) {
-        podiumHTML += `<div class="podium-box podium-3"><div>🥉 3位</div><div class="podium-name">${p3.name}</div><div class="podium-score">${p3.score}</div></div>`;
-    }
+    if (p2) { podiumHTML += `<div class="podium-box podium-2"><div>🥈 2位</div><div class="podium-name">${p2.name}</div><div class="podium-score">${p2.score}</div></div>`; }
+    if (p1) { podiumHTML += `<div class="podium-box podium-1"><div>👑 1位</div><div class="podium-name">${p1.name}</div><div class="podium-score">${p1.score}</div></div>`; }
+    if (p3) { podiumHTML += `<div class="podium-box podium-3"><div>🥉 3位</div><div class="podium-name">${p3.name}</div><div class="podium-score">${p3.score}</div></div>`; }
     pArea.innerHTML = podiumHTML;
 
-    // 4位以降を含む全リストの描画
     let listHTML = "";
     rankings.forEach(r => {
         let isMe = r.id === myPeerId;
@@ -1235,14 +1304,11 @@ function showTourneyRankings(rankings) {
                 <span style="font-weight:bold;">${r.score} pts</span>
             </div>`;
         
-        if (isMe && r.rank === 1) {
-            updateBadgeStats('tourneyWin', 1);
-        }
+        if (isMe && r.rank === 1) { updateBadgeStats('tourneyWin', 1); }
     });
     document.getElementById('tourney-ranking-list').innerHTML = listHTML;
 }
 
-// 紙吹雪 (Confetti) アニメーション演出
 function startConfetti() {
     const cCanvas = document.getElementById('confetti-canvas');
     const cCtx = cCanvas.getContext('2d');
@@ -1254,14 +1320,9 @@ function startConfetti() {
 
     for (let i = 0; i < 120; i++) {
         particles.push({
-            x: Math.random() * cCanvas.width,
-            y: Math.random() * cCanvas.height - cCanvas.height,
-            size: Math.random() * 8 + 4,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            vx: (Math.random() - 0.5) * 3,
-            vy: Math.random() * 3 + 2,
-            rot: Math.random() * 360,
-            vRot: (Math.random() - 0.5) * 10
+            x: Math.random() * cCanvas.width, y: Math.random() * cCanvas.height - cCanvas.height,
+            size: Math.random() * 8 + 4, color: colors[Math.floor(Math.random() * colors.length)],
+            vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3 + 2, rot: Math.random() * 360, vRot: (Math.random() - 0.5) * 10
         });
     }
 
@@ -1269,15 +1330,9 @@ function startConfetti() {
     function animateConfetti() {
         cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
         particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.rot += p.vRot;
-            cCtx.save();
-            cCtx.translate(p.x, p.y);
-            cCtx.rotate((p.rot * Math.PI) / 180);
-            cCtx.fillStyle = p.color;
-            cCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
-            cCtx.restore();
+            p.x += p.vx; p.y += p.vy; p.rot += p.vRot;
+            cCtx.save(); cCtx.translate(p.x, p.y); cCtx.rotate((p.rot * Math.PI) / 180);
+            cCtx.fillStyle = p.color; cCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); cCtx.restore();
         });
         frames++;
         if (frames < 200) requestAnimationFrame(animateConfetti);
@@ -1307,26 +1362,515 @@ function cancelBattle() {
     if (ruleCountdownInterval) clearInterval(ruleCountdownInterval);
     if (battleTimerInterval) clearInterval(battleTimerInterval);
     
-    if (battleType === 'tourney' && battleRole === 'host') {
-        tourneyConns.forEach(c => c.close());
-    }
-
+    if (battleType === 'tourney' && battleRole === 'host') { tourneyConns.forEach(c => c.close()); }
     if (battleConn) { battleConn.close(); battleConn = null; }
     if (battlePeer) { battlePeer.destroy(); battlePeer = null; }
     
-    tourneyConns = [];
-    tourneyPlayers = {};
-    battleType = '1v1';
+    tourneyConns = []; tourneyPlayers = {}; battleType = '1v1';
     isRankingVisible = false;
     document.getElementById('live-ranking-overlay').style.display = 'none';
 
-    isBattleMode = false;
-    isRunning = false;
+    isBattleMode = false; isRunning = false;
     document.getElementById('left-battle-panel').style.display = "none";
     document.getElementById('btn-pause').style.display = "block";
     document.getElementById('btn-start-tourney').style.display = "none";
     document.querySelectorAll('.screen-overlay').forEach(e => e.classList.remove('active'));
     document.getElementById('screen-title').classList.add('active');
+}
+
+/* =========================================================================
+   ブロックブラスト統合 ＆ 新鮮なデザイン・操作性改善・機能拡張
+   ========================================================================= */
+
+window.currentAppMode = 'tetris';
+
+const originalSaveSettings = saveSettings;
+saveSettings = function() {
+    originalSaveSettings();
+    if (window.currentAppMode === 'blockblast') {
+        document.getElementById('screen-title').classList.remove('active');
+        document.getElementById('screen-bb-title').classList.add('active');
+    }
+};
+
+function openSettingsScreenBB() {
+    openSettingsScreen();
+    document.getElementById('screen-bb-title').classList.remove('active');
+}
+
+setTimeout(() => {
+    const targetDate = new Date('2026-09-15T08:30:00+09:00').getTime();
+    const isAdminUnlocked = localStorage.getItem('bb-admin-unlocked') === 'true';
+    if (isAdminUnlocked || targetDate - (Date.now() + timeOffset) <= 0) {
+        enableBlockBlastMode();
+    } else {
+        const bgCheck = setInterval(() => {
+            if (localStorage.getItem('bb-admin-unlocked') === 'true' || targetDate - (Date.now() + timeOffset) <= 0) {
+                enableBlockBlastMode();
+                clearInterval(bgCheck);
+            }
+        }, 1000);
+    }
+}, 1000);
+
+let bbOctCountdownInterval;
+function startBBOctCountdown() {
+    const targetDate = new Date('2026-10-01T00:00:00+09:00').getTime();
+    const el = document.getElementById('bb-oct-countdown');
+    if (!el) return;
+    function update() {
+        const diff = targetDate - (Date.now() + timeOffset);
+        if (diff <= 0) {
+            el.innerText = "イベント開催中!";
+            if(bbOctCountdownInterval) clearInterval(bbOctCountdownInterval);
+            return;
+        }
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        el.innerText = `${d}日 ${String(h).padStart(2,'0')}時間 ${String(m).padStart(2,'0')}分 ${String(s).padStart(2,'0')}秒`;
+    }
+    update();
+    if (bbOctCountdownInterval) clearInterval(bbOctCountdownInterval);
+    bbOctCountdownInterval = setInterval(update, 1000);
+}
+
+function enableBlockBlastMode() {
+    if (document.getElementById('bb-mode-setting')) return;
+    
+    const settingsCard = document.querySelector('#screen-settings .menu-card');
+    const saveBtn = settingsCard.querySelector('.btn-save-settings');
+    
+    const bbSettingHTML = `
+    <div id="bb-mode-setting" style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; text-align:center;">
+        <label style="font-size:13px; color:var(--accent-main); font-weight:bold; display:block; margin-bottom:5px;">ゲームモードの変更</label>
+        <div class="mode-toggle">
+            <div id="app-mode-tetris" class="mode-btn active" onclick="playSE('click'); switchAppMode('tetris')">テトリス</div>
+            <div id="app-mode-bb" class="mode-btn" onclick="playSE('click'); switchAppMode('blockblast')">ブロックブラスト</div>
+        </div>
+    </div>`;
+    saveBtn.insertAdjacentHTML('beforebegin', bbSettingHTML);
+
+    const bbTitleHTML = `
+    <div id="screen-bb-title" class="screen-overlay" style="z-index: 105;">
+        <div class="glass-panel menu-card">
+            <div>
+                <h1 class="menu-title" style="background: linear-gradient(to right, #ff9500, #ffcc00); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">ブロックブラスト</h1>
+                <div class="menu-subtitle">最高得点: <span id="bb-hi-display" style="color:#ffcc00; font-size:18px;">0</span></div>
+            </div>
+            <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; margin: 5px 0;">
+                <div style="font-size:12px; color:var(--text-muted); font-weight:bold;">10月1日 スペシャルイベントまで</div>
+                <div id="bb-oct-countdown" style="font-size:18px; color:#00e5ff; font-weight:900; letter-spacing:1px; margin-top:3px;">計算中...</div>
+            </div>
+            <button class="btn-primary" style="background:#ff9500; color:#000;" onclick="playSE('click'); startBBGame()">プレイ</button>
+            <button class="btn-primary" style="background:#FFD700; color:#000;" onclick="playSE('click'); openBadgeScreen()">🏅 バッジ</button>
+            <button class="btn-primary" style="background:#8a2be2; color:#fff;" onclick="playSE('click'); openSettingsScreenBB()">⚙️ 設定</button>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', bbTitleHTML);
+    
+    const bbGameHTML = `
+    <div id="screen-bb-game" class="screen-overlay" style="z-index: 104; background: var(--bg-grad);">
+        <div style="display:flex; flex-direction:column; align-items:center; width:100%; max-width:400px; padding:calc(10px + env(safe-area-inset-top)) 10px 20px 10px; gap:15px;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; max-width:320px;">
+                <button class="btn-secondary" style="padding:8px 15px;" onclick="playSE('click'); quitBBGame()">戻る</button>
+                <div style="font-size:24px; font-weight:900; color:#ff9500; text-shadow: 0 0 10px rgba(255, 149, 0, 0.5);">得点: <span id="bb-score-display">0</span></div>
+            </div>
+            <canvas id="bb-board" width="320" height="320" style="background:rgba(255,255,255,0.05); border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.8); touch-action:none;"></canvas>
+            <div id="bb-pieces-container" style="display:flex; justify-content:center; gap:10px; height:100px; width:100%; touch-action:none;">
+                <canvas class="bb-piece" id="bb-piece-0" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
+                <canvas class="bb-piece" id="bb-piece-1" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
+                <canvas class="bb-piece" id="bb-piece-2" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div id="bb-drag-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;">
+        <canvas id="bb-drag-canvas" width="90" height="90" style="position:absolute;"></canvas>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', bbGameHTML);
+
+    document.getElementById('bb-hi-display').innerText = localStorage.getItem('bb-hi') || 0;
+    startBBOctCountdown();
+    initBBLogic();
+}
+
+function switchAppMode(mode) {
+    window.currentAppMode = mode;
+    document.getElementById('app-mode-tetris').classList.toggle('active', mode === 'tetris');
+    document.getElementById('app-mode-bb').classList.toggle('active', mode === 'blockblast');
+    
+    if (mode === 'tetris') {
+        document.getElementById('screen-bb-title').classList.remove('active');
+        document.getElementById('screen-title').classList.add('active');
+    } else {
+        document.getElementById('screen-title').classList.remove('active');
+        document.getElementById('screen-bb-title').classList.add('active');
+    }
+}
+
+// -----------------------------------------------------------
+// ブロックブラスト (デザイン・操作性刷新版)
+// -----------------------------------------------------------
+let bbBoard, bbScore, bbPieces;
+let bbDragging = null;
+// 新鮮なジュエル・ネオン系のデザイン用カラーパレット
+let bbColors = ['#FF3366', '#33CCFF', '#00FF66', '#FF9900', '#CC33FF', '#FFD700', '#00E5FF'];
+
+const bbShapes = [
+    [[1]],
+    [[1,1],[1,1]],
+    [[1,1,1],[1,1,1],[1,1,1]],
+    [[1,1]], [[1],[1]],
+    [[1,1,1]], [[1],[1],[1]],
+    [[1,1,1,1]], [[1],[1],[1],[1]],
+    [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
+    [[1,0],[1,1]], [[1,1],[0,1]], [[0,1],[1,1]], [[1,1],[1,0]],
+    [[1,0,0],[1,0,0],[1,1,1]], [[1,1,1],[1,0,0],[1,0,0]], [[1,1,1],[0,0,1],[0,0,1]], [[0,0,1],[0,0,1],[1,1,1]]
+];
+
+// テトリスとは異なる丸みを帯びたリッチなブロック描画
+function drawFreshBlock(ctx, x, y, size, color) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if(ctx.roundRect) { ctx.roundRect(x, y, size, size, size * 0.2); } 
+    else { ctx.rect(x, y, size, size); }
+    ctx.fill();
+
+    // 内側のハイライト（グロウエフェクト）
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    if(ctx.roundRect) { ctx.roundRect(x + size*0.1, y + size*0.1, size*0.8, size*0.3, size * 0.1); } 
+    else { ctx.rect(x + size*0.1, y + size*0.1, size*0.8, size*0.3); }
+    ctx.fill();
+
+    // 輪郭線による引き締め
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if(ctx.roundRect) { ctx.roundRect(x, y, size, size, size * 0.2); } 
+    else { ctx.rect(x, y, size, size); }
+    ctx.stroke();
+    ctx.restore();
+}
+
+function initBBLogic() {
+    const pCanvas = [document.getElementById('bb-piece-0'), document.getElementById('bb-piece-1'), document.getElementById('bb-piece-2')];
+    
+    pCanvas.forEach((canvas, index) => {
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!bbPieces[index]) return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            bbDragging = {
+                index: index,
+                shape: bbPieces[index].shape,
+                color: bbPieces[index].color,
+                element: canvas,
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top,
+                // 操作性向上：指で隠れないよう上方向へのオフセットを大きく設定
+                visualOffsetY: -120, 
+                width: rect.width,
+                height: rect.height
+            };
+            
+            const dragLayer = document.getElementById('bb-drag-layer');
+            const dragCanvas = document.getElementById('bb-drag-canvas');
+            const dCtx = dragCanvas.getContext('2d');
+            dragCanvas.width = canvas.width;
+            dragCanvas.height = canvas.height;
+            dCtx.clearRect(0, 0, dragCanvas.width, dragCanvas.height);
+            dCtx.drawImage(canvas, 0, 0);
+
+            dragLayer.style.display = 'block';
+            updateBBDragPosition(e.clientX, e.clientY);
+            canvas.style.opacity = '0.3';
+        });
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (!bbDragging) return;
+        e.preventDefault();
+        updateBBDragPosition(e.clientX, e.clientY);
+        drawBBBoardWithPreview(e.clientX, e.clientY);
+    }, { passive: false });
+
+    window.addEventListener('pointerup', (e) => {
+        if (!bbDragging) return;
+        
+        const boardCanvas = document.getElementById('bb-board');
+        const rect = boardCanvas.getBoundingClientRect();
+        
+        const cellW = rect.width / 8;
+        const cellH = rect.height / 8;
+        
+        const visualX = e.clientX - bbDragging.offsetX;
+        const visualY = e.clientY - bbDragging.offsetY + bbDragging.visualOffsetY;
+
+        const dragCanvas = document.getElementById('bb-drag-canvas');
+        const dragCenterBoardX = visualX - rect.left + (dragCanvas.width / 2);
+        const dragCenterBoardY = visualY - rect.top + (dragCanvas.height / 2);
+        
+        const shape = bbDragging.shape;
+        const shapeW = shape[0].length * cellW;
+        const shapeH = shape.length * cellH;
+        
+        const gridX = Math.round((dragCenterBoardX - shapeW / 2) / cellW);
+        const gridY = Math.round((dragCenterBoardY - shapeH / 2) / cellH);
+
+        if (canPlaceBBPiece(shape, gridX, gridY)) {
+            placeBBPiece(shape, gridX, gridY, bbDragging.color);
+            playSE('drop');
+            bbPieces[bbDragging.index] = null;
+            bbDragging.element.getContext('2d').clearRect(0, 0, 90, 90);
+            
+            checkAndClearBBLines();
+            
+            if (bbPieces.every(p => p === null)) {
+                generateBBPieces();
+            }
+            
+            checkBBGameOver();
+        } else {
+            playSE('move');
+        }
+
+        if (bbDragging.element) bbDragging.element.style.opacity = '1';
+        bbDragging = null;
+        document.getElementById('bb-drag-layer').style.display = 'none';
+        drawBBBoard();
+    });
+}
+
+function updateBBDragPosition(clientX, clientY) {
+    if (!bbDragging) return;
+    const dragCanvas = document.getElementById('bb-drag-canvas');
+    dragCanvas.style.left = (clientX - bbDragging.offsetX) + 'px';
+    dragCanvas.style.top = (clientY - bbDragging.offsetY + bbDragging.visualOffsetY) + 'px';
+}
+
+function startBBGame() {
+    if (checkSelfBan()) return;
+    document.getElementById('screen-bb-title').classList.remove('active');
+    document.getElementById('screen-bb-game').classList.add('active');
+    
+    bbBoard = Array.from({ length: 8 }, () => Array(8).fill(0));
+    bbScore = 0;
+    document.getElementById('bb-score-display').innerText = bbScore;
+    
+    updateBadgeStats('bbPlay', 1);
+    generateBBPieces();
+    drawBBBoard();
+}
+
+function quitBBGame() {
+    document.getElementById('screen-bb-game').classList.remove('active');
+    document.getElementById('screen-bb-title').classList.add('active');
+}
+
+function generateBBPieces() {
+    bbPieces = [null, null, null];
+    for (let i = 0; i < 3; i++) {
+        const randomShape = bbShapes[Math.floor(Math.random() * bbShapes.length)];
+        const randomColor = bbColors[Math.floor(Math.random() * bbColors.length)];
+        bbPieces[i] = { shape: randomShape, color: randomColor };
+        drawBBPiece(i);
+    }
+}
+
+function drawBBPiece(index) {
+    const canvas = document.getElementById(`bb-piece-${index}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const piece = bbPieces[index];
+    if (!piece) return;
+
+    const shape = piece.shape;
+    const rows = shape.length;
+    const cols = shape[0].length;
+    const cellSize = Math.min(70 / cols, 70 / rows);
+    const offsetX = (canvas.width - cols * cellSize) / 2;
+    const offsetY = (canvas.height - rows * cellSize) / 2;
+
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (shape[r][c]) {
+                drawFreshBlock(ctx, offsetX + c * cellSize + 1, offsetY + r * cellSize + 1, cellSize - 2, piece.color);
+            }
+        }
+    }
+}
+
+function drawBBBoard() {
+    const canvas = document.getElementById('bb-board');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const cellSize = canvas.width / 8;
+
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+
+            if (bbBoard[r][c]) {
+                drawFreshBlock(ctx, c * cellSize + 1, r * cellSize + 1, cellSize - 2, bbBoard[r][c]);
+            }
+        }
+    }
+}
+
+function drawBBBoardWithPreview(clientX, clientY) {
+    drawBBBoard();
+    if (!bbDragging) return;
+
+    const canvas = document.getElementById('bb-board');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+
+    const cellW = rect.width / 8;
+    const cellH = rect.height / 8;
+
+    const visualX = clientX - bbDragging.offsetX;
+    const visualY = clientY - bbDragging.offsetY + bbDragging.visualOffsetY;
+
+    const dragCanvas = document.getElementById('bb-drag-canvas');
+    const dragCenterBoardX = visualX - rect.left + (dragCanvas.width / 2);
+    const dragCenterBoardY = visualY - rect.top + (dragCanvas.height / 2);
+
+    const shape = bbDragging.shape;
+    const shapeW = shape[0].length * cellW;
+    const shapeH = shape.length * cellH;
+
+    const gridX = Math.round((dragCenterBoardX - shapeW / 2) / cellW);
+    const gridY = Math.round((dragCenterBoardY - shapeH / 2) / cellH);
+
+    if (canPlaceBBPiece(shape, gridX, gridY)) {
+        const cellSize = canvas.width / 8;
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    drawFreshBlock(ctx, (gridX + c) * cellSize + 1, (gridY + r) * cellSize + 1, cellSize - 2, 'rgba(255,255,255,0.5)');
+                }
+            }
+        }
+    }
+}
+
+function canPlaceBBPiece(shape, gridX, gridY) {
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+                const targetR = gridY + r;
+                const targetC = gridX + c;
+                if (targetR < 0 || targetR >= 8 || targetC < 0 || targetC >= 8) return false;
+                if (bbBoard[targetR][targetC] !== 0) return false;
+            }
+        }
+    }
+    return true;
+}
+
+function placeBBPiece(shape, gridX, gridY, color) {
+    let placedBlocks = 0;
+    for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+                bbBoard[gridY + r][gridX + c] = color;
+                placedBlocks++;
+            }
+        }
+    }
+    bbScore += placedBlocks * 10;
+    updateBBScore();
+}
+
+function checkAndClearBBLines() {
+    let rowsToClear = [];
+    let colsToClear = [];
+
+    for (let r = 0; r < 8; r++) {
+        if (bbBoard[r].every(cell => cell !== 0)) rowsToClear.push(r);
+    }
+
+    for (let c = 0; c < 8; c++) {
+        let full = true;
+        for (let r = 0; r < 8; r++) {
+            if (bbBoard[r][c] === 0) { full = false; break; }
+        }
+        if (full) colsToClear.push(c);
+    }
+
+    const totalLines = rowsToClear.length + colsToClear.length;
+    if (totalLines > 0) {
+        playSE('clear');
+        rowsToClear.forEach(r => {
+            for (let c = 0; c < 8; c++) bbBoard[r][c] = 0;
+        });
+        colsToClear.forEach(c => {
+            for (let r = 0; r < 8; r++) bbBoard[r][c] = 0;
+        });
+        bbScore += totalLines * 100 * totalLines;
+        
+        let isAllClear = true;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (bbBoard[r][c] !== 0) isAllClear = false;
+            }
+        }
+        if (isAllClear) {
+            playSE('fanfare');
+            startConfetti();
+            bbScore += 3000;
+            updateBadgeStats('bbPerfect', 1);
+        }
+        
+        updateBBScore();
+    }
+}
+
+function updateBBScore() {
+    document.getElementById('bb-score-display').innerText = bbScore;
+    updateBadgeStats('bbScore', bbScore);
+    const hi = parseInt(localStorage.getItem('bb-hi') || '0');
+    if (bbScore > hi) {
+        localStorage.setItem('bb-hi', bbScore);
+        const hiEl = document.getElementById('bb-hi-display');
+        if (hiEl) hiEl.innerText = bbScore;
+    }
+}
+
+function checkBBGameOver() {
+    let canPlaceAny = false;
+    for (let i = 0; i < 3; i++) {
+        const piece = bbPieces[i];
+        if (!piece) continue;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (canPlaceBBPiece(piece.shape, c, r)) {
+                    canPlaceAny = true;
+                    break;
+                }
+            }
+            if (canPlaceAny) break;
+        }
+        if (canPlaceAny) break;
+    }
+
+    if (!canPlaceAny && bbPieces.some(p => p !== null)) {
+        playSE('gameover');
+        alert(`ゲームオーバー！\nスコア: ${bbScore}`);
+        quitBBGame();
+    }
 }
 </script>
 </body>
