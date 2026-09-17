@@ -100,7 +100,7 @@
             display: inline-block;
         }
 
-        /* 削除ボタン（923を入力した管理者のみ可視化） */
+        /* 削除ボタン（923を入力した管理者のみ表示） */
         .delete-btn {
             display: none;
             position: absolute;
@@ -115,6 +115,7 @@
             font-size: 0.8em;
             font-weight: bold;
             transition: 0.2s;
+            z-index: 10;
         }
         .delete-btn:hover {
             background: var(--neon-red);
@@ -240,7 +241,7 @@
         <div id="p2p-status-bar">ネットワーク状態: <span id="p2p-status">接続中...</span></div>
     </header>
 
-    <!-- メインのゲーム一覧 (完全に空の状態でスタート) -->
+    <!-- メインのゲーム一覧 -->
     <div id="game-grid"></div>
 
     <!-- ゲーム公開モーダル -->
@@ -272,19 +273,48 @@
 
     <script>
         // -----------------------------
+        // LocalStorage (ローカル自動保存機能)
+        // -----------------------------
+        const STORAGE_KEY = "digital_platform_saved_games_v3";
+
+        function loadGamesFromStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                console.error("ローカルデータの読み込み失敗:", e);
+                return [];
+            }
+        }
+
+        function saveGamesToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(globalGames));
+            } catch (e) {
+                console.error("ローカルデータの保存失敗:", e);
+            }
+        }
+
+
+        // -----------------------------
         // 1. P2P 通信機能 (WebRTC / PeerJS)
         // -----------------------------
-        // ルームIDをクリーンな新しいIDに変更し、旧バージョンのサンプルデータ混入を遮断
-        const GLOBAL_ROOM_ID = "digital-platform-v2-clean-room-923";
+        const GLOBAL_ROOM_ID = "digital-platform-v3-persistent-room-923";
         let myPeer = null;
         let hubConn = null;
         let activeConnections = [];
         let isHub = false;
-        let globalGames = []; // 保持するゲーム（初期状態は完全な空）
+        
+        // 起動時に保存されたゲームをロード
+        let globalGames = loadGamesFromStorage();
 
         const statusEl = document.getElementById('p2p-status');
 
-        function initP2P() {
+        function initApp() {
+            // ローカル保存されているゲームを画面に表示
+            renderAllGames();
+
+            // P2P通信初期化
             myPeer = new Peer();
 
             myPeer.on('open', (id) => {
@@ -313,13 +343,13 @@
                 activeConnections.push(conn);
 
                 conn.on('open', () => {
+                    // 新規参加者に持っているゲームデータを共有
                     conn.send({ type: 'SYNC_GAMES', games: globalGames });
                 });
 
                 conn.on('data', (data) => {
                     if (data.type === 'NEW_GAME') {
-                        globalGames.push(data.game);
-                        addGameCardToDOM(data.game);
+                        mergeGame(data.game);
                         broadcast(data);
                     } else if (data.type === 'DELETE_GAME') {
                         removeGameLocally(data.id);
@@ -360,13 +390,23 @@
 
         function handleP2PMessage(data) {
             if (data.type === 'SYNC_GAMES') {
-                document.getElementById('game-grid').innerHTML = "";
-                globalGames = data.games;
-                globalGames.forEach(g => addGameCardToDOM(g));
+                if (Array.isArray(data.games)) {
+                    data.games.forEach(g => mergeGame(g));
+                }
             } else if (data.type === 'NEW_GAME') {
-                addGameCardToDOM(data.game);
+                mergeGame(data.game);
             } else if (data.type === 'DELETE_GAME') {
                 removeGameLocally(data.id);
+            }
+        }
+
+        // ゲームデータをリストに追加して保存
+        function mergeGame(gameData) {
+            const index = globalGames.findIndex(g => g.id === gameData.id);
+            if (index === -1) {
+                globalGames.push(gameData);
+                saveGamesToStorage();
+                addGameCardToDOM(gameData);
             }
         }
 
@@ -377,14 +417,12 @@
                 htmlContent: htmlContent
             };
 
+            mergeGame(gameData);
+
             if (isHub) {
-                globalGames.push(gameData);
-                addGameCardToDOM(gameData);
                 broadcast({ type: 'NEW_GAME', game: gameData });
             } else if (hubConn && hubConn.open) {
                 hubConn.send({ type: 'NEW_GAME', game: gameData });
-            } else {
-                addGameCardToDOM(gameData);
             }
         }
 
@@ -400,6 +438,8 @@
 
         function removeGameLocally(id) {
             globalGames = globalGames.filter(g => g.id !== id);
+            saveGamesToStorage(); // 保存領域からも消去
+
             const cardElement = document.getElementById(id);
             if (cardElement) {
                 cardElement.style.transform = "scale(0)";
@@ -407,7 +447,7 @@
             }
         }
 
-        window.addEventListener('load', initP2P);
+        window.addEventListener('load', initApp);
 
 
         // -----------------------------
@@ -421,7 +461,7 @@
             keyBuffer += e.key;
             if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
 
-            // 923を入力すると管理者（削除権限）解除
+            // 923を入力すると管理者モード解除（削除ボタン出現）
             if (keyBuffer.includes("923") && !isDevUnlocked) {
                 isDevUnlocked = true;
                 document.body.classList.add('dev-mode');
@@ -439,9 +479,15 @@
             }
         });
 
+
         // -----------------------------
-        // 3. ゲームカード表示
+        // 3. ゲームカードのレンダリング
         // -----------------------------
+        function renderAllGames() {
+            document.getElementById('game-grid').innerHTML = "";
+            globalGames.forEach(g => addGameCardToDOM(g));
+        }
+
         function addGameCardToDOM(gameData) {
             const grid = document.getElementById('game-grid');
             if(document.getElementById(gameData.id)) return;
@@ -456,7 +502,7 @@
             delBtn.innerText = '削除';
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if(confirm(`「${gameData.name}」を全員の画面から削除しますか？`)) {
+                if(confirm(`「${gameData.name}」を全員の画面から完全に削除しますか？`)) {
                     triggerDeleteGame(gameData.id);
                 }
             };
@@ -477,8 +523,9 @@
             grid.insertBefore(card, grid.firstChild);
         }
 
+
         // -----------------------------
-        // 4. ファイルアップロード（ドラッグ＆ドロップ ＆ ボタン選択）
+        // 4. ファイルアップロード処理
         // -----------------------------
         const dropZone = document.getElementById('drop-zone');
         const dropText = document.getElementById('drop-text');
@@ -552,6 +599,7 @@
             fileInput.value = "";
             uploadedHtmlContent = "";
         }
+
 
         // -----------------------------
         // 5. ゲームのプレイ (iframe)
