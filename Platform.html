@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デジタルプラットフォーム - P2P Gaming</title>
+    <title>デジタルプラットフォーム - P2P Network</title>
     <!-- PeerJS (P2P通信用ライブラリ) -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
@@ -15,6 +15,7 @@
             --neon-green: #00ff66;
             --neon-red: #ff3366;
             --text-main: #c5c6c7;
+            --sidebar-width: 250px;
         }
 
         body {
@@ -24,30 +25,86 @@
             color: var(--text-main);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow-x: hidden;
+            display: flex; /* サイドバーとメインコンテンツを横並びに */
+            height: 100vh;
+        }
+
+        /* -------------------------------------------
+           左側のサイドバー
+        ------------------------------------------- */
+        #sidebar {
+            width: var(--sidebar-width);
+            background: rgba(11, 12, 16, 0.95);
+            border-right: 2px solid var(--neon-cyan);
+            box-shadow: 2px 0 15px rgba(102, 252, 241, 0.3);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            z-index: 100;
+        }
+
+        #sidebar h2 {
+            text-align: center;
+            color: var(--neon-cyan);
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--text-main);
+            border: none;
+            border-left: 5px solid transparent;
+            padding: 20px;
+            font-size: 1.2em;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 252, 241, 0.1);
+            color: white;
+        }
+
+        .nav-btn.active {
+            background: rgba(102, 252, 241, 0.2);
+            color: var(--neon-cyan);
+            border-left: 5px solid var(--neon-cyan);
+            box-shadow: inset 10px 0 15px -10px var(--neon-cyan);
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+
+        /* メインコンテンツエリア */
+        #main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
         }
 
         /* ヘッダー */
         header {
             background: rgba(11, 12, 16, 0.9);
-            padding: 20px;
+            padding: 15px;
             text-align: center;
-            border-bottom: 2px solid var(--neon-cyan);
-            box-shadow: 0 0 15px var(--neon-cyan);
+            border-bottom: 2px solid var(--neon-blue);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 90;
             backdrop-filter: blur(10px);
         }
         header h1 {
             margin: 0;
-            color: var(--neon-cyan);
-            text-shadow: 0 0 10px var(--neon-cyan);
-            letter-spacing: 2px;
+            font-size: 1.5em;
+            color: var(--text-main);
         }
 
-        /* P2P 接続ステータス表示 */
         #p2p-status-bar {
-            margin-top: 8px;
+            margin-top: 5px;
             font-size: 0.9em;
             font-family: monospace;
             color: #888;
@@ -57,15 +114,16 @@
             text-shadow: 0 0 8px var(--neon-green);
         }
 
-        /* メインのゲーム一覧 */
-        #game-grid {
+        /* メインのアイテム一覧 */
+        #content-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 20px;
             padding: 40px;
         }
 
-        .game-card {
+        /* カードデザイン */
+        .item-card {
             position: relative;
             background: var(--panel-bg);
             border: 1px solid var(--neon-blue);
@@ -82,25 +140,31 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .game-card:hover {
+        .item-card:hover {
             transform: translateY(-5px) scale(1.02);
             box-shadow: 0 0 20px var(--neon-cyan);
             border-color: var(--neon-cyan);
         }
-        .game-card h3 {
+        .item-card h3 {
             color: white;
             margin-bottom: 5px;
+            word-wrap: break-word;
         }
-        .game-card .tag {
+        .item-card .tag {
             font-size: 0.8em;
             color: var(--neon-cyan);
             border: 1px solid var(--neon-cyan);
             padding: 2px 8px;
             border-radius: 10px;
             display: inline-block;
+            margin-top: 5px;
+        }
+        .item-card .type-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
         }
 
-        /* 削除ボタン（923を入力した管理者のみ表示） */
+        /* 削除ボタン（923入力の管理者モード時のみ） */
         .delete-btn {
             display: none;
             position: absolute;
@@ -122,12 +186,11 @@
             color: white;
             box-shadow: 0 0 10px var(--neon-red);
         }
-
         body.dev-mode .delete-btn {
             display: block;
         }
 
-        /* ゲーム公開モーダル */
+        /* 開発者モーダル */
         #publish-modal {
             display: none;
             position: fixed;
@@ -144,7 +207,6 @@
             z-index: 200;
             backdrop-filter: blur(15px);
         }
-        
         #publish-modal h2 {
             color: var(--neon-cyan);
             text-align: center;
@@ -164,6 +226,7 @@
             margin-bottom: 20px;
             transition: 0.3s;
             min-height: 120px;
+            text-align: center;
         }
         #drop-zone.dragover {
             background: rgba(102, 252, 241, 0.2);
@@ -172,11 +235,11 @@
             box-shadow: inset 0 0 15px var(--neon-cyan);
         }
 
-        #game-details {
+        #item-details {
             display: none;
             text-align: center;
         }
-        #game-details input {
+        #item-details input {
             width: 80%;
             padding: 10px;
             margin-bottom: 20px;
@@ -187,7 +250,7 @@
             font-size: 1.1em;
             outline: none;
         }
-        #game-details input:focus {
+        #item-details input:focus {
             border-color: var(--neon-cyan);
             box-shadow: 0 0 10px var(--neon-cyan);
         }
@@ -210,18 +273,15 @@
             box-shadow: 0 0 15px var(--neon-cyan);
         }
 
-        /* ゲームプレイ画面 */
+        /* プレイ/閲覧 画面 */
         #play-screen {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-color);
             z-index: 300;
-        }
-        #play-screen iframe {
-            width: 100%;
-            height: calc(100% - 60px);
-            border: none;
+            display: flex;
+            flex-direction: column;
         }
         .close-btn {
             height: 60px;
@@ -232,52 +292,130 @@
             padding: 0 20px;
             border-bottom: 1px solid var(--neon-blue);
         }
+        
+        /* 表示用コンテナ */
+        #viewer-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden; /* 画像拡大時はみ出し防止用 */
+        }
+        #game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+        #music-player {
+            display: none;
+            outline: none;
+            width: 80%;
+            max-width: 500px;
+        }
+        #image-viewer {
+            display: none;
+            max-width: 90%;
+            max-height: 90%;
+            border: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 20px var(--neon-cyan);
+            border-radius: 10px;
+            transition: transform 0.1s ease-out; /* 拡大縮小アニメーション */
+            cursor: grab; /* ドラッグ可能であることを示す */
+            user-select: none;
+        }
+
+        /* CSSハック（初期状態は画面非表示） */
+        #play-screen { display: none; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>デジタルプラットフォーム</h1>
-        <div id="p2p-status-bar">ネットワーク状態: <span id="p2p-status">接続中...</span></div>
-    </header>
+    <!-- サイドバー -->
+    <aside id="sidebar">
+        <h2>DIGITAL<br>PLATFORM</h2>
+        <button class="nav-btn active" onclick="switchTab('game')">🎮 ゲーム</button>
+        <button class="nav-btn" onclick="switchTab('music')">🎵 音楽</button>
+        <button class="nav-btn" onclick="switchTab('illustration')">🎨 イラスト</button>
+    </aside>
 
-    <!-- メインのゲーム一覧 -->
-    <div id="game-grid"></div>
+    <!-- メインコンテンツ -->
+    <main id="main-area">
+        <header>
+            <h1 id="current-tab-title">ゲーム一覧</h1>
+            <div id="p2p-status-bar">ネットワーク状態: <span id="p2p-status">接続中...</span></div>
+        </header>
 
-    <!-- ゲーム公開モーダル -->
+        <!-- メインのアイテム一覧 -->
+        <div id="content-grid"></div>
+    </main>
+
+    <!-- 開発者スタジオ (モーダル) -->
     <div id="publish-modal">
         <h2>開発者スタジオ</h2>
         
         <div id="drop-zone">
-            <span id="drop-text">ここに HTMLファイル をドロップ</span>
+            <span id="drop-text">HTML / 音楽(mp3等) / 画像 をドロップ</span>
             <span style="margin: 8px 0; font-size: 0.8em; opacity: 0.7;">または</span>
             <button class="cyber-btn" id="select-file-btn" type="button" style="font-size: 0.9em; padding: 6px 15px;">ファイルを選択</button>
-            <input type="file" id="file-input" accept=".html,.htm" style="display: none;">
+            <input type="file" id="file-input" accept=".html,.htm,audio/*,image/*" style="display: none;">
         </div>
         
-        <div id="game-details">
-            <input type="text" id="game-name" placeholder="ゲームの名前を入力してください">
+        <div id="item-details">
+            <div style="color: var(--neon-cyan); margin-bottom: 10px; font-weight: bold;" id="detected-type-label"></div>
+            <input type="text" id="item-name" placeholder="作品の名前を入力してください">
             <br>
             <button class="cyber-btn" id="publish-btn">P2Pネットワークへ公開</button>
         </div>
     </div>
 
-    <!-- ゲームプレイ画面 -->
+    <!-- プレイ/閲覧画面 -->
     <div id="play-screen">
         <div class="close-btn">
             <h2 id="playing-title" style="color: var(--neon-cyan); margin: 0;"></h2>
-            <button class="cyber-btn" onclick="closeGame()" style="padding: 5px 15px;">終了 / EXIT</button>
+            <button class="cyber-btn" onclick="closeViewer()" style="padding: 5px 15px;">終了 / EXIT</button>
         </div>
-        <iframe id="game-frame"></iframe>
+        <div id="viewer-container">
+            <iframe id="game-frame"></iframe>
+            <!-- loop属性を追加し、自動ループ再生化 -->
+            <audio id="music-player" controls loop></audio>
+            <img id="image-viewer" src="" alt="Illustration" draggable="false">
+        </div>
     </div>
 
     <script>
         // -----------------------------
+        // タブ切り替え機能
+        // -----------------------------
+        let currentTab = 'game'; // 'game', 'music', 'illustration'
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // UIの切り替え
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            if(tabName === 'game') {
+                document.querySelectorAll('.nav-btn')[0].classList.add('active');
+                document.getElementById('current-tab-title').innerText = "ゲーム一覧";
+            } else if (tabName === 'music') {
+                document.querySelectorAll('.nav-btn')[1].classList.add('active');
+                document.getElementById('current-tab-title').innerText = "音楽一覧";
+            } else if (tabName === 'illustration') {
+                document.querySelectorAll('.nav-btn')[2].classList.add('active');
+                document.getElementById('current-tab-title').innerText = "イラスト一覧";
+            }
+
+            // 画面の再描画
+            renderAllItems();
+        }
+
+        // -----------------------------
         // LocalStorage (ローカル自動保存機能)
         // -----------------------------
-        const STORAGE_KEY = "digital_platform_saved_games_v3";
+        const STORAGE_KEY = "digital_platform_saved_items_v4";
 
-        function loadGamesFromStorage() {
+        function loadItemsFromStorage() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 return saved ? JSON.parse(saved) : [];
@@ -287,34 +425,29 @@
             }
         }
 
-        function saveGamesToStorage() {
+        function saveItemsToStorage() {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(globalGames));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(globalItems));
             } catch (e) {
-                console.error("ローカルデータの保存失敗:", e);
+                console.error("データのサイズが大きすぎるためローカル保存に失敗しました:", e);
             }
         }
-
 
         // -----------------------------
         // 1. P2P 通信機能 (WebRTC / PeerJS)
         // -----------------------------
-        const GLOBAL_ROOM_ID = "digital-platform-v3-persistent-room-923";
+        const GLOBAL_ROOM_ID = "digital-platform-v4-multimedia-923";
         let myPeer = null;
         let hubConn = null;
         let activeConnections = [];
         let isHub = false;
         
-        // 起動時に保存されたゲームをロード
-        let globalGames = loadGamesFromStorage();
-
+        let globalItems = loadItemsFromStorage();
         const statusEl = document.getElementById('p2p-status');
 
         function initApp() {
-            // ローカル保存されているゲームを画面に表示
-            renderAllGames();
+            renderAllItems();
 
-            // P2P通信初期化
             myPeer = new Peer();
 
             myPeer.on('open', (id) => {
@@ -331,7 +464,6 @@
         function becomeHub() {
             isHub = true;
             if (myPeer) myPeer.destroy();
-
             myPeer = new Peer(GLOBAL_ROOM_ID);
 
             myPeer.on('open', () => {
@@ -341,22 +473,18 @@
 
             myPeer.on('connection', (conn) => {
                 activeConnections.push(conn);
-
                 conn.on('open', () => {
-                    // 新規参加者に持っているゲームデータを共有
-                    conn.send({ type: 'SYNC_GAMES', games: globalGames });
+                    conn.send({ type: 'SYNC_ITEMS', items: globalItems });
                 });
-
                 conn.on('data', (data) => {
-                    if (data.type === 'NEW_GAME') {
-                        mergeGame(data.game);
+                    if (data.type === 'NEW_ITEM') {
+                        mergeItem(data.item);
                         broadcast(data);
-                    } else if (data.type === 'DELETE_GAME') {
-                        removeGameLocally(data.id);
+                    } else if (data.type === 'DELETE_ITEM') {
+                        removeItemLocally(data.id);
                         broadcast(data);
                     }
                 });
-
                 conn.on('close', () => {
                     activeConnections = activeConnections.filter(c => c !== conn);
                 });
@@ -365,20 +493,15 @@
 
         function connectToHub() {
             hubConn = myPeer.connect(GLOBAL_ROOM_ID);
-
             hubConn.on('open', () => {
                 statusEl.innerText = "ネットワークに接続済み (CONNECTED)";
                 statusEl.classList.add('status-online');
-
                 hubConn.on('data', (data) => {
                     handleP2PMessage(data);
                 });
             });
-
             setTimeout(() => {
-                if (!hubConn || !hubConn.open) {
-                    becomeHub();
-                }
+                if (!hubConn || !hubConn.open) becomeHub();
             }, 3000);
         }
 
@@ -389,57 +512,59 @@
         }
 
         function handleP2PMessage(data) {
-            if (data.type === 'SYNC_GAMES') {
-                if (Array.isArray(data.games)) {
-                    data.games.forEach(g => mergeGame(g));
+            if (data.type === 'SYNC_ITEMS') {
+                if (Array.isArray(data.items)) {
+                    data.items.forEach(i => mergeItem(i));
                 }
-            } else if (data.type === 'NEW_GAME') {
-                mergeGame(data.game);
-            } else if (data.type === 'DELETE_GAME') {
-                removeGameLocally(data.id);
+            } else if (data.type === 'NEW_ITEM') {
+                mergeItem(data.item);
+            } else if (data.type === 'DELETE_ITEM') {
+                removeItemLocally(data.id);
             }
         }
 
-        // ゲームデータをリストに追加して保存
-        function mergeGame(gameData) {
-            const index = globalGames.findIndex(g => g.id === gameData.id);
+        function mergeItem(itemData) {
+            const index = globalItems.findIndex(i => i.id === itemData.id);
             if (index === -1) {
-                globalGames.push(gameData);
-                saveGamesToStorage();
-                addGameCardToDOM(gameData);
+                globalItems.push(itemData);
+                saveItemsToStorage();
+                // 現在のタブと一致していれば画面に追加
+                const type = itemData.fileType || 'game';
+                if (type === currentTab) {
+                    addItemCardToDOM(itemData);
+                }
             }
         }
 
-        function broadcastNewGame(name, htmlContent) {
-            const gameData = {
-                id: 'game-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        function broadcastNewItem(name, content, type) {
+            const itemData = {
+                id: 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 name: name,
-                htmlContent: htmlContent
+                content: content,
+                fileType: type // 'game', 'music', 'illustration'
             };
 
-            mergeGame(gameData);
+            mergeItem(itemData);
 
             if (isHub) {
-                broadcast({ type: 'NEW_GAME', game: gameData });
+                broadcast({ type: 'NEW_ITEM', item: itemData });
             } else if (hubConn && hubConn.open) {
-                hubConn.send({ type: 'NEW_GAME', game: gameData });
+                hubConn.send({ type: 'NEW_ITEM', item: itemData });
             }
         }
 
-        function triggerDeleteGame(id) {
-            removeGameLocally(id);
-
+        function triggerDeleteItem(id) {
+            removeItemLocally(id);
             if (isHub) {
-                broadcast({ type: 'DELETE_GAME', id: id });
+                broadcast({ type: 'DELETE_ITEM', id: id });
             } else if (hubConn && hubConn.open) {
-                hubConn.send({ type: 'DELETE_GAME', id: id });
+                hubConn.send({ type: 'DELETE_ITEM', id: id });
             }
         }
 
-        function removeGameLocally(id) {
-            globalGames = globalGames.filter(g => g.id !== id);
-            saveGamesToStorage(); // 保存領域からも消去
-
+        function removeItemLocally(id) {
+            globalItems = globalItems.filter(i => i.id !== id);
+            saveItemsToStorage();
             const cardElement = document.getElementById(id);
             if (cardElement) {
                 cardElement.style.transform = "scale(0)";
@@ -448,7 +573,6 @@
         }
 
         window.addEventListener('load', initApp);
-
 
         // -----------------------------
         // 2. 隠しコマンド (923 + c) と管理者機能
@@ -461,14 +585,12 @@
             keyBuffer += e.key;
             if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
 
-            // 923を入力すると管理者モード解除（削除ボタン出現）
             if (keyBuffer.includes("923") && !isDevUnlocked) {
                 isDevUnlocked = true;
                 document.body.classList.add('dev-mode');
                 console.log("管理者モード: 解除完了");
             }
 
-            // cキーで公開モーダル開閉
             if (isDevUnlocked && e.key.toLowerCase() === 'c') {
                 if (modal.style.display === 'block') {
                     modal.style.display = 'none';
@@ -479,76 +601,106 @@
             }
         });
 
-
         // -----------------------------
-        // 3. ゲームカードのレンダリング
+        // 3. アイテムカードのレンダリング
         // -----------------------------
-        function renderAllGames() {
-            document.getElementById('game-grid').innerHTML = "";
-            globalGames.forEach(g => addGameCardToDOM(g));
+        function renderAllItems() {
+            document.getElementById('content-grid').innerHTML = "";
+            globalItems.forEach(item => {
+                const type = item.fileType || 'game'; // 過去の互換性のため
+                if (type === currentTab) {
+                    addItemCardToDOM(item);
+                }
+            });
         }
 
-        function addGameCardToDOM(gameData) {
-            const grid = document.getElementById('game-grid');
-            if(document.getElementById(gameData.id)) return;
+        function addItemCardToDOM(itemData) {
+            const grid = document.getElementById('content-grid');
+            if(document.getElementById(itemData.id)) return;
 
-            const card = document.createElement('div');
-            card.className = 'game-card';
-            card.id = gameData.id;
+            const type = itemData.fileType || 'game';
             
-            // 削除ボタン (923入力の管理者のみ表示)
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.id = itemData.id;
+            
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-btn';
             delBtn.innerText = '削除';
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if(confirm(`「${gameData.name}」を全員の画面から完全に削除しますか？`)) {
-                    triggerDeleteGame(gameData.id);
+                if(confirm(`「${itemData.name}」を全員の画面から完全に削除しますか？`)) {
+                    triggerDeleteItem(itemData.id);
                 }
             };
 
+            // アイコンの設定
+            let icon = "🎮";
+            let typeName = "GAME";
+            if(type === 'music') { icon = "🎵"; typeName = "MUSIC"; }
+            else if(type === 'illustration') { icon = "🎨"; typeName = "ART"; }
+
             const content = document.createElement('div');
             content.innerHTML = `
-                <h3>${gameData.name}</h3>
-                <span class="tag">P2P LIVE</span>
+                <div class="type-icon">${icon}</div>
+                <h3>${itemData.name}</h3>
+                <span class="tag">${typeName}</span>
             `;
 
             card.appendChild(delBtn);
             card.appendChild(content);
 
             card.addEventListener('click', () => {
-                playGame(gameData.name, gameData.htmlContent);
+                openViewer(itemData.name, itemData.content, type);
             });
 
             grid.insertBefore(card, grid.firstChild);
         }
 
-
         // -----------------------------
-        // 4. ファイルアップロード処理
+        // 4. マルチファイルアップロード処理
         // -----------------------------
         const dropZone = document.getElementById('drop-zone');
         const dropText = document.getElementById('drop-text');
-        const gameDetails = document.getElementById('game-details');
-        const gameNameInput = document.getElementById('game-name');
+        const itemDetails = document.getElementById('item-details');
+        const itemNameInput = document.getElementById('item-name');
         const selectFileBtn = document.getElementById('select-file-btn');
         const fileInput = document.getElementById('file-input');
-        let uploadedHtmlContent = "";
+        const typeLabel = document.getElementById('detected-type-label');
+        
+        let uploadedContent = "";
+        let uploadedType = "game";
 
         function processFile(file) {
-            if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    uploadedHtmlContent = evt.target.result;
-                    dropText.innerHTML = `選択済み: <b style="color:var(--neon-cyan);">${file.name}</b>`;
-                    dropZone.style.borderColor = "var(--neon-cyan)";
-                    gameDetails.style.display = "block";
-                    gameNameInput.focus();
-                };
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            // ファイル形式の判定
+            if (file.name.match(/\.(html|htm)$/i)) {
+                uploadedType = "game";
+                typeLabel.innerText = "種類: ゲーム (HTML)";
                 reader.readAsText(file);
+            } else if (file.type.startsWith("audio/")) {
+                uploadedType = "music";
+                typeLabel.innerText = "種類: 音楽 (Audio)";
+                reader.readAsDataURL(file); // Base64エンコード
+            } else if (file.type.startsWith("image/")) {
+                uploadedType = "illustration";
+                typeLabel.innerText = "種類: イラスト (Image)";
+                reader.readAsDataURL(file); // Base64エンコード
             } else {
-                alert("HTMLファイル（.html / .htm）のみアップロード可能です！");
+                alert("対応していないファイル形式です！(HTML, MP3, JPG, PNGなどに対応)");
+                return;
             }
+
+            reader.onload = function(evt) {
+                uploadedContent = evt.target.result;
+                dropText.innerHTML = `選択済み: <b style="color:var(--neon-cyan);">${file.name}</b>`;
+                dropZone.style.borderColor = "var(--neon-cyan)";
+                itemDetails.style.display = "block";
+                itemNameInput.focus();
+            };
         }
 
         selectFileBtn.addEventListener('click', (e) => {
@@ -557,9 +709,7 @@
         });
 
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                processFile(e.target.files[0]);
-            }
+            if (e.target.files.length > 0) processFile(e.target.files[0]);
         });
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
@@ -575,50 +725,129 @@
 
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                processFile(files[0]);
-            }
+            if (files.length > 0) processFile(files[0]);
         });
 
         document.getElementById('publish-btn').addEventListener('click', () => {
-            const gameName = gameNameInput.value.trim();
-            if (!gameName) {
-                alert("ゲームの名前を入力してください！");
+            const itemName = itemNameInput.value.trim();
+            if (!itemName) {
+                alert("作品の名前を入力してください！");
                 return;
             }
-            broadcastNewGame(gameName, uploadedHtmlContent);
+            broadcastNewItem(itemName, uploadedContent, uploadedType);
             modal.style.display = 'none';
             resetModal();
+            
+            // アップロードした種類と同じタブに自動遷移
+            switchTab(uploadedType);
         });
 
         function resetModal() {
-            dropText.innerHTML = "ここに HTMLファイル をドロップ";
+            dropText.innerHTML = "HTML / 音楽(mp3等) / 画像 をドロップ";
             dropZone.style.borderColor = "var(--neon-blue)";
-            gameDetails.style.display = "none";
-            gameNameInput.value = "";
+            itemDetails.style.display = "none";
+            itemNameInput.value = "";
             fileInput.value = "";
-            uploadedHtmlContent = "";
+            uploadedContent = "";
+            typeLabel.innerText = "";
         }
 
-
         // -----------------------------
-        // 5. ゲームのプレイ (iframe)
+        // 5. プレイ / 閲覧画面の制御
         // -----------------------------
         const playScreen = document.getElementById('play-screen');
         const gameFrame = document.getElementById('game-frame');
+        const musicPlayer = document.getElementById('music-player');
+        const imageViewer = document.getElementById('image-viewer');
         const playingTitle = document.getElementById('playing-title');
 
-        function playGame(name, htmlCode) {
+        // 画像の拡縮・移動用変数
+        let imgScale = 1;
+        let imgTranslateX = 0;
+        let imgTranslateY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        function openViewer(name, content, type) {
             playingTitle.innerText = name;
-            gameFrame.srcdoc = htmlCode;
-            playScreen.style.display = 'block';
+            
+            // 一旦すべて非表示
+            gameFrame.style.display = "none";
+            musicPlayer.style.display = "none";
+            imageViewer.style.display = "none";
+            
+            // 種類に応じて表示
+            if (type === 'game') {
+                gameFrame.srcdoc = content;
+                gameFrame.style.display = "block";
+            } else if (type === 'music') {
+                musicPlayer.src = content;
+                musicPlayer.style.display = "block";
+                musicPlayer.play();
+            } else if (type === 'illustration') {
+                imageViewer.src = content;
+                imageViewer.style.display = "block";
+                
+                // 画像の状態をリセット
+                imgScale = 1;
+                imgTranslateX = 0;
+                imgTranslateY = 0;
+                updateImageTransform();
+            }
+
+            playScreen.style.display = 'flex';
         }
 
-        function closeGame() {
+        function closeViewer() {
             playScreen.style.display = 'none';
+            
+            // リセット
             gameFrame.srcdoc = "";
+            musicPlayer.pause();
+            musicPlayer.src = "";
+            imageViewer.src = "";
         }
-    </script>
 
+        // -----------------------------
+        // 6. 画像の拡大縮小・ドラッグ操作
+        // -----------------------------
+        function updateImageTransform() {
+            imageViewer.style.transform = `translate(${imgTranslateX}px, ${imgTranslateY}px) scale(${imgScale})`;
+        }
+
+        // マウスホイールでの拡大・縮小
+        imageViewer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            if (e.deltaY < 0) {
+                imgScale += zoomSpeed; // 上スクロールで拡大
+            } else {
+                imgScale -= zoomSpeed; // 下スクロールで縮小
+            }
+            if (imgScale < 0.1) imgScale = 0.1; // 最小サイズの制限
+            updateImageTransform();
+        });
+
+        // ドラッグ（マウスボタンを押したまま移動）での移動
+        imageViewer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX - imgTranslateX;
+            startY = e.clientY - imgTranslateY;
+            imageViewer.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            imageViewer.style.cursor = 'grab';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging || imageViewer.style.display === "none") return;
+            imgTranslateX = e.clientX - startX;
+            imgTranslateY = e.clientY - startY;
+            updateImageTransform();
+        });
+    </script>
 </body>
 </html>
