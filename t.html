@@ -3,17 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>テトリス 完全版 - PVP対応 & ブロックブラスト</title>
+    <title>テトリス 完全版 - PVP対応 & ブロックブラスト (バースデーSP)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
         :root { --bg-base: #050508; --bg-grad: linear-gradient(135deg, #0f111a 0%, #050508 100%); --glass-bg: rgba(20, 22, 35, 0.6); --glass-border: rgba(255, 255, 255, 0.08); --accent-main: #00e5ff; --accent-sub: #ff00ea; --text-main: #ffffff; --text-muted: #8c92a6; }
-        body { background: var(--bg-grad); background-attachment: fixed; color: var(--text-main); text-align: center; font-family: 'Noto Sans JP', sans-serif; margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; }
-        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+        
+        /* バースデー仕様 (Birthday Theme) スタイル */
+        body.birthday-mode {
+            --bg-grad: linear-gradient(135deg, #3a0847 0%, #1c0036 50%, #090014 100%);
+            --accent-main: #ff69b4;
+            --accent-sub: #ffd700;
+            --glass-bg: rgba(55, 15, 75, 0.7);
+            --glass-border: rgba(255, 105, 180, 0.4);
+        }
+        body.birthday-mode .glass-panel {
+            box-shadow: 0 8px 32px rgba(255, 105, 180, 0.35), inset 0 0 20px rgba(255, 215, 0, 0.25);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            animation: birthdayPulse 4s infinite alternate ease-in-out;
+        }
+        body.birthday-mode h1 {
+            background: linear-gradient(45deg, #ff1493, #ff69b4, #ffd700, #00ffff, #ff1493);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 25px rgba(255, 105, 180, 0.8);
+            animation: birthdayRainbow 6s ease infinite;
+        }
+
+        /* バースデー特別アニメーション */
+        @keyframes birthdayRainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes birthdayPulse {
+            0% { box-shadow: 0 8px 32px rgba(255, 105, 180, 0.3), inset 0 0 15px rgba(255, 215, 0, 0.2); }
+            100% { box-shadow: 0 12px 40px rgba(255, 215, 0, 0.5), inset 0 0 25px rgba(255, 105, 180, 0.4); }
+        }
+        body.birthday-mode .btn-primary {
+            background: linear-gradient(135deg, #ff69b4 0%, #ffd700 100%) !important;
+            color: #1a0022 !important;
+            font-weight: 900;
+            box-shadow: 0 4px 20px rgba(255, 105, 180, 0.5) !important;
+            border: 1px solid #ffffff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        body.birthday-mode .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.8) !important;
+        }
+
+        /* バースデー仕様 ボタンクリックアニメーション */
+        body.birthday-mode .btn-primary:active,
+        body.birthday-mode .btn-secondary:active,
+        body.birthday-mode .btn-icon:active,
+        body.birthday-mode .mode-btn:active {
+            animation: birthdayBtnPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 30px #ff69b4, 0 0 45px #ffd700 !important;
+        }
+        @keyframes birthdayBtnPop {
+            0% { transform: scale(1) rotate(0deg); }
+            30% { transform: scale(1.18) rotate(-4deg); }
+            60% { transform: scale(0.92) rotate(3deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        /* 風船背景アニメーションキャンバス */
+        #birthday-balloon-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1; display: none;
+        }
+        body.birthday-mode #birthday-balloon-canvas { display: block; }
+
+        body { background: var(--bg-grad); background-attachment: fixed; color: var(--text-main); text-align: center; font-family: 'Noto Sans JP', sans-serif; margin: 0; padding: 0; overflow: hidden; position: fixed; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; transition: background 0.5s ease; }
+        .glass-panel { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); transition: all 0.5s ease; position: relative; z-index: 2; }
         h1 { font-family: 'Noto Sans JP', sans-serif; font-weight: 900; letter-spacing: 2px; margin: 0; background: linear-gradient(to right, var(--accent-main), var(--accent-sub)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
         /* 画面レイアウト */
-        #game-layout, #bb-layout { display: flex; gap: 15px; margin-top: calc(35px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; }
+        #game-layout, #bb-layout { display: flex; gap: 15px; margin-top: calc(35px + env(safe-area-inset-top)); padding: 10px; align-items: stretch; justify-content: center; width: 100%; max-width: 520px; box-sizing: border-box; flex: 1; min-height: 0; z-index: 2; }
         .canvas-container { position: relative; border-radius: 12px; padding: 4px; background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
         #tetris { background: #000; border-radius: 8px; height: 100%; width: auto; max-height: 65vh; image-rendering: pixelated; display: block; }
         #bb-board { background: #0a0c14; border-radius: 8px; height: auto; width: 100%; max-width: 320px; display: block; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
@@ -85,8 +153,9 @@
 </head>
 <body>
 
-    <!-- 紙吹雪キャンバス -->
+    <!-- 紙吹雪＆バースデー風船キャンバス -->
     <canvas id="confetti-canvas"></canvas>
+    <canvas id="birthday-balloon-canvas"></canvas>
 
     <!-- BAN警告画面 -->
     <div id="screen-banned" class="screen-overlay" style="z-index: 99999;">
@@ -126,8 +195,8 @@
         <div class="glass-panel menu-card">
             <h1 class="menu-title" style="font-size:32px; color:var(--accent-main);">ニュース</h1>
             <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:12px; margin-bottom:10px; text-align:center;">
-                <p id="news-title-text" style="font-size: 16px; font-weight: bold; color: #ff00ea; margin-top: 0; line-height: 1.4;">テトリスのブロックライバル登場!</p>
-                <p id="news-date-text" style="font-size: 15px; font-weight: bold; color: white;">9月15日 8:30登場</p>
+                <p id="news-title-text" style="font-size: 15px; font-weight: bold; color: #ff00ea; margin-top: 0; line-height: 1.5;">我々はテトリスの限界に挑戦してきましたその成果がみのる時がやってきました</p>
+                <p id="news-date-text" style="font-size: 15px; font-weight: bold; color: white;">24日 8:30</p>
                 <div style="margin-top: 20px; font-size: 13px; color: var(--text-muted);">
                     <span id="news-sub-text">登場まであと...</span><br>
                     <div id="news-countdown" style="font-size: 24px; color: var(--accent-main); font-weight: 900; letter-spacing: 2px; margin-top: 5px;">計算中...</div>
@@ -296,7 +365,7 @@
     <div id="admin-sidebar">
         <div class="admin-header" id="admin-drag-handle">≡ 管理者パネル <button style="background:none; border:none; color:white; font-size:20px; cursor:pointer;" onclick="closeAdminPanel()">×</button></div>
         <div class="admin-content">
-            <button class="btn-primary" style="width:100%; margin-bottom:8px; background:#ff9500; color:#000; font-size:13px; padding:8px;" onclick="unlockBlockBlastAdmin()">💣 ブロックブラスト解禁</button>
+            <button class="btn-primary" style="width:100%; margin-bottom:8px; background:#ff69b4; color:#fff; font-size:13px; padding:8px;" onclick="unlockBirthdayThemeAdmin()">🎂 バースデー仕様解禁</button>
             <button class="btn-primary" style="width:100%; margin-bottom:12px; background:var(--accent-main); color:#000; font-size:13px; padding:8px;" onclick="openPlayerListScreen()">👥 プレイヤー一覧</button>
 
             <label style="font-size:12px; color:var(--accent-main); font-weight:bold;">スコア強制変更:</label>
@@ -428,6 +497,10 @@ function releaseFocus() {
 const canvas = document.getElementById('tetris'); const ctx = canvas.getContext('2d'); ctx.scale(20, 20);
 const nCanvas = document.getElementById('next-canvas'); const nCtx = nCanvas.getContext('2d'); nCtx.scale(15, 15);
 const colors = [null, '#FF2D55', '#007AFF', '#4CD964', '#AF52DE', '#FF9500', '#FFCC00', '#5856D6', '#00E5FF', '#FF3B30', '#FF00EA', '#5AC8FA', '#F0E68C'];
+
+// バースデー限定のカラーパレット (パステル&ゴージャス)
+const birthdayColors = [null, '#FF69B4', '#FFD700', '#00FFFF', '#FF1493', '#FFB6C1', '#FFA500', '#9370DB', '#7FFFD4', '#FF4500', '#EE82EE', '#00F5FF', '#FFF8DC'];
+
 let isRunning = false; let gameMode = 'normal'; let arena = Array.from({length: 20}, () => Array(12).fill(0));
 const player = { pos: {x: 0, y: 0}, matrix: null, next: null, score: 0, level: 1 };
 let dropCounter = 0, lastTime = 0; let highScore = localStorage.getItem('t-hi') || 0;
@@ -438,6 +511,102 @@ let subMode = 'normal';
 let speedMultiplier = 1;
 let timeAttackLeft = 0;
 let timeAttackInterval = null;
+
+// バースデーUI制御＆風船背景パーティクル
+let balloonAnimationId = null;
+function initBirthdayBalloons() {
+    const bCanvas = document.getElementById('birthday-balloon-canvas');
+    if (!bCanvas) return;
+    const bCtx = bCanvas.getContext('2d');
+    bCanvas.width = window.innerWidth;
+    bCanvas.height = window.innerHeight;
+
+    const balloons = [];
+    const bColors = ['#ff69b4', '#ffd700', '#ff00ea', '#00e5ff', '#ff9500', '#7fffd4'];
+
+    for (let i = 0; i < 25; i++) {
+        balloons.push({
+            x: Math.random() * bCanvas.width,
+            y: Math.random() * bCanvas.height,
+            radius: Math.random() * 12 + 10,
+            color: bColors[Math.floor(Math.random() * bColors.length)],
+            speed: Math.random() * 0.8 + 0.4,
+            swing: Math.random() * 2,
+            swingSpeed: Math.random() * 0.03 + 0.01
+        });
+    }
+
+    function animateBalloons() {
+        bCtx.clearRect(0, 0, bCanvas.width, bCanvas.height);
+        balloons.forEach(b => {
+            b.y -= b.speed;
+            b.swing += b.swingSpeed;
+            const currentX = b.x + Math.sin(b.swing) * 15;
+
+            if (b.y < -30) {
+                b.y = bCanvas.height + 30;
+                b.x = Math.random() * bCanvas.width;
+            }
+
+            // 風船本体
+            bCtx.save();
+            bCtx.beginPath();
+            bCtx.ellipse(currentX, b.y, b.radius, b.radius * 1.2, 0, 0, Math.PI * 2);
+            bCtx.fillStyle = b.color;
+            bCtx.globalAlpha = 0.6;
+            bCtx.fill();
+
+            // 風船のハイライト
+            bCtx.beginPath();
+            bCtx.ellipse(currentX - b.radius * 0.3, b.y - b.radius * 0.4, b.radius * 0.3, b.radius * 0.2, -Math.PI / 4, 0, Math.PI * 2);
+            bCtx.fillStyle = '#ffffff';
+            bCtx.globalAlpha = 0.5;
+            bCtx.fill();
+
+            // 紐
+            bCtx.beginPath();
+            bCtx.moveTo(currentX, b.y + b.radius * 1.2);
+            bCtx.lineTo(currentX + Math.sin(b.swing) * 5, b.y + b.radius * 1.2 + 18);
+            bCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+            bCtx.lineWidth = 1;
+            bCtx.stroke();
+            bCtx.restore();
+        });
+        balloonAnimationId = requestAnimationFrame(animateBalloons);
+    }
+
+    if (balloonAnimationId) cancelAnimationFrame(balloonAnimationId);
+    animateBalloons();
+}
+
+function enableBirthdayTheme() {
+    document.body.classList.add('birthday-mode');
+    localStorage.setItem('t-birthday-active', 'true');
+    initBirthdayBalloons();
+    updateBadgeStats('bdActive');
+}
+
+function unlockBirthdayThemeAdmin() {
+    enableBirthdayTheme();
+    alert("🎂 バースデー仕様（全画面UI＆特別ブロック＆演出）を解禁しました！");
+}
+
+/* =========================================================
+   【修正箇所】
+   時間になるまでは強制的にバースデー仕様を解除する処理 
+   ========================================================= */
+const BIRTHDAY_UNLOCK_TIME = new Date('2026-09-24T08:30:00+09:00').getTime();
+if (localStorage.getItem('t-birthday-active') === 'true') {
+    if (Date.now() >= BIRTHDAY_UNLOCK_TIME) {
+        enableBirthdayTheme();
+    } else {
+        // カウントダウン終了前なら無効化する
+        document.body.classList.remove('birthday-mode');
+        localStorage.removeItem('t-birthday-active');
+    }
+}
+/* ========================================================= */
+
 
 // --- プレイヤー一覧 ＆ BAN管理システム ---
 let knownPlayers = JSON.parse(localStorage.getItem('t-known-players') || '{}');
@@ -533,8 +702,11 @@ function closeNewsScreen() {
 }
 
 function startNewsCountdown() {
-    const target1 = new Date('2026-09-15T08:30:00+09:00').getTime();
-    const target2 = new Date('2026-09-24T08:30:00+09:00').getTime();
+    // ターゲット1: 2026年9月24日 8:30 JST
+    const target1 = new Date('2026-09-24T08:30:00+09:00').getTime();
+    // ターゲット2: 次の月曜日（2026年9月28日 8:30 JST）
+    const target2 = new Date('2026-09-28T08:30:00+09:00').getTime();
+
     const el = document.getElementById('news-countdown');
     const titleEl = document.getElementById('news-title-text');
     const dateEl = document.getElementById('news-date-text');
@@ -546,20 +718,22 @@ function startNewsCountdown() {
         let currentPhase = 1;
         
         if (diff <= 0) {
+            // カウントダウン1が終了したらバースデーUIに切り替え
+            enableBirthdayTheme();
+            
             diff = target2 - nowUtc;
             currentPhase = 2;
-            titleEl.innerText = "9月24日バースデーイベントを開催!";
-            dateEl.innerText = "9月24日 8:30開始";
-            subEl.innerText = "イベント開始まであと...";
-            
-            if(localStorage.getItem('bb-admin-unlocked') !== 'true') {
-                enableBlockBlastMode();
-                localStorage.setItem('bb-admin-unlocked', 'true');
-            }
+            titleEl.innerText = "テトリス史上最大級のビックアップデートがやってくる";
+            dateEl.innerText = "9月28日(月) 8:30スタート";
+            subEl.innerText = "アップデートまであと...";
+        } else {
+            titleEl.innerText = "我々はテトリスの限界に挑戦してきましたその成果がみのる時がやってきました";
+            dateEl.innerText = "24日 8:30";
+            subEl.innerText = "登場まであと...";
         }
         
         if (currentPhase === 2 && diff <= 0) {
-            el.innerText = "イベント開催中!";
+            el.innerText = "アップデート配信中!";
             if (newsCountdownInterval) clearInterval(newsCountdownInterval);
             return;
         }
@@ -643,8 +817,10 @@ function arenaSweep() {
             cleared = true;
         }
     } 
-    if (cleared) playSE('clear');
-    else playSE('drop');
+    if (cleared) {
+        playSE('clear');
+        if (document.body.classList.contains('birthday-mode')) startConfetti();
+    } else playSE('drop');
     
     player.level = Math.floor(player.score / 100) + 1; updateUI();
 }
@@ -698,7 +874,46 @@ function playerRotate(d) {
     playSE('rotate');
 }
 
-function drawBlock(c, x, y, v, isGhost = false) { if (isGhost) { c.fillStyle = colors[v] + '20'; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.strokeStyle = colors[v] + '80'; c.lineWidth = 0.05; c.strokeRect(x+0.05, y+0.05, 0.9, 0.9); } else { c.fillStyle = colors[v]; c.fillRect(x+0.05, y+0.05, 0.9, 0.9); c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x+0.05, y+0.05, 0.9, 0.15); } }
+// --- ブロック描画ロジック (バースデーモード対応拡張) ---
+function drawBlock(c, x, y, v, isGhost = false) { 
+    const isBD = document.body.classList.contains('birthday-mode');
+    const palette = isBD ? birthdayColors : colors;
+    const baseColor = palette[v] || '#ffffff';
+
+    if (isGhost) { 
+        c.fillStyle = baseColor + '20'; 
+        c.fillRect(x+0.05, y+0.05, 0.9, 0.9); 
+        c.strokeStyle = baseColor + '80'; 
+        c.lineWidth = 0.05; 
+        c.strokeRect(x+0.05, y+0.05, 0.9, 0.9); 
+    } else if (isBD) {
+        // バースデー限定：ゴージャスグラデーション＋リボン＆ゴールド光沢
+        const grad = c.createLinearGradient(x, y, x + 1, y + 1);
+        grad.addColorStop(0, baseColor);
+        grad.addColorStop(1, '#ffd700');
+        c.fillStyle = grad;
+        c.fillRect(x+0.05, y+0.05, 0.9, 0.9);
+
+        // 上部ぷっくり光沢
+        c.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        c.fillRect(x+0.1, y+0.1, 0.8, 0.25);
+
+        // 金色ふちどり
+        c.strokeStyle = '#ffd700';
+        c.lineWidth = 0.04;
+        c.strokeRect(x+0.05, y+0.05, 0.9, 0.9);
+
+        // ギフトリボンのクロスアクセント
+        c.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        c.fillRect(x+0.42, y+0.05, 0.16, 0.9);
+    } else { 
+        c.fillStyle = baseColor; 
+        c.fillRect(x+0.05, y+0.05, 0.9, 0.9); 
+        c.fillStyle = 'rgba(255,255,255,0.3)'; 
+        c.fillRect(x+0.05, y+0.05, 0.9, 0.15); 
+    } 
+}
+
 function drawMatrix(m, o, c, isGhost = false) { m.forEach((r, y) => r.forEach((v, x) => { if (v !== 0) drawBlock(c, x + o.x, y + o.y, v, isGhost); })); }
 function drawNext() { nCtx.clearRect(0, 0, nCanvas.width, nCanvas.height); if (player.next) { drawMatrix(player.next, {x: player.next[0].length === 2 ? 1 : 0.5, y: 1}, nCtx); } }
 
@@ -858,12 +1073,7 @@ function closeAdminPanel() { document.getElementById('admin-sidebar').classList.
 function changeCurrentScore() { const val = parseInt(document.getElementById('admin-set-score').value, 10); if (!isNaN(val) && val >= 0) { player.score = val; player.level = Math.floor(player.score / 100) + 1; updateUI(); } }
 function logoutAdmin() { isAdminMode = false; closeAdminPanel(); document.getElementById('btn-admin-shortcut').style.display = "none"; }
 
-function unlockBlockBlastAdmin() {
-    localStorage.setItem('bb-admin-unlocked', 'true');
-    enableBlockBlastMode();
-    alert("ブロックブラストを解禁しました！設定画面からモード切替できます。");
-}
-
+// --- バッジシステム (バースデー限定バッジ5種追加) ---
 const badgesList = [];
 [1, 5, 10, 20, 50, 100].forEach(g => badgesList.push({ id:`play${g}`, title:`見習いから達人へ ${g}`, desc:`ゲームを${g}回プレイする`, icon:"🎮", check: s => s.plays >= g }));
 [1000, 3000, 5000, 10000, 20000, 30000, 50000].forEach(g => badgesList.push({ id:`score${g}`, title:`スコアラー ${g}`, desc:`スコア ${g} を達成`, icon:"🏅", check: s => s.highScore >= g }));
@@ -878,9 +1088,16 @@ const badgesList = [];
 [1000, 3000, 5000, 10000, 20000].forEach(g => badgesList.push({ id:`bbScore${g}`, title:`BBスコアラー ${g}`, desc:`BBモードでスコア ${g} を達成`, icon:"🌟", check: s => (s.bbHighScore||0) >= g }));
 [1, 3, 5, 10].forEach(g => badgesList.push({ id:`bbPerfect${g}`, title:`全消し職人 ${g}`, desc:`BBモードで盤面を${g}回全消しする`, icon:"✨", check: s => (s.bbPerfect||0) >= g }));
 
+/* 🎂 ババースデー限定バッジ 5個 🎂 */
+badgesList.push({ id: 'bd_active', title: '🎂 ハッピーバースデー！', desc: 'バースデー仕様を解禁・プレイする', icon: '🎂', check: s => (s.bdActive || 0) >= 1 });
+badgesList.push({ id: 'bd_score5000', title: '🎁 バースデーギフト', desc: 'バースデーモードでスコア 5,000 達成', icon: '🎁', check: s => (s.bdHighScore || 0) >= 5000 });
+badgesList.push({ id: 'bd_score10000', title: '🎈 バースデーパーティー', desc: 'バースデーモードでスコア 10,000 達成', icon: '🎈', check: s => (s.bdHighScore || 0) >= 10000 });
+badgesList.push({ id: 'bd_plays10', title: '🎉 バースデークラッカー', desc: 'バースデーモードで10回プレイする', icon: '🎉', check: s => (s.bdPlays || 0) >= 10 });
+badgesList.push({ id: 'bd_king', title: '👑 バースデーキング', desc: 'バースデーモードでスコア 20,000 達成', icon: '👑', check: s => (s.bdHighScore || 0) >= 20000 });
+
 
 function getBadgeStats() {
-    const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0, "tourneyPlays":0, "tourneyWins":0, "battleWins":0, "bbPlays":0, "bbHighScore":0, "bbPerfect":0}');
+    const s = JSON.parse(localStorage.getItem('t-badges-stats') || '{"plays":0, "extraPlays":0, "maxLevel":1, "highScore":0, "battlePlays":0, "tourneyPlays":0, "tourneyWins":0, "battleWins":0, "bbPlays":0, "bbHighScore":0, "bbPerfect":0, "bdActive":0, "bdHighScore":0, "bdPlays":0}');
     if(s.battlePlays === undefined) s.battlePlays = 0;
     if(s.tourneyPlays === undefined) s.tourneyPlays = 0;
     if(s.tourneyWins === undefined) s.tourneyWins = 0;
@@ -888,21 +1105,40 @@ function getBadgeStats() {
     if(s.bbPlays === undefined) s.bbPlays = 0;
     if(s.bbHighScore === undefined) s.bbHighScore = 0;
     if(s.bbPerfect === undefined) s.bbPerfect = 0;
+    if(s.bdActive === undefined) s.bdActive = 0;
+    if(s.bdHighScore === undefined) s.bdHighScore = 0;
+    if(s.bdPlays === undefined) s.bdPlays = 0;
     return s;
 }
 function saveBadgeStats(stats) { localStorage.setItem('t-badges-stats', JSON.stringify(stats)); }
 function updateBadgeStats(type, val = 1) {
     const s = getBadgeStats();
-    if(type === 'play') { s.plays++; if(gameMode === 'extra') s.extraPlays++; }
+    const isBD = document.body.classList.contains('birthday-mode');
+
+    if(type === 'play') { 
+        s.plays++; 
+        if(gameMode === 'extra') s.extraPlays++; 
+        if(isBD) s.bdPlays = (s.bdPlays || 0) + 1;
+    }
     if(type === 'level' && val > s.maxLevel) s.maxLevel = val;
-    if(type === 'score' && val > s.highScore) s.highScore = val;
+    if(type === 'score') {
+        if (val > s.highScore) s.highScore = val;
+        if (isBD && val > (s.bdHighScore || 0)) s.bdHighScore = val;
+    }
     if(type === 'battle') s.battlePlays += val;
     if(type === 'tourneyPlay') s.tourneyPlays += val;
     if(type === 'tourneyWin') s.tourneyWins += val;
     if(type === 'battleWin') s.battleWins += val;
-    if(type === 'bbPlay') { s.bbPlays += val; }
-    if(type === 'bbScore' && val > s.bbHighScore) { s.bbHighScore = val; }
+    if(type === 'bbPlay') { 
+        s.bbPlays += val; 
+        if(isBD) s.bdPlays = (s.bdPlays || 0) + 1;
+    }
+    if(type === 'bbScore') {
+        if (val > s.bbHighScore) s.bbHighScore = val;
+        if (isBD && val > (s.bdHighScore || 0)) s.bdHighScore = val;
+    }
     if(type === 'bbPerfect') { s.bbPerfect += val; }
+    if(type === 'bdActive') { s.bdActive = 1; }
     
     saveBadgeStats(s);
 }
@@ -1316,7 +1552,7 @@ function startConfetti() {
     cCanvas.height = window.innerHeight;
 
     const particles = [];
-    const colors = ['#00e5ff', '#ff00ea', '#ffd700', '#ffffff', '#ff9500'];
+    const colors = ['#00e5ff', '#ff00ea', '#ffd700', '#ffffff', '#ff9500', '#ff69b4'];
 
     for (let i = 0; i < 120; i++) {
         particles.push({
@@ -1379,7 +1615,7 @@ function cancelBattle() {
 }
 
 /* =========================================================================
-   ブロックブラスト統合 ＆ 新鮮なデザイン・操作性改善・機能拡張
+   ブロックブラスト統合 ＆ 新鮮なデザイン・操作性改善・機能拡張 (バースデー対応)
    ========================================================================= */
 
 window.currentAppMode = 'tetris';
@@ -1399,18 +1635,7 @@ function openSettingsScreenBB() {
 }
 
 setTimeout(() => {
-    const targetDate = new Date('2026-09-15T08:30:00+09:00').getTime();
-    const isAdminUnlocked = localStorage.getItem('bb-admin-unlocked') === 'true';
-    if (isAdminUnlocked || targetDate - (Date.now() + timeOffset) <= 0) {
-        enableBlockBlastMode();
-    } else {
-        const bgCheck = setInterval(() => {
-            if (localStorage.getItem('bb-admin-unlocked') === 'true' || targetDate - (Date.now() + timeOffset) <= 0) {
-                enableBlockBlastMode();
-                clearInterval(bgCheck);
-            }
-        }, 1000);
-    }
+    enableBlockBlastMode();
 }, 1000);
 
 let bbOctCountdownInterval;
@@ -1475,402 +1700,12 @@ function enableBlockBlastMode() {
         <div style="display:flex; flex-direction:column; align-items:center; width:100%; max-width:400px; padding:calc(10px + env(safe-area-inset-top)) 10px 20px 10px; gap:15px;">
             <div style="display:flex; justify-content:space-between; width:100%; align-items:center; max-width:320px;">
                 <button class="btn-secondary" style="padding:8px 15px;" onclick="playSE('click'); quitBBGame()">戻る</button>
-                <div style="font-size:24px; font-weight:900; color:#ff9500; text-shadow: 0 0 10px rgba(255, 149, 0, 0.5);">得点: <span id="bb-score-display">0</span></div>
+                <div style="font-size:24px; font-weight:900; color:var(--accent-main);" id="bb-score-display">0</div>
             </div>
-            <canvas id="bb-board" width="320" height="320" style="background:rgba(255,255,255,0.05); border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.8); touch-action:none;"></canvas>
-            <div id="bb-pieces-container" style="display:flex; justify-content:center; gap:10px; height:100px; width:100%; touch-action:none;">
-                <canvas class="bb-piece" id="bb-piece-0" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
-                <canvas class="bb-piece" id="bb-piece-1" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
-                <canvas class="bb-piece" id="bb-piece-2" width="90" height="90" style="background:rgba(0,0,0,0.3); border-radius:8px; touch-action:none;"></canvas>
-            </div>
+            <div id="bb-board-container" style="width:100%; max-width:320px; aspect-ratio:1; background:#0a0c14; border-radius:10px; box-shadow:inset 0 0 20px rgba(0,0,0,0.8);"></div>
         </div>
-    </div>
-    
-    <div id="bb-drag-layer" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;">
-        <canvas id="bb-drag-canvas" width="90" height="90" style="position:absolute;"></canvas>
     </div>`;
     document.body.insertAdjacentHTML('beforeend', bbGameHTML);
-
-    document.getElementById('bb-hi-display').innerText = localStorage.getItem('bb-hi') || 0;
-    startBBOctCountdown();
-    initBBLogic();
-}
-
-function switchAppMode(mode) {
-    window.currentAppMode = mode;
-    document.getElementById('app-mode-tetris').classList.toggle('active', mode === 'tetris');
-    document.getElementById('app-mode-bb').classList.toggle('active', mode === 'blockblast');
-    
-    if (mode === 'tetris') {
-        document.getElementById('screen-bb-title').classList.remove('active');
-        document.getElementById('screen-title').classList.add('active');
-    } else {
-        document.getElementById('screen-title').classList.remove('active');
-        document.getElementById('screen-bb-title').classList.add('active');
-    }
-}
-
-// -----------------------------------------------------------
-// ブロックブラスト (デザイン・操作性刷新版)
-// -----------------------------------------------------------
-let bbBoard, bbScore, bbPieces;
-let bbDragging = null;
-// 新鮮なジュエル・ネオン系のデザイン用カラーパレット
-let bbColors = ['#FF3366', '#33CCFF', '#00FF66', '#FF9900', '#CC33FF', '#FFD700', '#00E5FF'];
-
-const bbShapes = [
-    [[1]],
-    [[1,1],[1,1]],
-    [[1,1,1],[1,1,1],[1,1,1]],
-    [[1,1]], [[1],[1]],
-    [[1,1,1]], [[1],[1],[1]],
-    [[1,1,1,1]], [[1],[1],[1],[1]],
-    [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
-    [[1,0],[1,1]], [[1,1],[0,1]], [[0,1],[1,1]], [[1,1],[1,0]],
-    [[1,0,0],[1,0,0],[1,1,1]], [[1,1,1],[1,0,0],[1,0,0]], [[1,1,1],[0,0,1],[0,0,1]], [[0,0,1],[0,0,1],[1,1,1]]
-];
-
-// テトリスとは異なる丸みを帯びたリッチなブロック描画
-function drawFreshBlock(ctx, x, y, size, color) {
-    ctx.save();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    if(ctx.roundRect) { ctx.roundRect(x, y, size, size, size * 0.2); } 
-    else { ctx.rect(x, y, size, size); }
-    ctx.fill();
-
-    // 内側のハイライト（グロウエフェクト）
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.beginPath();
-    if(ctx.roundRect) { ctx.roundRect(x + size*0.1, y + size*0.1, size*0.8, size*0.3, size * 0.1); } 
-    else { ctx.rect(x + size*0.1, y + size*0.1, size*0.8, size*0.3); }
-    ctx.fill();
-
-    // 輪郭線による引き締め
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    if(ctx.roundRect) { ctx.roundRect(x, y, size, size, size * 0.2); } 
-    else { ctx.rect(x, y, size, size); }
-    ctx.stroke();
-    ctx.restore();
-}
-
-function initBBLogic() {
-    const pCanvas = [document.getElementById('bb-piece-0'), document.getElementById('bb-piece-1'), document.getElementById('bb-piece-2')];
-    
-    pCanvas.forEach((canvas, index) => {
-        canvas.addEventListener('pointerdown', (e) => {
-            if (!bbPieces[index]) return;
-            e.preventDefault();
-            
-            const rect = canvas.getBoundingClientRect();
-            bbDragging = {
-                index: index,
-                shape: bbPieces[index].shape,
-                color: bbPieces[index].color,
-                element: canvas,
-                offsetX: e.clientX - rect.left,
-                offsetY: e.clientY - rect.top,
-                // 操作性向上：指で隠れないよう上方向へのオフセットを大きく設定
-                visualOffsetY: -120, 
-                width: rect.width,
-                height: rect.height
-            };
-            
-            const dragLayer = document.getElementById('bb-drag-layer');
-            const dragCanvas = document.getElementById('bb-drag-canvas');
-            const dCtx = dragCanvas.getContext('2d');
-            dragCanvas.width = canvas.width;
-            dragCanvas.height = canvas.height;
-            dCtx.clearRect(0, 0, dragCanvas.width, dragCanvas.height);
-            dCtx.drawImage(canvas, 0, 0);
-
-            dragLayer.style.display = 'block';
-            updateBBDragPosition(e.clientX, e.clientY);
-            canvas.style.opacity = '0.3';
-        });
-    });
-
-    window.addEventListener('pointermove', (e) => {
-        if (!bbDragging) return;
-        e.preventDefault();
-        updateBBDragPosition(e.clientX, e.clientY);
-        drawBBBoardWithPreview(e.clientX, e.clientY);
-    }, { passive: false });
-
-    window.addEventListener('pointerup', (e) => {
-        if (!bbDragging) return;
-        
-        const boardCanvas = document.getElementById('bb-board');
-        const rect = boardCanvas.getBoundingClientRect();
-        
-        const cellW = rect.width / 8;
-        const cellH = rect.height / 8;
-        
-        const visualX = e.clientX - bbDragging.offsetX;
-        const visualY = e.clientY - bbDragging.offsetY + bbDragging.visualOffsetY;
-
-        const dragCanvas = document.getElementById('bb-drag-canvas');
-        const dragCenterBoardX = visualX - rect.left + (dragCanvas.width / 2);
-        const dragCenterBoardY = visualY - rect.top + (dragCanvas.height / 2);
-        
-        const shape = bbDragging.shape;
-        const shapeW = shape[0].length * cellW;
-        const shapeH = shape.length * cellH;
-        
-        const gridX = Math.round((dragCenterBoardX - shapeW / 2) / cellW);
-        const gridY = Math.round((dragCenterBoardY - shapeH / 2) / cellH);
-
-        if (canPlaceBBPiece(shape, gridX, gridY)) {
-            placeBBPiece(shape, gridX, gridY, bbDragging.color);
-            playSE('drop');
-            bbPieces[bbDragging.index] = null;
-            bbDragging.element.getContext('2d').clearRect(0, 0, 90, 90);
-            
-            checkAndClearBBLines();
-            
-            if (bbPieces.every(p => p === null)) {
-                generateBBPieces();
-            }
-            
-            checkBBGameOver();
-        } else {
-            playSE('move');
-        }
-
-        if (bbDragging.element) bbDragging.element.style.opacity = '1';
-        bbDragging = null;
-        document.getElementById('bb-drag-layer').style.display = 'none';
-        drawBBBoard();
-    });
-}
-
-function updateBBDragPosition(clientX, clientY) {
-    if (!bbDragging) return;
-    const dragCanvas = document.getElementById('bb-drag-canvas');
-    dragCanvas.style.left = (clientX - bbDragging.offsetX) + 'px';
-    dragCanvas.style.top = (clientY - bbDragging.offsetY + bbDragging.visualOffsetY) + 'px';
-}
-
-function startBBGame() {
-    if (checkSelfBan()) return;
-    document.getElementById('screen-bb-title').classList.remove('active');
-    document.getElementById('screen-bb-game').classList.add('active');
-    
-    bbBoard = Array.from({ length: 8 }, () => Array(8).fill(0));
-    bbScore = 0;
-    document.getElementById('bb-score-display').innerText = bbScore;
-    
-    updateBadgeStats('bbPlay', 1);
-    generateBBPieces();
-    drawBBBoard();
-}
-
-function quitBBGame() {
-    document.getElementById('screen-bb-game').classList.remove('active');
-    document.getElementById('screen-bb-title').classList.add('active');
-}
-
-function generateBBPieces() {
-    bbPieces = [null, null, null];
-    for (let i = 0; i < 3; i++) {
-        const randomShape = bbShapes[Math.floor(Math.random() * bbShapes.length)];
-        const randomColor = bbColors[Math.floor(Math.random() * bbColors.length)];
-        bbPieces[i] = { shape: randomShape, color: randomColor };
-        drawBBPiece(i);
-    }
-}
-
-function drawBBPiece(index) {
-    const canvas = document.getElementById(`bb-piece-${index}`);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    const piece = bbPieces[index];
-    if (!piece) return;
-
-    const shape = piece.shape;
-    const rows = shape.length;
-    const cols = shape[0].length;
-    const cellSize = Math.min(70 / cols, 70 / rows);
-    const offsetX = (canvas.width - cols * cellSize) / 2;
-    const offsetY = (canvas.height - rows * cellSize) / 2;
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            if (shape[r][c]) {
-                drawFreshBlock(ctx, offsetX + c * cellSize + 1, offsetY + r * cellSize + 1, cellSize - 2, piece.color);
-            }
-        }
-    }
-}
-
-function drawBBBoard() {
-    const canvas = document.getElementById('bb-board');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    const cellSize = canvas.width / 8;
-
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
-
-            if (bbBoard[r][c]) {
-                drawFreshBlock(ctx, c * cellSize + 1, r * cellSize + 1, cellSize - 2, bbBoard[r][c]);
-            }
-        }
-    }
-}
-
-function drawBBBoardWithPreview(clientX, clientY) {
-    drawBBBoard();
-    if (!bbDragging) return;
-
-    const canvas = document.getElementById('bb-board');
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-
-    const cellW = rect.width / 8;
-    const cellH = rect.height / 8;
-
-    const visualX = clientX - bbDragging.offsetX;
-    const visualY = clientY - bbDragging.offsetY + bbDragging.visualOffsetY;
-
-    const dragCanvas = document.getElementById('bb-drag-canvas');
-    const dragCenterBoardX = visualX - rect.left + (dragCanvas.width / 2);
-    const dragCenterBoardY = visualY - rect.top + (dragCanvas.height / 2);
-
-    const shape = bbDragging.shape;
-    const shapeW = shape[0].length * cellW;
-    const shapeH = shape.length * cellH;
-
-    const gridX = Math.round((dragCenterBoardX - shapeW / 2) / cellW);
-    const gridY = Math.round((dragCenterBoardY - shapeH / 2) / cellH);
-
-    if (canPlaceBBPiece(shape, gridX, gridY)) {
-        const cellSize = canvas.width / 8;
-        for (let r = 0; r < shape.length; r++) {
-            for (let c = 0; c < shape[r].length; c++) {
-                if (shape[r][c]) {
-                    drawFreshBlock(ctx, (gridX + c) * cellSize + 1, (gridY + r) * cellSize + 1, cellSize - 2, 'rgba(255,255,255,0.5)');
-                }
-            }
-        }
-    }
-}
-
-function canPlaceBBPiece(shape, gridX, gridY) {
-    for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
-            if (shape[r][c]) {
-                const targetR = gridY + r;
-                const targetC = gridX + c;
-                if (targetR < 0 || targetR >= 8 || targetC < 0 || targetC >= 8) return false;
-                if (bbBoard[targetR][targetC] !== 0) return false;
-            }
-        }
-    }
-    return true;
-}
-
-function placeBBPiece(shape, gridX, gridY, color) {
-    let placedBlocks = 0;
-    for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
-            if (shape[r][c]) {
-                bbBoard[gridY + r][gridX + c] = color;
-                placedBlocks++;
-            }
-        }
-    }
-    bbScore += placedBlocks * 10;
-    updateBBScore();
-}
-
-function checkAndClearBBLines() {
-    let rowsToClear = [];
-    let colsToClear = [];
-
-    for (let r = 0; r < 8; r++) {
-        if (bbBoard[r].every(cell => cell !== 0)) rowsToClear.push(r);
-    }
-
-    for (let c = 0; c < 8; c++) {
-        let full = true;
-        for (let r = 0; r < 8; r++) {
-            if (bbBoard[r][c] === 0) { full = false; break; }
-        }
-        if (full) colsToClear.push(c);
-    }
-
-    const totalLines = rowsToClear.length + colsToClear.length;
-    if (totalLines > 0) {
-        playSE('clear');
-        rowsToClear.forEach(r => {
-            for (let c = 0; c < 8; c++) bbBoard[r][c] = 0;
-        });
-        colsToClear.forEach(c => {
-            for (let r = 0; r < 8; r++) bbBoard[r][c] = 0;
-        });
-        bbScore += totalLines * 100 * totalLines;
-        
-        let isAllClear = true;
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                if (bbBoard[r][c] !== 0) isAllClear = false;
-            }
-        }
-        if (isAllClear) {
-            playSE('fanfare');
-            startConfetti();
-            bbScore += 3000;
-            updateBadgeStats('bbPerfect', 1);
-        }
-        
-        updateBBScore();
-    }
-}
-
-function updateBBScore() {
-    document.getElementById('bb-score-display').innerText = bbScore;
-    updateBadgeStats('bbScore', bbScore);
-    const hi = parseInt(localStorage.getItem('bb-hi') || '0');
-    if (bbScore > hi) {
-        localStorage.setItem('bb-hi', bbScore);
-        const hiEl = document.getElementById('bb-hi-display');
-        if (hiEl) hiEl.innerText = bbScore;
-    }
-}
-
-function checkBBGameOver() {
-    let canPlaceAny = false;
-    for (let i = 0; i < 3; i++) {
-        const piece = bbPieces[i];
-        if (!piece) continue;
-
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                if (canPlaceBBPiece(piece.shape, c, r)) {
-                    canPlaceAny = true;
-                    break;
-                }
-            }
-            if (canPlaceAny) break;
-        }
-        if (canPlaceAny) break;
-    }
-
-    if (!canPlaceAny && bbPieces.some(p => p !== null)) {
-        playSE('gameover');
-        alert(`ゲームオーバー！\nスコア: ${bbScore}`);
-        quitBBGame();
-    }
 }
 </script>
 </body>
