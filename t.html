@@ -3,29 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>サービス終了のお知らせ</title>
+    <title>サービス終了のお知らせ & 新作情報</title>
     <style>
         :root {
-            --accent-main: #00e5ff;
-            --bg-color: #0f111a;
-            --text-color: #ffffff;
+            --accent-main: #66c0f4;
+            --steam-bg-dark: #101822;
+            --steam-bg-card: #1b2838;
+            --steam-card-inner: #0e141d;
+            --steam-blue: #66c0f4;
+            --text-color: #f3f3f3;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            font-family: "Motiva Sans", Arial, Helvetica, sans-serif;
         }
 
         body {
-            background-color: var(--bg-color);
+            background-color: var(--steam-bg-dark);
             color: var(--text-color);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         /* 画面オーバーレイ基本スタイル */
@@ -40,6 +43,7 @@
             align-items: center;
             flex-direction: column;
             z-index: 100;
+            overflow-y: auto;
         }
 
         .screen-overlay.active {
@@ -59,7 +63,7 @@
 
         .menu-card {
             width: 90%;
-            max-width: 420px;
+            max-width: 440px;
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -78,7 +82,7 @@
             border-radius: 30px;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 15px;
+            margin-top: 20px;
         }
 
         .btn-primary:hover {
@@ -89,26 +93,310 @@
         .btn-primary:active {
             transform: translateY(0);
         }
+
+        /* --- Steam風画面のスタイル --- */
+        .steam-container {
+            width: 95%;
+            max-width: 940px;
+            background: #1b2838;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .steam-header {
+            background: #171a21;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #2a475e;
+        }
+
+        .steam-logo {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .steam-logo span {
+            color: #66c0f4;
+            font-size: 13px;
+            font-weight: normal;
+            background: rgba(102, 192, 244, 0.2);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .steam-body {
+            padding: 24px;
+        }
+
+        .game-title {
+            font-size: 26px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 18px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .steam-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .steam-grid {
+                grid-template-columns: 1.6fr 1fr;
+            }
+        }
+
+        .media-preview {
+            background: #000;
+            border: 1px solid #000;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .media-preview img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .game-info-panel {
+            background: #0e141d;
+            padding: 16px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .game-desc {
+            font-size: 13px;
+            color: #acb2b8;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+
+        .info-row {
+            display: flex;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .info-label {
+            color: #556772;
+            width: 110px;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            color: #8f98a0;
+        }
+
+        .info-value.highlight {
+            color: #66c0f4;
+            font-weight: bold;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: rgba(102, 192, 244, 0.15);
+            color: #66c0f4;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 2px;
+        }
+        
+        /* 詳しい説明用スタイル */
+        .game-about-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #2a475e;
+        }
+
+        .game-about-title {
+            font-size: 14px;
+            color: #ffffff;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .game-about-text {
+            font-size: 14px;
+            color: #acb2b8;
+            line-height: 1.6;
+        }
+
+        .purchase-box {
+            background: #0e1e2d;
+            border-radius: 4px;
+            padding: 18px 20px;
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid #1d334a;
+        }
+
+        @media (min-width: 600px) {
+            .purchase-box {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .purchase-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .btn-steam-wishlist {
+            background: linear-gradient(90deg, #274155 0%, #1a2a38 100%);
+            color: #66c0f4;
+            border: 1px solid #325672;
+            padding: 10px 20px;
+            border-radius: 2px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-steam-wishlist:hover {
+            background: linear-gradient(90deg, #355773 0%, #22374a 100%);
+            color: #ffffff;
+            border-color: #66c0f4;
+        }
+
+        .btn-steam-buy {
+            background: linear-gradient(90deg, #75b022 0%, #588a1b 100%);
+            color: #d2efa9;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 2px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+
+        .btn-steam-buy:hover {
+            background: linear-gradient(90deg, #8ed128 0%, #6ba622 100%);
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
 
-    <!-- サービス終了画面 (最前面・黒背景) -->
+    <!-- 1. サービス終了画面 (フェーズ1) -->
     <div id="screen-service-end" class="screen-overlay active" style="z-index: 999999; background: #000;">
-        <!-- フェーズ1：感謝メッセージ -->
         <div class="glass-panel menu-card" id="service-end-phase1" style="display: flex;">
             <h1 style="font-size: 20px; color: #ff4b4b; line-height: 1.6; margin-bottom: 20px;">
                 このゲームはサービス終了しました<br>
                 今までプレイしてくださった人<br>
                 ありがとうございました
             </h1>
-            <button class="btn-primary" onclick="showNextPhase()">次へ</button>
+            <button class="btn-primary" onclick="showPhase2()">次へ</button>
         </div>
 
-        <!-- フェーズ2：カウントダウンタイマー -->
+        <!-- 2. カウントダウンタイマー画面 (フェーズ2) -->
         <div class="glass-panel menu-card" id="service-end-phase2" style="display: none;">
             <h1 style="font-size: 22px; color: var(--accent-main); margin-bottom: 15px;">後継作品公開まで</h1>
             <div id="service-end-countdown" style="font-size: 22px; font-weight: 900; color: #ff00ea; letter-spacing: 1px;">計算中...</div>
+            
+            <!-- タイマー下の次へボタン -->
+            <button class="btn-primary" onclick="showPhase3()">次へ</button>
+        </div>
+    </div>
+
+    <!-- 3. Steam風 購入/ストア画面 (フェーズ3) -->
+    <div id="screen-steam-store" class="screen-overlay" style="z-index: 999999; background: #101822; justify-content: flex-start; padding-top: 30px;">
+        <div class="steam-container">
+            <div class="steam-header">
+                <div class="steam-logo">
+                    STEAM <span>STORE</span>
+                </div>
+                <div style="font-size: 12px; color: #8f98a0;">ストアページへようこそ</div>
+            </div>
+
+            <div class="steam-body">
+                <div class="game-title">行ってキー</div>
+
+                <div class="steam-grid">
+                    <!-- 左側: メイン画像プレビュー -->
+                    <div class="media-preview">
+                        <!-- 指定されたメイン画像 -->
+                        <img src="image_4fc440_3.png" id="game-preview-img" alt="ゲーム画面">
+                    </div>
+
+                    <!-- 右側: ゲーム詳細情報 -->
+                    <div class="game-info-panel">
+                        <div>
+                            <div class="media-preview">
+                                <!-- 指定されたサムネイル画像 -->
+                                <img src="ホーム.png" id="game-thumb-img" alt="サムネイル">
+                            </div>
+                            <p class="game-desc">
+                                テトリスの物語が去った後ブロックの世界は動き出す!
+                            </p>
+                        </div>
+
+                        <div>
+                            <div class="info-row">
+                                <div class="info-label">リリース予定日:</div>
+                                <div class="info-value highlight">10月7日</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">開発元:</div>
+                                <div class="info-value">ぴりたまくん</div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-label">パブリッシャー:</div>
+                                <div class="info-value">ぴりたまくん</div>
+                            </div>
+
+                            <div class="tag-list">
+                                <span class="tag">サバイバル</span>
+                                <span class="tag">2D</span>
+                                <span class="tag">インディー</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 詳しい説明セクション -->
+                <div class="game-about-section">
+                    <h2 class="game-about-title">このゲームについて</h2>
+                    <p class="game-about-text">
+                        テトリスの去ったブロックの世界ただ一つのブロックが荒れたブロックの世界を探検するサバイバルゲーム!
+                    </p>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -121,11 +409,10 @@
     </div>
 
     <script>
-        // --- サービス終了画面の処理 ---
+        // --- 画面切り替え & タイマー処理 ---
         let serviceEndInterval = null;
 
-        function showNextPhase() {
-            // 感謝メッセージを非表示、タイマー画面を表示
+        function showPhase2() {
             document.getElementById('service-end-phase1').style.display = 'none';
             document.getElementById('service-end-phase2').style.display = 'flex';
             
@@ -151,9 +438,16 @@
                     `${d}日 ${String(h).padStart(2, '0')}時間 ${String(m).padStart(2, '0')}分 ${String(s).padStart(2, '0')}秒`;
             }
             
-            // 即時実行および1秒毎の更新設定
             updateServiceEndCountdown();
-            serviceEndInterval = setInterval(updateServiceEndCountdown, 1000);
+            if (!serviceEndInterval) {
+                serviceEndInterval = setInterval(updateServiceEndCountdown, 1000);
+            }
+        }
+
+        function showPhase3() {
+            // タイマー画面を完全に隠してSteam風購入画面を表示
+            document.getElementById('screen-service-end').style.display = 'none';
+            document.getElementById('screen-steam-store').classList.add('active');
         }
     </script>
 </body>
