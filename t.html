@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>行ってキー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'DotGothic16', monospace, sans-serif; }
+        body { 
+            margin: 0; 
+            background-color: #000; 
+            background-image: radial-gradient(#333 2px, transparent 2px);
+            background-size: 30px 30px;
+            color: #eee; overflow: hidden; touch-action: none; user-select: none; 
+        }
+        canvas { display: block; }
+        
+        #ui { 
+            position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 5;
+            background: rgba(0, 0, 0, 0.8); border: 4px solid #fff; padding: 10px 20px;
+            text-shadow: 2px 2px 0px #000; border-radius: 0px; box-shadow: 4px 4px 0px #555;
+        }
+        #score { font-size: 32px; font-weight: bold; color: #fff; }
+
+        #lobby {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 10;
+        }
+
+        #top-menu { position: absolute; top: 20px; right: 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+        #top-menu button { padding: 8px 12px; font-size: 15px; background: #000; border: 3px solid #fff; border-radius: 0px; box-shadow: 3px 3px 0px #555; }
+        #top-menu button:hover { background: #fff; color: #000; box-shadow: 3px 3px 0px #aaa; }
+        
+        h1 { font-size: 48px; color: #fff; margin-bottom: 5px; letter-spacing: 2px; text-shadow: 6px 6px 0px #444; text-align: center; }
+        #coin-display { font-size: 22px; color: #ffd700; margin-bottom: 30px; text-shadow: 3px 3px 0 #444; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 15px; width: 240px; }
+        
+        button {
+            padding: 12px; font-size: 18px; cursor: pointer; background: #000; 
+            border: 3px solid #fff; color: #fff; transition: 0.1s; 
+            border-radius: 0px; box-shadow: 4px 4px 0px #555;
+        }
+        button:hover { background: #fff; color: #000; border-color: #fff; box-shadow: 4px 4px 0px #aaa; }
+        button.active { background: #fff; color: #000; border-color: #ffd700; box-shadow: 4px 4px 0px #ffd700; font-weight: bold; }
+        
+        #setupArea, #gameOverArea { display: none; text-align: center; flex-direction: column; align-items: center; }
+        .controls-group, .device-group { display: flex; gap: 10px; margin-bottom: 15px; width: 260px; }
+        .controls-group { flex-direction: column; margin-bottom: 20px; }
+        .device-group button { flex: 1; }
+
+        .modal {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 92%; max-width: 680px; max-height: 85%; background: rgba(0, 0, 0, 0.95);
+            border: 4px solid #fff; padding: 20px; z-index: 100; overflow-y: auto;
+            box-shadow: 8px 8px 0 #555; border-radius: 0px;
+        }
+        .modal-header { font-size: 26px; margin-bottom: 15px; text-align: center; border-bottom: 3px dashed #555; padding-bottom: 10px; }
+        .modal-close { margin-top: 20px; width: 100%; background: #000; }
+        
+        .badge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; justify-content: center; }
+        .badge { border: 3px solid #555; padding: 10px; text-align: center; background: #000; opacity: 0.6; position: relative; border-radius: 0px; }
+        .badge.unlocked { opacity: 1; border-color: #ffd700; background: #221100; box-shadow: 3px 3px 0 #ffd700; }
+        .badge-icon { font-size: 30px; margin-bottom: 3px; }
+        .badge-title { font-size: 15px; font-weight: bold; }
+        .badge-desc { font-size: 11px; margin-top: 4px; color: #aaa; min-height: 32px; }
+        .progress-bg { width: 100%; height: 8px; background: #000; margin-top: 6px; border: 2px solid #555; }
+        .progress-bar { height: 100%; background: #ffd700; width: 0%; transition: width 0.3s; }
+        .progress-text { font-size: 12px; color: #fff; margin-top: 4px; }
+
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; justify-content: center; }
+        .shop-item { border: 3px solid #555; padding: 10px 6px; text-align: center; background: #000; display:flex; flex-direction:column; align-items:center; border-radius: 0px; }
+        .shop-item.equipped { border-color: #00ffcc; background: #002211; box-shadow: 3px 3px 0 #00ffcc; }
+        .shop-color-preview { width: 36px; height: 36px; border: 3px solid #fff; margin-bottom: 8px; display:flex; align-items:center; justify-content:center; border-radius: 0px; }
+        .shop-title { font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+        .shop-btn { padding: 6px 8px; font-size: 12px; width: 100%; margin-top: auto; border-radius: 0px; box-shadow: 2px 2px 0px #333; border-width: 2px; }
+        
+        #joystick-zone {
+            display: none; position: absolute; bottom: 40px; right: 40px; width: 140px; height: 140px; 
+            background: rgba(255, 255, 255, 0.1); border: 4px solid rgba(255,255,255,0.4); touch-action: none; z-index: 50; border-radius: 0px;
+        }
+        #joystick-stick {
+            position: absolute; top: 45px; left: 45px; width: 50px; height: 50px;
+            background: rgba(255, 255, 255, 0.8); border: 4px solid #fff; pointer-events: none; border-radius: 0px; box-shadow: 4px 4px 0 #555;
+        }
+
+        .record-item { display: flex; justify-content: space-between; border-bottom: 2px dashed #333; padding: 8px 5px; font-size: 15px; }
+        .record-item:nth-child(even) { background: #0a0a0a; }
+\n        .records-tabs { display:flex; gap:8px; margin-bottom:12px; }\n        .records-tabs button { flex:1; padding:8px 10px; font-size:15px; }\n        .records-tabs button.active { background:#fff; color:#000; border-color:#00ffcc; box-shadow:3px 3px 0 #00ffcc; }\n        .ghost-timer-wrap { display:inline-flex; align-items:center; gap:4px; margin-left:8px; padding:2px 7px; border:2px solid #fff; color:#fff; background:rgba(0,0,0,.65); font-size:16px; }\n        .hacker-modal { overflow:hidden; background:rgba(0,9,4,.96); border-color:#00ff66; box-shadow:0 0 0 2px #00220e, 0 0 32px rgba(0,255,102,.25), 8px 8px 0 #001a08; color:#b8ffcf; }\n        .hacker-modal::before { content:"01001010 01000111 01010011 00101110 00101110 00101110"; position:absolute; inset:0; opacity:.08; font-size:18px; line-height:1.8; word-break:break-all; pointer-events:none; color:#00ff66; z-index:-1; }\n        .hacker-scanline { position:absolute; left:0; right:0; height:2px; top:0; background:#00ff66; opacity:.35; animation:hscan 4s linear infinite; }\n        @keyframes hscan { 0% { transform:translateY(0); } 100% { transform:translateY(560px); } }\n        .hacker-title { color:#00ff66; border-color:#006b2b; text-shadow:0 0 8px #00ff66; font-family:monospace; }\n        .hacker-status { font-family:monospace; font-size:13px; margin-bottom:10px; padding:8px; border:1px solid #064d22; background:rgba(0,30,12,.55); }\n        .p2p-online { color:#00ff66; text-shadow:0 0 6px #00ff66; }\n        .p2p-offline { color:#ff6666; }\n        .hacker-intro { font-size:13px; line-height:1.6; color:#9eeab5; margin-bottom:14px; padding:10px; border-left:3px solid #00ff66; background:rgba(0,40,16,.3); }\n        .hacker-chance-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }\n        .hacker-card { border:2px solid #0a6d31; padding:10px; background:rgba(0,25,10,.72); box-shadow:inset 0 0 18px rgba(0,255,102,.05); }\n        .hacker-card-title { font-size:16px; color:#00ff66; margin-bottom:6px; }\n        .hacker-card-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; }\n        .hacker-card input[type=range] { width:100%; accent-color:#00ff66; }\n        .hacker-upgrade { width:100%; margin-top:8px; padding:7px 8px; font-size:12px; border-color:#00ff66; color:#9effba; background:#001508; box-shadow:2px 2px 0 #003814; }\n        .hacker-upgrade:disabled { opacity:.45; }\n        .hacker-log { margin-top:12px; padding:9px; min-height:66px; max-height:110px; overflow:auto; border:1px solid #064d22; background:#000; color:#51ff8a; font-family:monospace; font-size:11px; line-height:1.5; }\n        .hacker-close { border-color:#00ff66; color:#00ff66; }\n        .world-summary { border:2px solid #00ffcc; padding:10px; margin-bottom:10px; background:#001512; text-align:center; }\n        .world-summary .rank { font-size:24px; color:#ffd700; font-weight:bold; }\n        .world-row-me { background:#063023 !important; color:#fff; border-left:4px solid #00ffcc; }\n        .world-empty { text-align:center; padding:22px; color:#888; border:1px dashed #444; }\n        .shop-daily-badge { margin:0 auto 12px; text-align:center; padding:7px; border:2px solid #ffd700; color:#ffd700; background:#1b1200; }\n        .shop-refresh { font-size:11px; color:#aaa; text-align:center; margin-bottom:10px; }\n
+        .shop-character-preview { width: 104px; height: 58px; border: 3px solid #fff; margin-bottom: 8px; display:flex; align-items:center; justify-content:center; background:#000; overflow:hidden; }
+        .shop-character-preview img { width:104px; height:58px; object-fit:contain; image-rendering:auto; pointer-events:none; }
+        .locker-empty { text-align:center; padding:24px; color:#888; border:2px dashed #444; }
+        .admin-modal { border-color:#ff6666; box-shadow:8px 8px 0 #551111; }
+        .admin-warning { margin-bottom:14px; padding:10px; border:2px solid #551111; background:#180000; color:#ffb0b0; font-size:12px; text-align:center; }
+        .admin-buttons { display:flex; justify-content:center; gap:10px; margin-bottom:10px; }
+        .admin-buttons button { width:180px; border-color:#ff6666; color:#ffb0b0; }
+        .admin-give-all { width:100%; margin-bottom:14px; border-color:#ff6666; color:#fff; background:#3a0000; }
+        @media (max-width: 700px) { .hacker-chance-grid { grid-template-columns:1fr; } #top-menu { right:8px; top:8px; gap:5px; } #top-menu button { padding:6px 8px; font-size:12px; } }\n    </style>
+</head>
+<body>
+    <div id="lobby">
+        <div id="top-menu">
+            <button onclick="showModal('manualModal')">説明</button>
+            <button onclick="showModal('recordsModal')">記録</button>
+            <button onclick="showModal('badgesModal')">バッジ</button>
+            <button onclick="showModal('shopModal')" style="color:#ffd700; border-color:#ffd700;">ショップ</button>
+            <button onclick="showLocker()" style="color:#00eaff; border-color:#00eaff;">ロッカー</button>
+            <button onclick="showSetup()">設定</button>
+        </div>
+
+        <h1 id="lobbyTitle">行ってキー</h1>
+        <div id="coin-display">💰 <span id="lobby-coins">0</span> COINS</div>
+
+        <div id="mainMenu" class="btn-group">
+            <button onclick="startGame()">プレイ</button>
+        </div>
+
+        <div id="setupArea">
+            <h2 style="margin-bottom: 12px; font-size: 22px; text-shadow: 2px 2px 0 #444;">【端末設定】</h2>
+            <div class="device-group">
+                <button id="dev-pc" class="active" onclick="setDevice('pc')">PC</button>
+                <button id="dev-tablet" onclick="setDevice('tablet')">タブレット</button>
+            </div>
+
+            <h2 style="margin-bottom: 12px; font-size: 22px; text-shadow: 2px 2px 0 #444;">【操作方法】</h2>
+            <div class="controls-group">
+                <button id="ctrl-pointer" class="active" onclick="setControl(currentPointerControl, this)">マウス</button>
+                <button id="ctrl-kb" onclick="setControl('kb', this)">WASD ＆ 矢印</button>
+                <button id="ctrl-gp" onclick="setControl('gp', this)">パッド</button>
+            </div>
+            <button style="width: 260px;" onclick="backToMain()">戻る</button>
+        </div>
+
+        <div id="gameOverArea">
+            <h2 style="font-size: 40px; margin-bottom: 10px; color:#ff3333; text-shadow: 4px 4px 0 #fff;">GAME OVER</h2>
+            <p id="finalScoreText" style="line-height: 1.6; margin-bottom: 5px; font-size: 20px; text-shadow: 2px 2px 0 #000;"></p>
+            <p id="coinEarnedText" style="color: #ffd700; font-size: 18px; margin-bottom: 15px; text-shadow: 2px 2px 0 #000;"></p>
+            <div id="newBadgeAlert" style="color: #00ffcc; font-size: 16px; font-weight:bold; margin-bottom:15px; text-shadow: 2px 2px 0 #000; display:none;"></div>
+            <div class="btn-group" style="flex-direction: row; width: auto; gap: 15px;">
+                <button onclick="restartGame()">もう一度</button>
+                <button onclick="backToTitleFromGameOver()">タイトル</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="manualModal" class="modal">
+        <div class="modal-header">遊び方・説明</div>
+        <div style="line-height: 1.6; font-size: 15px;">
+            <p style="color:#ffd700; text-shadow: 1px 1px 0 #555;">【ルール】</p>
+            迫りくる敵から逃げ続け、生存時間を競うゲームです。<br>
+            生存した秒数と同じ数のコインが獲得できます。<br><br>
+            
+            <p style="color:#ffd700; text-shadow: 1px 1px 0 #555;">【アイテム効果 (3秒ごとに登場)】</p>
+            <span style="color:#3388ff;">■ S (シールド)</span>: 敵に当たっても1回だけ生き残る。<br>
+            <span style="color:#00ffff;">■ F (フリーズ)</span>: 一定時間、敵の動きが超スローに。<br>
+            <span style="color:#ff3333;">■ B (ボム)</span>: 画面内の敵をすべて吹き飛ばす。<br>
+            <span style="color:#ffffff;">■ G (ゴースト)</span>: 一定時間、敵をすり抜ける無敵状態。<br><br>
+
+            <p style="color:#ffd700; text-shadow: 1px 1px 0 #555;">【敵の種類】</p>
+            <span style="color:#ff3333;">■ 赤</span>: 追尾 <span style="color:#9933ff;">■ 紫</span>: ジグザグ蛇行<br>
+            <span style="color:#ff8800;">■ 橙</span>: 突進 <span style="color:#33ff33;">■ 緑</span>: 分裂<br>
+            <span style="color:#33ccff;">■ 水</span>: 射撃 <span style="color:#ffffff;">■ 白</span>: 強力な引力<br>
+            <span style="color:#8b0000;">■ 暗赤</span>: 巨大ブロック<br>
+        </div>
+        <button class="modal-close" onclick="closeModal('manualModal')">閉じる</button>
+    </div>
+
+    <div id="recordsModal" class="modal">
+        <div class="modal-header" id="recordsHeader">プレイ記録</div>
+        <div id="recordsTabs" class="records-tabs">
+            <button id="recordsPersonalBtn" class="active" onclick="setRecordTab('personal')">個人</button>
+            <button id="recordsWorldBtn" onclick="setRecordTab('world')">世界</button>
+        </div>
+        <div id="recordsList" style="max-height: 330px; overflow-y: auto;"></div>
+        <button class="modal-close" onclick="closeModal('recordsModal')">閉じる</button>
+    </div>
+
+    <div id="badgesModal" class="modal">
+        <div class="modal-header">クエストバッジ</div>
+        <div class="badge-grid" id="badgeContainer"></div>
+        <button class="modal-close" onclick="closeModal('badgesModal')">閉じる</button>
+    </div>
+
+    <div id="shopModal" class="modal">
+        <div class="modal-header" style="color:#ffd700; border-color:#ffd700;">スキン ショップ (全23種)</div>
+        <div style="text-align:center; margin-bottom: 12px; font-size:17px; text-shadow: 1px 1px 0 #555;">所持コイン: <span id="shop-coins" style="color:#ffd700;">0</span></div>
+        <div class="shop-grid" id="shopContainer"></div>
+        <button class="modal-close" onclick="closeModal('shopModal')">閉じる</button>
+    </div>
+
+    <div id="lockerModal" class="modal">
+        <div class="modal-header" style="color:#00eaff; border-color:#00eaff;">ロッカー</div>
+        <div style="text-align:center; margin-bottom:12px; color:#aaa;">所持しているスキンを自由に変更できます。</div>
+        <div class="shop-grid" id="lockerContainer"></div>
+        <button class="modal-close" onclick="closeModal('lockerModal')">閉じる</button>
+    </div>
+
+    <div id="adminModal" class="modal admin-modal">
+        <div class="modal-header" style="color:#ff6666; border-color:#ff6666;">管理者パネル</div>
+        <div class="admin-warning">管理者モード：通常のプレイヤー画面には表示されません。</div>
+        <div class="admin-buttons">
+            <button onclick="openAdminSkins()">スキン</button>
+        </div>
+        <button class="modal-close" onclick="closeModal('adminModal')">管理者パネルを閉じる</button>
+    </div>
+
+    <div id="adminSkinsModal" class="modal admin-modal">
+        <div class="modal-header" style="color:#ff6666; border-color:#ff6666;">管理者：スキン</div>
+        <div style="text-align:center; margin-bottom:12px; color:#aaa;">スキンを無料で自由に入手できます。</div>
+        <button class="admin-give-all" onclick="grantAllSkins()">全スキンを無料で入手</button>
+        <div class="shop-grid" id="adminSkinsContainer"></div>
+        <button class="modal-close" onclick="closeModal('adminSkinsModal')">戻る</button>
+    </div>
+
+
+    <div id="ui" style="display:none;">
+        <span style="font-size: 18px;">生存時間: </span>
+        <span id="score" style="margin: 0 8px;">0</span> <span style="font-size: 18px;"> 秒</span>
+        <span id="ghost-timer-wrap" class="ghost-timer-wrap" style="display:none;">👻 <span id="ghost-timer">0</span>秒</span>
+    </div>
+    <div id="joystick-zone"><div id="joystick-stick"></div></div>
+    <canvas id="game"></canvas>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const uiLayer = document.getElementById('ui');
+    const scoreEl = document.getElementById('score');
+    
+    const lobby = document.getElementById('lobby'), mainMenu = document.getElementById('mainMenu');
+    const setupArea = document.getElementById('setupArea'), gameOverArea = document.getElementById('gameOverArea');
+    const finalScoreText = document.getElementById('finalScoreText'), coinEarnedText = document.getElementById('coinEarnedText');
+    const lobbyTitle = document.getElementById('lobbyTitle'), topMenu = document.getElementById('top-menu');
+    const coinDisplays = [document.getElementById('lobby-coins'), document.getElementById('shop-coins')];
+
+    const STORAGE_KEYS = {
+        HIGH_SCORE: 'escape_block_high_score',
+        HISTORY: 'escape_block_history',
+        BADGES: 'escape_block_badges',
+        SKINS: 'escape_block_skins',
+        EQUIPPED_SKIN: 'escape_block_equipped_skin',
+        STATS: 'escape_block_stats'
+    };
+
+    let width, height, gameActive = false, score = 0, startTime = 0;
+    let keys = {};
+    let deviceType = 'pc', currentPointerControl = 'mouse';
+    let joyActive = false, joyDeltaX = 0, joyDeltaY = 0;
+    const BASE_SPEED = 7;
+    
+    let enemies = [], bullets = [], particles = [], items = [], floatingTexts = [];
+    let skinParticles = [];
+    let player = { x: 0, y: 0, size: 12, control: 'mouse', hasShield: false, isGhost: false, isMoving: false };
+    let mouseTarget = { x: 0, y: 0 };
+    let phantomTrail = [];
+
+    let lastItemTime = 0, itemsCollectedThisRun = 0;
+    let ghostEndTime = 0, freezeEndTime = 0, flashAlpha = 0;
+
+    let savedHighScore = parseInt(localStorage.getItem(STORAGE_KEYS.HIGH_SCORE) || '0');
+    let playHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
+    let unlockedBadges = JSON.parse(localStorage.getItem(STORAGE_KEYS.BADGES) || '{}');
+    let unlockedSkins = JSON.parse(localStorage.getItem(STORAGE_KEYS.SKINS) || '["default"]');
+    let equippedSkin = localStorage.getItem(STORAGE_KEYS.EQUIPPED_SKIN) || 'default';
+    
+    let stats = JSON.parse(localStorage.getItem(STORAGE_KEYS.STATS) || '{"totalPlays":0, "totalItems":0, "totalBombedEnemies":0, "coins":0}');
+    updateCoinDisplays();
+
+    const SKINS = [
+        { id: 'default', name: 'デフォルト', price: 0, color: '#ffffff', desc: '基本の白いブロック' },
+        { id: 'pink', name: 'ネオンピンク', price: 100, color: '#ff1493', desc: 'ネオンの発光カラー' },
+        { id: 'blue', name: 'サイバーブルー', price: 200, color: '#00f3ff', desc: 'サイバーな電磁フレーム' },
+        { id: 'gold', name: 'ゴールド', price: 300, color: '#ffd700', desc: '輝く黄金のオーラ' },
+        { id: 'poison', name: 'ポイズン', price: 400, color: '#39ff14', desc: '毒気泡が立ち上る' },
+        { id: 'fire', name: 'ファイア', price: 500, color: '#ff4500', desc: 'メラメラ燃え上がる炎' },
+        { id: 'rainbow', name: 'レインボー', price: 600, color: 'rainbow', desc: '七色に変化するグラデ' },
+        { id: 'thunder', name: 'サンダー', price: 700, color: '#ffff00', desc: '雷光スパーク放電' },
+        { id: 'galaxy', name: 'ギャラクシー', price: 800, color: '#8a2be2', desc: '宇宙の星粒子オーラ' },
+        { id: 'sakura', name: 'サクラ', price: 900, color: '#ffb6c1', desc: '舞い散るピンクの花弁' },
+        { id: 'phantom', name: 'ファントム', price: 1000, color: '#ddddff', desc: '幽霊のような残像トレイル' },
+        { id: 'magma', name: 'マグマ', price: 1100, color: '#ff2200', desc: '沸き立つ熱気と溶岩スパーク' },
+        { id: 'dark', name: 'ダークオーラ', price: 1200, color: '#4b0082', desc: '広がる暗黒の脈動波' },
+        { id: 'diamond', name: 'ダイヤモンド', price: 1400, color: '#ffffff', desc: '眩しい純白光彩輪' },
+        { id: 'matrix', name: 'マトリックス', price: 1500, color: '#00ff66', desc: 'デジタル信号が流下' },
+        { id: 'void', name: 'ボイド', price: 1700, color: '#1a0033', desc: '空間を引き込む歪み波門' },
+        { id: 'crown', name: 'キングクラウン', price: 2000, color: '#ffd700', desc: '輝く黄金の王冠を戴く' },
+        { id: 'cyberpunk', name: 'サイバーパンク', price: 2500, color: 'cyberpunk', desc: 'シアン＆マゼンタのグリッチ' },
+        { id: 'pixelglitch', name: 'ピクセルグリッチ', price: 3000, color: '#ff0055', desc: '時折高速で揺らぐジッター' },
+        { id: 'godemperor', name: 'ゴッドエンペラー', price: 5000, color: 'godemperor', desc: '神々しい後光と黄金羽粒子' },
+        { id: 'ice', name: '絶対零度', price: 7000, color: '#00ffff', desc: '凍てつく冷気の結晶が舞う' },
+        { id: 'blood', name: 'ブラッド', price: 8500, color: '#8a0303', desc: '滴る紅の軌跡' },
+        { id: 'supernova', name: '超新星', price: 12000, color: 'supernova', desc: '爆発的で強烈な輝きを放つ' }
+    ];
+
+    const ALL_BADGES = [
+        { id: 'first_play', icon: '🎮', title: '初プレイ', desc: '初めてゲームを遊ぶ', max: 1, getVal: () => stats.totalPlays },
+        { id: 'survive_30', icon: '🥉', title: '30秒生存', desc: '1回のプレイで30秒生存', max: 30, getVal: () => gameActive ? score : 0 },
+        { id: 'survive_60', icon: '🥈', title: '60秒生存', desc: '1回のプレイで60秒生存', max: 60, getVal: () => gameActive ? score : 0 },
+        { id: 'survive_100', icon: '🥇', title: '100秒生存', desc: '神の領域へ到達する', max: 100, getVal: () => gameActive ? score : 0 },
+        { id: 'item_run_5', icon: '🎒', title: '回収屋', desc: '1プレイでアイテムを5個取る', max: 5, getVal: () => itemsCollectedThisRun },
+        { id: 'item_total_50', icon: '💎', title: 'マニア', desc: '累計でアイテムを50個取る', max: 50, getVal: () => stats.totalItems },
+        { id: 'bomb_50', icon: '💥', title: '爆弾魔', desc: 'ボムで累計50体の敵を倒す', max: 50, getVal: () => stats.totalBombedEnemies },
+        { id: 'play_10', icon: '🎖️', title: '常連客', desc: '累計10回プレイする', max: 10, getVal: () => stats.totalPlays }
+    ];
+
+    window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+    
+    canvas.addEventListener('mousemove', e => { 
+        if(player.control === 'mouse' && gameActive) { 
+            const rect = canvas.getBoundingClientRect();
+            mouseTarget.x = e.clientX - rect.left; mouseTarget.y = e.clientY - rect.top; 
+        }
+    });
+
+    function resize() {
+        width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight;
+        if (!gameActive) { player.x = width/2; player.y = height/2; mouseTarget.x = player.x; mouseTarget.y = player.y; }
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function updateCoinDisplays() { coinDisplays.forEach(el => el.innerText = stats.coins); }
+    function saveStats() { localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(stats)); updateCoinDisplays(); }
+
+    function showModal(id) {
+        if(id === 'recordsModal') renderRecords();
+        if(id === 'badgesModal') renderBadges();
+        if(id === 'shopModal') renderShop();
+        document.getElementById(id).style.display = 'block';
+    }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function renderRecords() {
+        const list = document.getElementById('recordsList');
+        document.getElementById('recordsHeader').innerText = `プレイ記録`;
+        list.innerHTML = '';
+        if(playHistory.length === 0) return list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">記録がありません。</div>';
+        playHistory.forEach(r => {
+            const div = document.createElement('div'); div.className = 'record-item';
+            div.innerHTML = `<span>${r.date}</span><span style="color:#00ffcc; font-weight:bold;">${r.score}秒</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    function renderBadges() {
+        const container = document.getElementById('badgeContainer');
+        container.innerHTML = '';
+        ALL_BADGES.forEach(b => {
+            const isUnlocked = unlockedBadges[b.id] === true;
+            let current = b.getVal();
+            let percent = isUnlocked ? 100 : Math.min(100, Math.floor((current / b.max) * 100));
+            let progText = isUnlocked ? 'CLEAR!' : `${current} / ${b.max}`;
+            
+            const div = document.createElement('div');
+            div.className = `badge ${isUnlocked ? 'unlocked' : ''}`;
+            div.innerHTML = `
+                <div class="badge-icon">${b.icon}</div>
+                <div class="badge-title">${b.title}</div>
+                <div class="badge-desc">${b.desc}</div>
+                <div class="progress-bg"><div class="progress-bar" style="width:${percent}%"></div></div>
+                <div class="progress-text">${progText}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function renderShop() {
+        const container = document.getElementById('shopContainer');
+        container.innerHTML = '';
+        SKINS.forEach(skin => {
+            const isUnlocked = unlockedSkins.includes(skin.id);
+            const isEquipped = equippedSkin === skin.id;
+            
+            const div = document.createElement('div');
+            div.className = `shop-item ${isEquipped ? 'equipped' : ''}`;
+            
+            let colorPreview = skin.color;
+            let previewContent = '';
+            if (skin.color === 'rainbow') colorPreview = 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)';
+            else if (skin.color === 'cyberpunk') colorPreview = 'linear-gradient(45deg, #00ffff, #ff00ff)';
+            else if (skin.color === 'godemperor') colorPreview = 'linear-gradient(45deg, #ffd700, #ffffff)';
+            else if (skin.color === 'supernova') colorPreview = 'linear-gradient(45deg, #ffffff, #ffaa00)';
+            if (skin.id === 'crown') previewContent = '<span style="font-size:16px;">👑</span>';
+            if (skin.id === 'godemperor') previewContent = '<span style="font-size:16px;">✨</span>';
+
+            let btnHtml = '';
+            if (isEquipped) {
+                btnHtml = `<button class="shop-btn" disabled style="background:#000; color:#aaa; border-color:#555; box-shadow:none;">装備中</button>`;
+            } else if (isUnlocked) {
+                btnHtml = `<button class="shop-btn" onclick="equipSkin('${skin.id}')" style="background:#fff; color:#000;">装備する</button>`;
+            } else {
+                let canBuy = stats.coins >= skin.price;
+                btnHtml = `<button class="shop-btn" onclick="buySkin('${skin.id}', ${skin.price})" style="background:${canBuy?'#ffd700':'#444'}; color:#000;" ${canBuy?'':'disabled'}>${skin.price} C</button>`;
+            }
+
+            div.innerHTML = `
+                <div class="shop-color-preview" style="background:${colorPreview};">${previewContent}</div>
+                <div class="shop-title">${skin.name}</div>
+                <div style="font-size:10px; color:#aaa; margin-bottom:8px; min-height:28px;">${skin.desc}</div>
+                ${btnHtml}
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function buySkin(id, price) {
+        if (stats.coins >= price) {
+            stats.coins -= price;
+            unlockedSkins.push(id);
+            localStorage.setItem(STORAGE_KEYS.SKINS, JSON.stringify(unlockedSkins));
+            saveStats();
+            equipSkin(id);
+        }
+    }
+    function equipSkin(id) {
+        equippedSkin = id;
+        localStorage.setItem(STORAGE_KEYS.EQUIPPED_SKIN, equippedSkin);
+        renderShop();
+    }
+
+    function checkQuestUnlocks() {
+        let newlyUnlocked = [];
+        ALL_BADGES.forEach(b => {
+            if(!unlockedBadges[b.id]) {
+                if (b.getVal() >= b.max) {
+                    unlockedBadges[b.id] = true;
+                    newlyUnlocked.push(`🏆 ${b.title} 解放！`);
+                }
+            }
+        });
+        if(newlyUnlocked.length > 0) localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(unlockedBadges));
+        return newlyUnlocked;
+    }
+
+    function setDevice(type) {
+        deviceType = type;
+        document.getElementById('dev-pc').className = type === 'pc' ? 'active' : '';
+        document.getElementById('dev-tablet').className = type === 'tablet' ? 'active' : '';
+        const pointerBtn = document.getElementById('ctrl-pointer');
+        if (type === 'pc') { currentPointerControl = 'mouse'; pointerBtn.innerText = 'マウス'; } 
+        else { currentPointerControl = 'vstick'; pointerBtn.innerText = '仮想スティック'; }
+        if (pointerBtn.classList.contains('active')) player.control = currentPointerControl;
+    }
+
+    function showSetup() { mainMenu.style.display = 'none'; setupArea.style.display = 'flex'; }
+    function backToMain() { setupArea.style.display = 'none'; mainMenu.style.display = 'flex'; }
+    function backToTitleFromGameOver() {
+        gameOverArea.style.display = 'none'; lobbyTitle.style.display = 'block';
+        document.getElementById('coin-display').style.display = 'block';
+        mainMenu.style.display = 'flex'; topMenu.style.display = 'flex';
+    }
+    function setControl(type, btn) {
+        player.control = type;
+        ['ctrl-pointer', 'ctrl-kb', 'ctrl-gp'].forEach(id => document.getElementById(id).className = '');
+        btn.className = 'active'; mouseTarget.x = player.x; mouseTarget.y = player.y;
+    }
+
+    const joyZone = document.getElementById('joystick-zone'), joyStick = document.getElementById('joystick-stick');
+    const maxJoyRadius = 45;
+    joyZone.addEventListener('pointerdown', (e) => { joyActive = true; updateJoystick(e); joyZone.setPointerCapture(e.pointerId); });
+    joyZone.addEventListener('pointermove', (e) => { if (joyActive) updateJoystick(e); });
+    const stopJoystick = (e) => {
+        joyActive = false; joyDeltaX = 0; joyDeltaY = 0; joyStick.style.transform = `translate(0px, 0px)`;
+        if(e && e.pointerId) joyZone.releasePointerCapture(e.pointerId);
+    };
+    joyZone.addEventListener('pointerup', stopJoystick);
+    joyZone.addEventListener('pointercancel', stopJoystick);
+
+    function updateJoystick(e) {
+        const rect = joyZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2, centerY = rect.top + rect.height / 2;
+        let dx = e.clientX - centerX, dy = e.clientY - centerY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxJoyRadius) { dx = (dx / dist) * maxJoyRadius; dy = (dy / dist) * maxJoyRadius; }
+        joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+        joyDeltaX = dx / maxJoyRadius; joyDeltaY = dy / maxJoyRadius;
+    }
+
+    function spawnParticles(x, y, color, count=15) {
+        for(let i=0; i<count; i++) particles.push({ x, y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 30+Math.random()*20, maxLife: 50, color });
+    }
+    function spawnFloatingText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 60, maxLife: 60 }); }
+
+    function spawnItem() {
+        if (items.length >= 3) return;
+        const types = ['shield', 'freeze', 'bomb', 'ghost'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        items.push({ x: Math.random()*(width-100)+50, y: Math.random()*(height-100)+50, type, size: 16, angle: 0 });
+    }
+
+    function applyItemEffect(type) {
+        itemsCollectedThisRun++;
+        stats.totalItems++;
+        if (type === 'shield') { player.hasShield = true; spawnFloatingText(player.x, player.y-20, "SHIELD!", "#3388ff"); } 
+        else if (type === 'freeze') { freezeEndTime = Date.now() + 5000; spawnFloatingText(player.x, player.y-20, "FREEZE!", "#00ffff"); } 
+        else if (type === 'bomb') {
+            flashAlpha = 1.0;
+            stats.totalBombedEnemies += enemies.length;
+            enemies.forEach(e => spawnParticles(e.x, e.y, e.color, 10));
+            enemies = []; bullets = [];
+            spawnFloatingText(player.x, player.y-20, "BOMB!", "#ff3333");
+        } 
+        else if (type === 'ghost') { player.isGhost = true; ghostEndTime = Date.now() + 6000; spawnFloatingText(player.x, player.y-20, "GHOST!", "#ffffff"); }
+    }
+
+    function spawnEnemy() {
+        if (!gameActive) return;
+        const elTime = (Date.now() - startTime) / 1000;
+        const side = Math.floor(Math.random() * 4), margin = 50;
+        let x, y;
+        if(side === 0) { x = Math.random() * width; y = -margin; } else if(side === 1) { x = width + margin; y = Math.random() * height; }
+        else if(side === 2) { x = Math.random() * width; y = height + margin; } else { x = -margin; y = Math.random() * height; }
+        
+        let types = ['normal', 'normal', 'wavy', 'wavy'];
+        if (elTime > 10) types.push('charger', 'wavy');
+        if (elTime > 20) types.push('splitter', 'shooter');
+        if (elTime > 30) types.push('magnet', 'charger', 'shooter');
+        if (elTime > 40) types.push('giant');
+        
+        const type = types[Math.floor(Math.random() * types.length)];
+        let e = { x, y, type, id: Math.random() };
+        
+        switch(type) {
+            case 'normal': e.size = 14; e.color = '#ff3333'; e.speed = 3 + (elTime/15); break;
+            case 'wavy': 
+                e.size = 14; 
+                e.color = '#9933ff'; 
+                e.speed = 3.0 + (elTime/15); 
+                e.angle = Math.random() * Math.PI * 2; 
+                e.waveSpeed = 0.15; 
+                e.amplitude = 40;   
+                break;
+            case 'charger': e.size = 16; e.color = '#ff8800'; e.state = 'chase'; e.timer = 0; e.dashVx = 0; e.dashVy = 0; break;
+            case 'splitter': e.size = 28; e.color = '#33ff33'; e.speed = 1.5 + (elTime/20); break;
+            case 'shooter': e.size = 18; e.color = '#33ccff'; e.speed = 2.5; e.timer = 0; break;
+            case 'magnet': e.size = 20; e.color = '#ffffff'; e.border = '#666'; e.speed = 1.0; break;
+            case 'giant': e.size = 55; e.color = '#8b0000'; e.speed = 1.0 + (elTime/30); break;
+            case 'small': e.size = 10; e.color = '#aaffaa'; e.speed = 4.5 + (elTime/15); break;
+        }
+        enemies.push(e);
+        setTimeout(spawnEnemy, Math.max(180, 950 - (elTime * 16)));
+    }
+    function spawnBullet(x, y, vx, vy) { bullets.push({ x, y, vx, vy, size: 6, color: '#ff5555' }); }
+
+    function startGame() {
+        if (gameActive) return;
+        lobby.style.display = 'none'; topMenu.style.display = 'none';
+        document.getElementById('coin-display').style.display = 'none';
+        uiLayer.style.display = 'flex';
+        joyZone.style.display = (player.control === 'vstick') ? 'block' : 'none';
+        document.getElementById('newBadgeAlert').style.display = 'none';
+
+        startTime = Date.now(); score = 0; itemsCollectedThisRun = 0;
+        enemies = []; bullets = []; particles = []; items = []; floatingTexts = []; phantomTrail = []; skinParticles = [];
+        
+        player.x = width / 2; player.y = height / 2;
+        player.hasShield = false; player.isGhost = false;
+        mouseTarget.x = player.x; mouseTarget.y = player.y;
+        
+        lastItemTime = startTime; ghostEndTime = 0; freezeEndTime = 0; flashAlpha = 0;
+        
+        stats.totalPlays++;
+        saveStats();
+        
+        scoreEl.innerText = score; gameActive = true;
+        spawnEnemy(); requestAnimationFrame(gameLoop);
+    }
+
+    function restartGame() { gameOverArea.style.display = 'none'; startGame(); }
+
+    function gameLoop() {
+        if (!gameActive) return;
+        const now = Date.now();
+        score = Math.floor((now - startTime) / 1000);
+        scoreEl.innerText = score;
+
+        // アイテム出現頻度を5秒から3秒(3000ms)に変更
+        if (now - lastItemTime > 3000) { spawnItem(); lastItemTime = now; }
+        if (player.isGhost && now > ghostEndTime) player.isGhost = false;
+        let speedMult = (now < freezeEndTime) ? 0.3 : 1.0; 
+
+        let dx = 0, dy = 0;
+        player.isMoving = false;
+        const gp = (navigator.getGamepads ? navigator.getGamepads() : [])[0];
+
+        if(player.control === 'kb') {
+            if(keys['arrowup'] || keys['w']) dy -= 1; if(keys['arrowdown'] || keys['s']) dy += 1;
+            if(keys['arrowleft'] || keys['a']) dx -= 1; if(keys['arrowright'] || keys['d']) dx += 1;
+        } else if(player.control === 'gp' && gp && gp.connected) {
+            if(Math.abs(gp.axes[0]) > 0.2) dx = gp.axes[0]; if(Math.abs(gp.axes[1]) > 0.2) dy = gp.axes[1];
+        } else if(player.control === 'vstick') {
+            dx = joyDeltaX; dy = joyDeltaY;
+        } else if(player.control === 'mouse') {
+            let mx = mouseTarget.x - player.x, my = mouseTarget.y - player.y;
+            let dist = Math.hypot(mx, my);
+            if (dist > BASE_SPEED) { dx = mx / dist; dy = my / dist; } 
+            else if (dist > 1) {
+                player.x = mouseTarget.x; player.y = mouseTarget.y; 
+                player.isMoving = true; 
+            }
+        }
+        
+        if (dx !== 0 || dy !== 0) {
+            let len = Math.hypot(dx, dy);
+            player.x += (dx / len) * BASE_SPEED; player.y += (dy / len) * BASE_SPEED;
+            player.isMoving = true;
+        }
+        player.x = Math.max(player.size, Math.min(width - player.size, player.x));
+        player.y = Math.max(player.size, Math.min(height - player.size, player.y));
+
+        enemies.forEach(e => {
+            if (e.type === 'magnet') {
+                let dist = Math.hypot(player.x - e.x, player.y - e.y);
+                if (dist > 0 && dist < 400) {
+                    let force = 2.0 * (1 - dist/400) * speedMult;
+                    player.x += ((e.x - player.x) / dist) * force; player.y += ((e.y - player.y) / dist) * force;
+                }
+            }
+        });
+
+        ctx.clearRect(0, 0, width, height);
+        
+        if (speedMult < 1.0) { ctx.fillStyle = 'rgba(0, 200, 255, 0.1)'; ctx.fillRect(0, 0, width, height); }
+
+        if (equippedSkin === 'fire' && Math.random() < 0.6) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*1.8, y: player.y + player.size, vx: (Math.random()-0.5)*2, vy: -Math.random()*3 - 1, life: 20, maxLife: 20, color: Math.random() > 0.5 ? '#ff4500' : '#ffd700' });
+        } else if (equippedSkin === 'poison' && Math.random() < 0.5) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*2, y: player.y + (Math.random()-0.5)*player.size*2, vx: (Math.random()-0.5)*1, vy: -Math.random()*1.5, life: 25, maxLife: 25, color: '#39ff14' });
+        } else if (equippedSkin === 'galaxy' && Math.random() < 0.5) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*3, y: player.y + (Math.random()-0.5)*player.size*3, vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5, life: 30, maxLife: 30, color: Math.random() > 0.5 ? '#e0b0ff' : '#00ffff' });
+        } else if (equippedSkin === 'matrix' && Math.random() < 0.7) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*2, y: player.y + (Math.random()-0.5)*player.size*2, vx: 0, vy: Math.random()*3 + 1, life: 20, maxLife: 20, color: '#00ff66', char: String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)) });
+        } else if (equippedSkin === 'thunder' && Math.random() < 0.6) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*2.5, y: player.y + (Math.random()-0.5)*player.size*2.5, vx: (Math.random()-0.5)*6, vy: (Math.random()-0.5)*6, life: 12, maxLife: 12, color: Math.random() > 0.3 ? '#ffff00' : '#ffffff' });
+        } else if (equippedSkin === 'sakura' && Math.random() < 0.5) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*3, y: player.y - player.size, vx: (Math.random()-0.2)*1.5, vy: Math.random()*1.5 + 0.5, life: 35, maxLife: 35, color: Math.random() > 0.5 ? '#ffb6c1' : '#ff69b4' });
+        } else if (equippedSkin === 'magma' && Math.random() < 0.6) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*2, y: player.y + (Math.random()-0.5)*player.size*2, vx: (Math.random()-0.5)*2.5, vy: (Math.random()-0.5)*2.5, life: 18, maxLife: 18, color: Math.random() > 0.4 ? '#ff2200' : '#330000' });
+        } else if (equippedSkin === 'godemperor' && Math.random() < 0.8) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*3, y: player.y + (Math.random()-0.5)*player.size*3, vx: (Math.random()-0.5)*1.2, vy: -Math.random()*2 - 0.5, life: 40, maxLife: 40, color: Math.random() > 0.4 ? '#ffd700' : '#fff8dc' });
+        } else if (equippedSkin === 'ice' && Math.random() < 0.6) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*2.5, y: player.y + (Math.random()-0.5)*player.size*2.5, vx: (Math.random()-0.5)*1, vy: Math.random()*2, life: 30, maxLife: 30, color: '#aaffff' });
+        } else if (equippedSkin === 'blood' && Math.random() < 0.7) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size, y: player.y + (Math.random()-0.5)*player.size, vx: 0, vy: Math.random()*3, life: 25, maxLife: 25, color: '#8a0303' });
+        } else if (equippedSkin === 'supernova' && Math.random() < 0.8) {
+            skinParticles.push({ x: player.x + (Math.random()-0.5)*player.size*4, y: player.y + (Math.random()-0.5)*player.size*4, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 20, maxLife: 20, color: Math.random() > 0.5 ? '#ffffff' : '#ffaa00' });
+        }
+
+        for (let i = skinParticles.length - 1; i >= 0; i--) {
+            let sp = skinParticles[i]; sp.x += sp.vx; sp.y += sp.vy; sp.life--;
+            ctx.fillStyle = sp.color; ctx.globalAlpha = Math.max(0, sp.life / sp.maxLife);
+            if (sp.char) {
+                ctx.font = '10px monospace'; ctx.fillText(sp.char, sp.x, sp.y);
+            } else {
+                ctx.fillRect(sp.x - 2, sp.y - 2, 4, 4);
+            }
+            ctx.globalAlpha = 1.0;
+            if (sp.life <= 0) skinParticles.splice(i, 1);
+        }
+
+        if (equippedSkin === 'phantom' && (dx !== 0 || dy !== 0)) {
+            phantomTrail.unshift({ x: player.x, y: player.y, alpha: 0.6 });
+            if (phantomTrail.length > 8) phantomTrail.pop();
+        }
+        if (equippedSkin === 'phantom') {
+            phantomTrail.forEach((pt) => {
+                ctx.fillStyle = `rgba(180, 200, 255, ${pt.alpha})`;
+                ctx.fillRect(pt.x - player.size, pt.y - player.size, player.size*2, player.size*2);
+                pt.alpha -= 0.07;
+            });
+            phantomTrail = phantomTrail.filter(pt => pt.alpha > 0);
+        }
+
+        let pColor = '#ffffff';
+        if (equippedSkin === 'pink') pColor = '#ff1493';
+        else if (equippedSkin === 'blue') pColor = '#00f3ff';
+        else if (equippedSkin === 'gold' || equippedSkin === 'crown') pColor = '#ffd700';
+        else if (equippedSkin === 'poison') pColor = '#39ff14';
+        else if (equippedSkin === 'fire') pColor = '#ff4500';
+        else if (equippedSkin === 'rainbow') pColor = `hsl(${(now / 8) % 360}, 100%, 50%)`;
+        else if (equippedSkin === 'thunder') pColor = '#ffff00';
+        else if (equippedSkin === 'galaxy') pColor = '#8a2be2';
+        else if (equippedSkin === 'sakura') pColor = '#ffb6c1';
+        else if (equippedSkin === 'phantom') pColor = '#ddddff';
+        else if (equippedSkin === 'magma') pColor = '#ff3300';
+        else if (equippedSkin === 'dark') pColor = '#9400d3';
+        else if (equippedSkin === 'diamond') pColor = '#ffffff';
+        else if (equippedSkin === 'matrix') pColor = '#00ff66';
+        else if (equippedSkin === 'void') pColor = '#4b0082';
+        else if (equippedSkin === 'cyberpunk') pColor = (Math.floor(now/100)%2 === 0) ? '#00ffff' : '#ff00ff';
+        else if (equippedSkin === 'pixelglitch') pColor = '#ff0055';
+        else if (equippedSkin === 'godemperor') pColor = '#ffd700';
+        else if (equippedSkin === 'ice') pColor = '#00ffff';
+        else if (equippedSkin === 'blood') pColor = '#8a0303';
+        else if (equippedSkin === 'supernova') pColor = (Math.floor(now/50)%2 === 0) ? '#ffffff' : '#ffaa00';
+
+        if (equippedSkin === 'dark') {
+            let pulse = (Math.sin(now / 150) + 1) * 12 + 15;
+            ctx.strokeStyle = 'rgba(75, 0, 130, 0.6)'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, pulse, 0, Math.PI * 2); ctx.stroke();
+        } else if (equippedSkin === 'diamond') {
+            let pulse = (Math.sin(now / 100) + 1) * 8 + 18;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(player.x, player.y, pulse, 0, Math.PI * 2); ctx.stroke();
+        } else if (equippedSkin === 'void') {
+            let pulse = (Math.sin(now / 120) + 1) * 10 + 16;
+            ctx.strokeStyle = 'rgba(100, 0, 150, 0.7)'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(player.x, player.y, pulse, 0, Math.PI * 2); ctx.stroke();
+        } else if (equippedSkin === 'godemperor') {
+            let pulse = (Math.sin(now / 80) + 1) * 14 + 20;
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.9)'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(player.x, player.y, pulse, 0, Math.PI * 2); ctx.stroke();
+            ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(now / 500);
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)'; ctx.lineWidth = 2;
+            for(let a=0; a<8; a++) { ctx.rotate(Math.PI/4); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(35, 0); ctx.stroke(); }
+            ctx.restore();
+        }
+
+        if (equippedSkin === 'blue') {
+            ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 1.5;
+            ctx.strokeRect(player.x - player.size - 4, player.y - player.size - 4, (player.size + 4) * 2, (player.size + 4) * 2);
+        }
+
+        let drawPx = player.x, drawPy = player.y;
+        if (equippedSkin === 'pixelglitch' && Math.random() < 0.2) {
+            drawPx += (Math.random() - 0.5) * 14;
+            drawPy += (Math.random() - 0.5) * 14;
+        }
+
+        ctx.globalAlpha = player.isGhost ? 0.4 : 1.0;
+        ctx.shadowBlur = (equippedSkin === 'pink' || equippedSkin === 'gold' || equippedSkin === 'blue' || equippedSkin === 'godemperor' || equippedSkin === 'thunder' || equippedSkin === 'supernova') ? 18 : 10;
+        ctx.shadowColor = pColor;
+
+        ctx.save();
+        ctx.translate(drawPx, drawPy);
+
+        if (player.isMoving) {
+            let animTime = now / 80;
+            ctx.rotate(Math.sin(animTime) * 0.15);
+            ctx.scale(1.0, 1.0 - Math.abs(Math.sin(animTime)) * 0.1);
+        }
+
+        ctx.fillStyle = player.isGhost ? '#aaddff' : pColor;
+        ctx.fillRect(-player.size, -player.size, player.size * 2, player.size * 2);
+
+        ctx.restore();
+        ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+
+        if (equippedSkin === 'crown') {
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('👑', player.x, player.y - player.size - 2);
+        }
+
+        if (player.hasShield) {
+            ctx.strokeStyle = '#3388ff'; ctx.lineWidth = 3;
+            ctx.strokeRect(player.x - player.size - 6, player.y - player.size - 6, (player.size + 6) * 2, (player.size + 6) * 2);
+        }
+
+        for (let i = items.length - 1; i >= 0; i--) {
+            let item = items[i];
+            ctx.save(); ctx.translate(item.x, item.y);
+            let timeVal = now / 200; ctx.rotate(timeVal * 0.5);
+            let scale = 1 + 0.15 * Math.sin(timeVal * 1.5); ctx.scale(scale, scale);
+            
+            ctx.fillStyle = (item.type === 'shield') ? '#3388ff' : (item.type === 'freeze') ? '#00ffff' : (item.type === 'bomb') ? '#ff3333' : '#ffffff';
+            ctx.shadowBlur = 15; ctx.shadowColor = ctx.fillStyle;
+            ctx.fillRect(-item.size, -item.size, item.size * 2, item.size * 2); ctx.restore();
+            
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 18px "DotGothic16", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 3; ctx.shadowColor = '#000';
+            ctx.fillText(item.type === 'shield' ? 'S' : item.type === 'freeze' ? 'F' : item.type === 'bomb' ? 'B' : 'G', item.x, item.y + 2);
+            ctx.shadowBlur = 0;
+
+            if (Math.abs(player.x - item.x) < player.size + item.size + 5 && Math.abs(player.y - item.y) < player.size + item.size + 5) {
+                applyItemEffect(item.type); items.splice(i, 1);
+            }
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i]; let dist = Math.hypot(player.x - e.x, player.y - e.y);
+            
+            if (e.type === 'normal' || e.type === 'small' || e.type === 'giant' || e.type === 'magnet') {
+                if (dist > 0) { e.x += ((player.x - e.x) / dist) * e.speed * speedMult; e.y += ((player.y - e.y) / dist) * e.speed * speedMult; }
+            } else if (e.type === 'wavy') {
+                e.angle += e.waveSpeed * speedMult;
+                if (dist > 0) {
+                    let dirX = (player.x - e.x) / dist;
+                    let dirY = (player.y - e.y) / dist;
+                    let perpX = -dirY;
+                    let perpY = dirX;
+                    let waveFactor = (Math.sin(e.angle) * e.amplitude) + (Math.cos(e.angle * 2.3) * (e.amplitude * 0.6));
+                    
+                    e.x += (dirX * e.speed + perpX * waveFactor) * speedMult;
+                    e.y += (dirY * e.speed + perpY * waveFactor) * speedMult;
+                }
+            } else if (e.type === 'charger') {
+                e.timer += 1 * speedMult;
+                if (e.state === 'chase') {
+                    if (dist > 0) { e.x += ((player.x - e.x)/dist)*2*speedMult; e.y += ((player.y - e.y)/dist)*2*speedMult; }
+                    if (e.timer > 120 && dist < 300) { e.state = 'aim'; e.timer = 0; }
+                } else if (e.state === 'aim') {
+                    if (e.timer > 30) { e.state = 'dash'; e.timer = 0; if (dist > 0) { e.dashVx = ((player.x-e.x)/dist)*15; e.dashVy = ((player.y-e.y)/dist)*15; } }
+                } else if (e.state === 'dash') {
+                    e.x += e.dashVx * speedMult; e.y += e.dashVy * speedMult; if (e.timer > 40) { e.state = 'chase'; e.timer = 0; }
+                }
+            } else if (e.type === 'splitter') {
+                if (dist > 0) { e.x += ((player.x-e.x)/dist)*e.speed*speedMult; e.y += ((player.y-e.y)/dist)*e.speed*speedMult; }
+                if (dist < 150) {
+                    enemies.splice(i, 1);
+                    for(let j=0; j<3; j++) enemies.push({ x: e.x+(Math.random()-0.5)*40, y: e.y+(Math.random()-0.5)*40, type: 'small', size: 10, color: '#aaffaa', speed: e.speed*2 });
+                    spawnParticles(e.x, e.y, e.color); continue;
+                }
+            } else if (e.type === 'shooter') {
+                e.timer += 1 * speedMult;
+                if (dist < 200) { e.x -= ((player.x-e.x)/dist)*e.speed*speedMult; e.y -= ((player.y-e.y)/dist)*e.speed*speedMult; } 
+                else if (dist > 250) { e.x += ((player.x-e.x)/dist)*e.speed*speedMult; e.y += ((player.y-e.y)/dist)*e.speed*speedMult; }
+                if (e.timer > 100) { e.timer = 0; if (dist > 0) spawnBullet(e.x, e.y, ((player.x-e.x)/dist)*6, ((player.y-e.y)/dist)*6); }
+            }
+
+            ctx.fillStyle = e.color; ctx.shadowBlur = 10; ctx.shadowColor = e.color;
+            if (e.type === 'magnet') { ctx.lineWidth = 3; ctx.strokeStyle = e.border; ctx.strokeRect(e.x - e.size, e.y - e.size, e.size * 2, e.size * 2); }
+            if (e.type === 'charger' && e.state === 'aim') ctx.fillStyle = '#ffffff';
+            ctx.fillRect(e.x - e.size, e.y - e.size, e.size * 2, e.size * 2); ctx.shadowBlur = 0;
+
+            if (Math.abs(player.x - e.x) < (player.size + e.size - 2) && Math.abs(player.y - e.y) < (player.size + e.size - 2)) {
+                if (player.isGhost) { } 
+                else if (player.hasShield) { player.hasShield = false; spawnParticles(e.x, e.y, e.color, 15); enemies.splice(i, 1); } 
+                else { endGame(); return; }
+            }
+        }
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i]; b.x += b.vx * speedMult; b.y += b.vy * speedMult;
+            ctx.fillStyle = b.color; ctx.shadowBlur = 5; ctx.shadowColor = b.color;
+            ctx.fillRect(b.x - b.size, b.y - b.size, b.size * 2, b.size * 2); ctx.shadowBlur = 0;
+
+            if (Math.abs(player.x - b.x) < (player.size + b.size - 2) && Math.abs(player.y - b.y) < (player.size + b.size - 2)) {
+                if (player.isGhost) {} 
+                else if (player.hasShield) { player.hasShield = false; spawnParticles(b.x, b.y, b.color, 5); bullets.splice(i, 1); } 
+                else { endGame(); return; }
+            }
+            if(b.x < -50 || b.x > width+50 || b.y < -50 || b.y > height+50) bullets.splice(i, 1);
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life--;
+            ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+            ctx.fillRect(p.x - 3, p.y - 3, 6, 6); ctx.globalAlpha = 1.0;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            let ft = floatingTexts[i]; ft.y -= 1; ft.life--;
+            ctx.fillStyle = ft.color; ctx.globalAlpha = Math.max(0, ft.life / ft.maxLife);
+            ctx.font = 'bold 24px "DotGothic16", monospace'; ctx.textAlign = 'center';
+            ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0;
+            if (ft.life <= 0) floatingTexts.splice(i, 1);
+        }
+        if (flashAlpha > 0) { ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`; ctx.fillRect(0, 0, width, height); flashAlpha -= 0.05; }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameActive = false; joyZone.style.display = 'none'; uiLayer.style.display = 'none'; stopJoystick();
+        
+        stats.coins += score;
+        saveStats();
+        
+        lobby.style.display = 'flex'; mainMenu.style.display = 'none'; setupArea.style.display = 'none';
+        lobbyTitle.style.display = 'none'; topMenu.style.display = 'none';
+        document.getElementById('coin-display').style.display = 'none';
+        gameOverArea.style.display = 'flex';
+        
+        let isNewRecord = score > savedHighScore;
+        if (isNewRecord) { localStorage.setItem(STORAGE_KEYS.HIGH_SCORE, score); savedHighScore = score; }
+        
+        const now = new Date();
+        playHistory.unshift({ 
+            date: `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, 
+            score: score 
+        });
+        if(playHistory.length > 30) playHistory.pop();
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(playHistory));
+        
+        const unlockedTexts = checkQuestUnlocks();
+        const alertEl = document.getElementById('newBadgeAlert');
+        if (unlockedTexts.length > 0) { alertEl.innerHTML = unlockedTexts.join('<br>'); alertEl.style.display = 'block'; } 
+        else { alertEl.style.display = 'none'; }
+        
+        finalScoreText.innerHTML = `<span style="font-size:48px; font-weight:bold; color:#fff;">${score} 秒</span><br><span style="font-size:18px; color:#aaa;">最高記録: ${savedHighScore} 秒</span>` + 
+                                   (isNewRecord ? `<br><span style="color:#ffd700; font-weight:bold; font-size:24px;">【新記録達成！】</span>` : "");
+        coinEarnedText.innerHTML = `🪙 +${score} コイン獲得！ (合計: ${stats.coins})`;
+    }
+
+
+    /* ===== 追加機能パッチ ===== */
+    const PLAYER_IMAGE_DATA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABYgAAAKgCAYAAAAxjZliAAAQAElEQVR4AezdSc9l23kX8HMcW2DZpgl2AnwDj+n7HtFPGPEF+AD0PQgkSxYyI0ZhkN7pE4cwsSxb/gjMfAdIYHpMj6+FBEne7HVvbdV5T51mN2uv5lm/qNY93d5rPc/veaveW/9brnzk5P8IECBAgAABAgQIECBAgACB6AL6I0CAAAECNwUExDdZvEmAAAECBAgQ6FVA3QQIECBAgAABAgQIEFguICBebuVKAm0JqIYAAQIECBAgQIAAAQIECBCIL6BDAgcLCIgPBrY9AQIECBAgQIAAAQIElgi4hgABAgQIECBQQ0BAXEPdmQQIECAwsoDeCRAgQIAAAQIECBAgQIBAMwIC4sNGYWMCBAgQIECAAAECBAgQIEAgvoAOCRAg0LeAgLjv+ameAAECBAgQIECglIBzCBAgQIAAAQIECAQUEBAHHKqWCBDYJ+BuAgQIECBAgAABAgQIECBAIL6ADj8UEBB/6OCfBAgQIECAAAECBAgQIBBTQFcECBAgQIDAAwEB8QMcHxEgQIAAAQI9CaiVAAECBAgQIECAAAECBNYKCIjXirm+voAKCBAgQIAAAQIECBAgQIAAgfgCOiRAoIiAgLgIs0MIECBAgAABAgQIELgn4H0CBAgQIECAAIF6AgLievZOJkCAwGgC+iVAgAABAgQIECBAgAABAgQaEzggIG6sQ+UQIECAAAECBAgQIECAAAECBwjYkgABAgQiCAiII0xRDwQIECBAgACBIwXsTYAAAQIECBAgQIBAWAEBcdjRaozAegF3ECBAgAABAgQIECBAgAABAvEFdEjgUkBAfKnhOQECBAgQIECAAAECBOII6IQAAQIECBAg8FRAQPyUyAUECBAgQKB1AfURIECAAAECBAgQIECAAIFtAgLibW517nIqAQIECBAgQIAAAQIECBAgEF9AhwQIECgoICAuiO0oAgQIECBAgAABApcCnhMgQIAAAQIECBCoLSAgrj0B5xMgMIKAHgkQIECAAAECBAgQIECAAIH4Al12KCDucmyKJkCAAAECBAgQIECAAIF6Ak4mQIAAAQJxBATEcWapEwIECBAgQCC3gP0IECBAgAABAgQIECAQXEBAHHzA2lsm4CoCBAgQIECAAAECBAgQIEAgvoAOCRB4V0BA/K6JdwgQIECAAAECBAgQ6FtA9QQIECBAgAABAgsFBMQLoVxGgAABAi0KqIkAAQIECBAgQIAAAQIECBDYI9BHQLynQ/cSIECAAAECBAgQIECAAAECfQiokgABAgSKCwiIi5M7kAABAgQIECBAgAABAgQIECBAgAABAm0ICIjbmIMqCEQV0BcBAgQIECBAgAABAgQIECAQX0CHHQsIiDsentIJECBAgAABAgQIECBQVsBpBAgQIECAQDQBAXG0ieqHAAECBAjkELAHAQIECBAgQIAAAQIECAwhICAeYsz3m/QJAQIECBAgQIAAAQIECBAgEF9AhwQIELgnICC+J+N9AgQIECBAgAABAv0JqJgAAQIECBAgQIDAKgEB8SouFxMgQKAVAXUQIECAAAECBAgQIECAAAEC8QWO71BAfLyxEwgQIECAAAECBAgQIECAwGMBnxIgQIAAgUoCAuJK8I4lQIAAAQIExhTQNQECBAgQIECAAAECBFoSEBC3NA21RBLQCwECBAgQIECAAAECBAgQIBBfQIcEuhcQEHc/Qg0QIECAAAECBAgQIHC8gBMIECBAgAABAjEFBMQx56orAgQIENgq4D4CBAgQIECAAAECBAgQIDCQwLAB8UAz1ioBAgQIECBAgAABAgQIEBhWQOMECBAg8FhAQPzYx6cECBAgQIAAAQJ9CKiSAAECBAgQIECAAIENAgLiDWhuIUCgpoCzCRAgQIAAAQIECBAgQIAAgfgCOiwlICAuJe0cAgQIECBAgAABAgQIEHhXwDsECBAgQIBAVQEBcVV+hxMgQIAAgXEEdEqAAAECBAgQIECAAAEC7QkIiNubSe8VqZ8AAQIECBAgQIAAAQIECBCIL6BDAgSCCAiIgwxSGwQIECBAgAABAgSOEbArAQIECBAgQIBAZAEBceTp6o0AAQJrBFxLgAABAgQIECBAgAABAgQIxBe46lBAfAXiJQECBAgQIECAAAECBAgQiCCgBwIECBAgsERAQLxEyTUECBAgQIAAgXYFVEaAAAECBAgQIECAAIHNAgLizXRuJFBawHkECBAgQIAAAQIECBAgQIBAfAEdEigrICAu6+00AgQIECBAgAABAgQIfCjgnwQIECBAgACBBgQExA0MQQkECBAgEFtAdwQIECBAgAABAgQIECBAoFUBAXG+ydiJAAECBAgQIECAAAECBAgQiC+gQwIECIQSEBCHGqdmCBAgQIAAAQIE8gnYiQABAgQIECBAgEB8AQFx/BnrkACBZwI+J0CAAAECBAgQIECAAAECBOIL6PCmgID4Jos3CRAgQIAAAQIECBAgQKBXAXUTIECAAAECywUExMutXEmAAAECBAi0JaAaAgQIECBAgAABAgQIENgpICDeCej2EgLOIECAAAECBAgQIECAAAECBOIL6JAAgRoCAuIa6s4kQIAAAQIECBAgMLKA3gkQIECAAAECBJoREBA3MwqFECBAIJ6AjggQIECAAAECBAgQIECAAIG2BXIExG13qDoCBAgQIECAAAECBAgQIEAgh4A9CBAgQCCggIA44FC1RIAAAQIECBDYJ+BuAgQIECBAgAABAgRGERAQjzJpfRK4JeA9AgQIECBAgAABAgQIECBAIL6ADgk8EBAQP8DxEQECBAgQIECAAAECBHoSUCsBAgQIECBAYK2AgHitmOsJECBAgEB9ARUQIECAAAECBAgQIECAAIEsAgLiLIxHbWJfAgQIECBAgAABAgQIECBAIL6ADgkQIFBPQEBcz97JBAgQIECAAAECownolwABAgQIECBAgEBjAgLixgaiHAIEYgjoggABAgQIECBAgAABAgQIEIgvEKFDAXGEKeqBAAECBAgQIECAAAECBI4UsDcBAgQIEAgrICAOO1qNESBAgAABAusF3EGAAAECBAgQIECAAIGxBATEY81bt7OARwIECBAgQIAAAQIECBAgQCC+gA4JEHgqICB+SuQCAgQIECBAgAABAgRaF1AfAQIECBAgQIDANgEB8TY3dxEgQIBAHQGnEiBAgAABAgQIECBAgAABAhkFGg2IM3ZoKwIECBAgQIAAAQIECBAgQKBRAWURIECAQG0BAXHtCTifAAECBAgQIDCCgB4JECBAgAABAgQIEGhSQEDc5FgURaBfAZUTIECAAAECBAgQIECAAAEC8QV0GEdAQBxnljohQIAAAQIECBAgQIBAbgH7ESBAgAABAsEFBMTBB6w9AgQIECCwTMBVBAgQIECAAAECBAgQIDCigIB4tKnrlwABAgQIECBAgAABAgQIEIgvoEMCBAgsFBAQL4RyGQECBAgQIECAAIEWBdREgAABAgQIECBAYI+AgHiPnnsJECBQTsBJBAgQIECAAAECBAgQIECAQHyB4h0KiIuTO5AAAQIECBAgQIAAAQIECBAgQIAAAQJtCAiI25iDKggQIECAAIGoAvoiQIAAAQIECBAgQIBAwwIC4oaHo7S+BFRLgAABAgQIECBAgAABAgQIxBfQIYFoAgLiaBPVDwECBAgQIECAAAECOQTsQYAAAQIECBAYQkBAPMSYNUmAAAEC9wV8QoAAAQIECBAgQIAAAQIExhUYJyAed8Y6J0CAAAECBAgQIECAAAEC4wjolAABAgRWCQiIV3G5mAABAgQIECBAoBUBdRAgQIAAAQIECBAgsF9AQLzf0A4ECBwrYHcCBAgQIECAAAECBAgQIEAgvoAOKwkIiCvBO5YAAQIECBAgQIAAAQJjCuiaAAECBAgQaElAQNzSNNRCgAABAgQiCeiFAAECBAgQIECAAAECBJoXEBA3P6L2C1QhAQIECBAgQIAAAQIECBAgEF9AhwQIxBQQEMecq64IECBAgAABAgQIbBVwHwECBAgQIECAwEACAuKBhq1VAgQIvBbwigABAgQIECBAgAABAgQIEIgv8LhDAfFjH58SIECAAAECBAgQIECAAIE+BFRJgAABAgQ2CAiIN6C5hQABAgQIECBQU8DZBAgQIECAAAECBAgQyCUgIM4laR8C+QXsSIAAAQIECBAgQIAAAQIECMQX0CGBqgIC4qr8DidAgAABAgQIECBAYBwBnRIgQIAAAQIE2hMQELc3ExURIECAQO8C6idAgAABAgQIECBAgAABAp0ICIh3DMqtBAgQIECAAAECBAgQIECAQHwBHRIgQCCygIA48nT1RoAAAQIECBAgsEbAtQQIECBAgAABAgSGExAQDzdyDRMgcDoxIECAAAECBAgQIECAAAECBOIL6HCJgIB4iZJrCBAgQIAAAQIECBAgQKBdAZURIECAAAECmwUExJvp3EiAAAECBAiUFnAeAQIECBAgQIAAAQIECOQVEBDn9bRbHgG7ECBAgAABAgQIECBAgAABAvEFdEiAQAMCAuIGhqAEAgQIECBAgAABArEFdEeAAAECBAgQINCqgIC41cmoiwABAj0KqJkAAQIECBAgQIAAAQIECBDoSmBTQNxVh4olQIAAAQIECBAgQIAAAQIENgm4iQABAgTiCwiI489YhwQIECBAgACBZwI+J0CAAAECBAgQIEBgUAEB8aCD1/aoAvomQIAAAQIECBAgQIAAAQIE4gvokMByAQHxcitX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+AmQjwkQIECAAAECBAj0IKBGAgQIECBAgAABAlsEBMRb1NxDgACBegJOJkCAAAECBAgQIECAAAECBOILFOtQQFyM2kEECBAgQIAAAQIECBAgQOBawGsCBAgQIFBXQEBc19/pBAgQIECAwCgC+iRAgAABAgQIECBAgECDAgLiBoeipL4FVE+AAAECBAgQIECAAAECBAjEF9AhgSgCAuIok9QHAQIECBAgQIAAAQJHCNiTAAECBAgQIBBaQEAceryaI0CAAIHlAq4kQIAAAQIECBAgQIAAAQLjCYwXEI83Yx0TIECAAAECBAgQIECAAIHxBHRMgAABAosEBMSLmFxEgAABAgQIECDQqoC6CBAgQIAAAQIECBDYLiAg3m7nTgIEygo4jUBPAueeilUrAQIECBAgQIAAAQIEGhJQSmEBAXFhcMcRIECAAAECBAgQIECAQBKwCBAgQIAAgRYEBMQtTEENBAgQIEAgsoDeCBAgQIAAAQIECBAgQKBZAQFxs6PprzAVEyBAgAABAgQIECBAgAABAvEFdEiAQCwBAXGseeqGAAECBAgQIECAQC4B+xAgQIAAAQIECAwgICAeYMhaJECAwGMBnxIgQIAAAQIECBAgQIAAAQLxBW53KCC+7eJdAgQIECBAgAABAgQIECDQp4CqCRAgQIDACgEB8QoslxIgQIAAAQIEWhJQCwECBAgQIECAAAECBPYKCIj3CrqfwPECTiBAgAABAgQIECBAgAABAgTiC+iQQBUBAXEVdocSIECAAAECBAgQIDCugM4JECBAgAABAu0ICIjbmYVKCBAgQCCagH4IECBAgAABAgQIECBAgEDjAgLiDAOyBQECBAgQIECAAAECBAgQIBBN812yAAAQAElEQVRfQIcECBCIKCAgjjhVPREgQIAAAQIECOwRcC8BAgQIECBAgACBYQQExMOMWqMECLwr4B0CBAgQIECAAAECBAgQIEAgvoAOHwkIiB/p+IwAAQIECGwTOG+7zV0ECBAgQIDALgE3EyBAgAABAqsFBMSrydxAgAABAgQI1BZwPgECBAgQIECAAAECBAjkERAQ53G0yzECdiVAgAABAgQIECBAgAABAgTiC+iQAIGKAgLiiviOJkCAAAECBAgQIDCWgG4JECBAgAABAgRaExAQtzYR9RAgQCCCgB4IECBAgACBVgX8PfmtTkZdBAgQIECgksCugLhSzY4lQIAAAQIECBAgQIAAAQIECgo4igABAgTiCgiI485WZwQIECBQV8Cf0Krr7/RtAu4iQIAAAQIECBAgQGAwAQHxYAPXLoEPBfyTAAECBAgQIECAAAECBAgQiC+gQwLPBQTEz41cQYAAAQIECBAgQIAAgbYFVEeAAAECBAgQ2CggIN4I5zYCBAgQIPBA4LC/XuLBmT4iQIAAAQIECBAgQIAAAQKrBQTEq8mK3OAQAgQIECBAgAABAgQIECBAIL6ADgkQIFBdQEBcfQQKIECAAAECBAgQiC+gQwIECBAgQIAAAQJtCgiI25yLqggQ6FVA3QQIECBAgAABAgQIECBAgEB8gUAdCogDDVMrBAgQIECAAAECBAgQIJBXwG4ECBAgQCC6gIA4+oT1R4AAAQIECCwRcA0BAgQIECBAgAABAgSGFBAQDzn2kZvWOwECBAgQIECAAAECBAgQIBBfQIcECCwVEBAvlXIdAQIECBAgQIAAAQLtCaiIAAECBAgQIEBgl4CAeBefmwkQIECglEBn55w7q1e5BAgQIECAAAECBAgQIDCoQGsB8aBj0DYBAgQIECBAgAABAgQIEBhKQLMECBAg0IiAgLiRQSiDAAECBAgQIBBTQFcECBAgQIAAAQIECLQsICBueTpqI9CTgFoJECBAgAABAgQIECBAgACB+AI6DCcgIA43Ug0RIECAAAECBAgQIEBgv4AdCBAgQIAAgTEEBMRjzFmXBAgQIEDgnoD3CRAgQIAAAQIECBAgQGBgAQHxMMPXKAECBAgQIECAAAECBAgQIBBfQIcECBBYJyAgXuflagIECBAgQCCQwMvLy8l6bhBo5LFa0Q0BAgQIECBAgACBDAIC4gyItiBAgMCRAvbuUuDcZdWKJkCAAAECBAgQIECAAIFqArUOFhDXkncuAQIECBAgQIBA0wIf+9jHTh//+MetHQYf+YjfbjT9Ra64WgLOJUCAAAECTQn4N7amxqEYAgQIECBAII6ATnoX+NznPnd67733Tt/85jetjQaf/exne/8yUD8BAgQIECBAILyAgDj8iDV4uIADCBAgQIAAgZACn/rUp06f/vSnT5/5zGesjQYf/ehHQ35taIoAAQIEBhXQNoGgAgLioIPVFgECBAgQIECAAAEC2wTcRYAAAQIECBAYSUBAPNK09UqAAAEClwKeEyBAgAABAgQIECBAgACB4QUGCIiHnzEAAgQIECBAgAABAgQIECAwgIAWCRAgQGCLgIB4i5p7CBAgQIAAAQIE6gk4mQABAgQIECBAgACBbAIC4myUNiJAILeA/QgQIECAAAECBAgQIECAAIH4AjqsKyAgruvvdAIECBAgQIAAAQIECIwioE8CBAgQIECgQQEBcYNDURIBAgQIEOhbQPUECBAgQIAAAQIECBAg0IuAgLiXSbVYp5oIECBAgAABAgQIEOhN4NxbweolQKABASUQIBBaQEAceryaI0CAAAECBAgQILBcwJUECBAgQIAAAQLjCQiIx5u5jgkQIECAAAECBAgQIECAAAECBAgQiC+wqEMB8SImFxEgQIAAAQIECBAgQIAAgVYF1EWAAAECBLYLCIi327mTAAECBAgQIFBWwGkECBAgQIAAAQIECBDILCAgzgxqOwI5BOxBgAABAgQIECBAgAABAgQIxBfQIYEWBATELUxBDQQIECBAgAABAgQIRBbQGwECBAgQIECgWQEBcbOjURgBAgQI9CegYgIECBAgQIAAAQIECBAg0JeAgHjLvNxDgAABAgQIECBAgAABAgQIxBfQIQECBAYQEBAPMGQtEiBAgAABAgQIPBbwKQECBAgQIECAAIFRBQTEo05e3wTGFNA1AQIECBAgQGB0gfPoAPonQIAAgSEENLlCQEC8AsulBAgQIECAAAECBAgQINCSgFoIECBAgACBvQIC4r2C7idAgAABAgSOF3ACAQIECBAgQIAAAQIECBwiICA+hNWmWwXcR4AAAQIECBAgQIAAAQIECMQX0CEBAu0ICIjbmYVKCBAgQCCOwEucVnRCgACBXQJuJkCAAAECBAgQaFxAQNz4gJRHgACBPgRUSYAAAQIECBAgQIAAAQIECPQosC4g7rFDNRMgQIAAAQIECBAgQIAAAQLrBFxNgAABAsMICIiHGbVGCRAgQIAAAQLvCniHAAECBAgQIECAAIGxBQTEY89f9+MI6JQAAQIECBAgQIAAAQIECBCIL6BDAqsFBMSrydxAgAABAgQIECBAgACB2gLOJ0CAAAECBAjkERAQ53G0CwECBAgQOEbArgQIECBAgAABAgQIECBA4EABAfGBuGu2di0BAgQIECBAgAABAgQIECAQX0CHBAgQaE1AQNzaRNRDgAABAgQIECAQQUAPBAgQIECA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AAECBMYW0D0BAgQIECBAgEArAgLiViahDgIECEQU0BMBAgQIECBAgAABAgQIECDQtECWgLjpDhVHgAABAgQIECBAgAABAgQIZBGwCQECBAjEExAQx5upjggQIECAAAECewXcT4AAAQIECBAgQIDAIAIC4kEGrU0CtwW8S4AAAQIECBAgQIAAAQIECMQX0CGB+wIC4vs2PiFAgAABAgQIECBAgEBfAqolQIAAAQIECKwUEBCvBHM5AQIECBBoQUANBAgQIECAAAECBAgQIEAgh4CAOIficXvYmQABAgQIECBAgAABAgQIEIgvoEMCBAhUExAQV6N3MAECBAgQIECAwHgCOiZAgAABAgQIECDQloCAuK15qIYAgSgC+iBAgAABAgQIECBAgAABAgTiCwToUEAcYIhaIECAAAECBAgQIECAAIFjBexOgAABAgSiCgiIo05WXwQIECBAgMAWAfcQIECAAAECBAgQIEBgKAEB8VDj1uxbAc8IECBAgAABAgQIECBAgACB+AI6JEDgmYCA+JmQzwkQIECAAAECBAgQaF9AhQQIECBAgAABApsEBMSb2NxEgAABArUEnEuAAAECBAgQIECAAAECBAjkE2g1IM7XoZ0IECBAgAABAgQIECBAgACBVgXURYAAAQKVBQTElQfgeAIECBAgQIDAGAK6JECAAAECBAgQIECgRQEBcYtTUROBngXUToAAAQIECBAgQIAAAQIECMQX0GEYAQFxmFFqhAABAgQIECBAgAABAvkF7EiAAAECBAjEFhAQx56v7ggQIECAwFIB1xEgQIAAAQIECBAgQIDAgAIC4uGGrmECBAgQIECAAAECBAgQIEAgvoAOCRAgsExAQLzMyVUECBAgQIAAAQIE2hRQFQECBAgQIECAAIEdAgLiHXhuJUCAQEkBZxEgQIAAAQIECBAgQIAAAQLxBUp3KCAuLe48AgQIECBAgAABAgQIECBwOjEgQIAAAQJNCAiImxiDIggQIECAAIG4AjojQIAAAQIECBAgQIBAuwIC4nZno7LeBNRLgAABAgQIECBAgAABAgQIxBfQIYFgAgLiYAPVDgECBAgQIECAAAECeQTsQoAAAQIECBAYQUBAPMKU9UiAAAECjwR8RoAAAQIECBAgQIAAAQIEhhUYKCAedsYaJ0CAAAECBAgQIECAAAECAwlolQABAgTWCAiI12i5lgABAgQIECBAoB0BlRAgQIAAAQIECBAgsFtAQLyb0AYECBwtYH8CBAgQIECAAAECBAgQIEAgvoAO6wgIiOu4O5UAAQIECBAgQIAAAQKjCuibAAECBAgQaEhAQNzQMJRCgAABAgRiCeiGAAECBAgQIECAAAECBFoXEBC3PqEe6lMjAQIECBAgQIAAAQIECBAgEF9AhwQIhBQQEIccq6YIECBAgAABAgQIbBdwJwECBAgQIECAwDgCAuJxZq1TAgQIXAt4TYAAAQIECBAgQIAAAQIECMQXeNihgPghjw8JECBAgAABAgQIECBAgEAvAuokQIAAAQLrBQTE683cQYAAAQIECBCoK+B0AgQIECBAgAABAgQIZBIQEGeCtA2BIwTsSYAAAQIECBAgQIAAAQIECMQX0CGBmgIC4pr6ziZAgAABAgQIECBAYCQBvRIgQIAAAQIEmhMQEDc3EgURIECAQP8COiBAgAABAgQIECBAgAABAn0ICIj3zMm9BAgQIECAAAECBAgQIECAQHwBHRIgQCCwgIA48HC1RoAAAQIECBAgsE7A1QQIECBAgAABAgRGExAQjzZx/RIgkAQsAgQIECBAgAABAgQIECBAIL6ADhcICIgXILmEAAECBAgQIECAAAECBFoWUBsBAgQIECCwVUBAvFXOfQQIECBAgEB5AScSIECAAAECBAgQIECAQFYBAXFWTpvlErAPAQIECBAgQIAAAQIECBAgEF9AhwQI1BcQENefgQoIECBAgAABAgQIRBfQHwECBAgQIECAQKMCAuJGB6MsAgQI9CmgagIECBAgQIAAAQIECBAgQKAngW0BcU8dqpUAAQIECBAgQIAAAQIECBDYJuAuAgQIEAgvICAOP2INEiBAgAABAgSeC7iCAAECBAgQIECAAIExBQTEY85d1+MK6JwAAQIECBAgQIAAAQIECBCIL6BDAosFBMSLqVxIgAABAgQIECBAgACB1gTUQ4AAAQIECBDYJyAg3ufnbgIECBAgUEbAKQQIECBAgAABAgQIECBA4AABAfEBqHu2dC8BAgQIECBAgAABAgQIECAQX0CHBAgQaEVAQNzKJNRBgAABAgQIECAQUUBPBAgQIECAAAECBJoWEBA3PR7FESDQj4BKCRAgQIAAAQIECBAgQIAAgfgC8ToUEMebqY4IECBAgAABAgQIECBAYK+A+wkQIECAwCACAuJBBq1NAgQIECBA4LaAdwkQIECAAAECBAgQIDCygIB45OmP1btuCRAgQIAAAQIECBAgQIAAgfgCOiRAYKWAgHglmMsJECBAgAABAgQIEGhBQA0ECBAgQIAAAQI5BATEORTtQYAAAQLHCdiZAAECBAgQIECAAAECBAgQOEygmYD4sA5tTIAAAQIECBAgQIAAAQIECDQjoBACBAgQaEtAQNzWPFRDgAABAgQIEIgioA8CBAgQIECAAAECBDoQEBB3MCQlEmhbQHUECBAgQIAAAQIECBAgQIBAfAEdRhUQEEedrL4IECBAgAABAgQIECCwRcA9BAgQIECAwFACAuKhxq1ZAgQIECDwVsAzAgQIECBAgAABAgQIECAgII7/NaBDAgQIECBAgAABAgQIECBAIL6ADgkQILBJQEC8ic1NBAgQIECAAAECBGoJOJcAAQIECBAgQIBAPgEBcT5LOxEgQCCvgN0IECBAgAABAgQIECBAgACB+AKVOxQQVx6A4wkQIECAAAECBAgQIEBgDAFdEiBAgACBFgV+BQAA///1ZA33AAAABklEQVQDAHPyOEAY6z7JAAAAAElFTkSuQmCC";
+    const playerCharacterImage = new Image();
+    playerCharacterImage.src = PLAYER_IMAGE_DATA;
+    playerCharacterImage.decoding = 'async';
+
+    const EXTRA_KEYS = {
+        PLAYER_ID: 'escape_block_player_id_v2',
+        WORLD_RECORDS: 'escape_block_world_records_v2',
+        SHOP: 'escape_block_daily_shop_v2',
+        HACKER: 'escape_block_hacker_config_v2'
+    };
+    const WORLD_PEER_ID = 'escape-key-global-hub-7d31a9';
+    const ITEM_TYPES = ['shield','freeze','bomb','ghost'];
+
+    const playerId = (() => {
+        let id = localStorage.getItem(EXTRA_KEYS.PLAYER_ID);
+        if (!id) { id = 'P-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36).slice(-5); localStorage.setItem(EXTRA_KEYS.PLAYER_ID, id); }
+        return id;
+    })();
+
+    let recordTab = 'personal';
+    let worldRecords = [];
+    try { worldRecords = JSON.parse(localStorage.getItem(EXTRA_KEYS.WORLD_RECORDS) || '[]'); } catch(e) { worldRecords = []; }
+    if (!Array.isArray(worldRecords)) worldRecords = [];
+
+    let hackerConfig;
+    try { hackerConfig = JSON.parse(localStorage.getItem(EXTRA_KEYS.HACKER) || 'null'); } catch(e) { hackerConfig = null; }
+    if (!hackerConfig || !hackerConfig.boosts || !hackerConfig.chances) {
+        hackerConfig = {
+            boosts: { shield:0, freeze:0, bomb:0, ghost:0 },
+            chances: { shield:25, freeze:25, bomb:25, ghost:25 }
+        };
+    }
+
+    function saveHackerConfig() {
+        localStorage.setItem(EXTRA_KEYS.HACKER, JSON.stringify(hackerConfig));
+    }
+
+    function hackerMaxChance(type) { return 25 + Math.max(0, Math.min(10, Number(hackerConfig.boosts[type] || 0))); }
+
+    function totalItemWeight() { return ITEM_TYPES.reduce((sum,type) => sum + Math.max(0.01, Number(hackerConfig.chances[type] || 0)), 0); }
+    function actualItemChance(type) { const total = totalItemWeight(); return total > 0 ? (Math.max(0.01, Number(hackerConfig.chances[type] || 0)) / total) * 100 : 25; }
+    function clampChanceState() {
+        ITEM_TYPES.forEach(t => hackerConfig.chances[t] = Math.max(1, Math.min(hackerMaxChance(t), Number(hackerConfig.chances[t] || 25))));
+    }
+    clampChanceState();
+    saveHackerConfig();
+
+    function itemLabel(type) { return { shield:'シールド', freeze:'フリーズ', bomb:'ボム', ghost:'ゴースト' }[type] || type; }
+    function itemIcon(type) { return { shield:'S', freeze:'F', bomb:'B', ghost:'G' }[type] || '?'; }
+
+    function appendHackerLog(line) {
+        const el = document.getElementById('hackerLog');
+        if (!el) return;
+        el.innerHTML += `<br>> ${line}`;
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function currentWorldShopIds() {
+        const dateKey = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tokyo', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+        let saved;
+        try { saved = JSON.parse(localStorage.getItem(EXTRA_KEYS.SHOP) || 'null'); } catch(e) { saved = null; }
+        if (saved && saved.dateKey === dateKey && Array.isArray(saved.ids) && saved.ids.length === 5) return saved;
+        const available = SKINS.filter(s => s.id !== 'default').map(s => s.id);
+        let seed = 2166136261;
+        for (const ch of dateKey) { seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619); }
+        seed >>>= 0;
+        const rand = () => { seed += 0x6D2B79F5; let t=seed; t=Math.imul(t^(t>>>15), t|1); t^=t+Math.imul(t^(t>>>7), t|61); return ((t^(t>>>14))>>>0)/4294967296; };
+        for (let i=available.length-1; i>0; i--) { const j=Math.floor(rand()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
+        const ids = available.slice(0,5);
+        const result = { dateKey, ids };
+        localStorage.setItem(EXTRA_KEYS.SHOP, JSON.stringify(result));
+        return result;
+    }
+
+    let dailyShop = currentWorldShopIds();
+
+    function renderHackerRoom() {
+        const c = document.getElementById('hackerChanceContainer');
+        if (!c) return;
+        c.innerHTML = '';
+        clampChanceState();
+        ITEM_TYPES.forEach(type => {
+            const current = hackerConfig.chances[type];
+            const max = hackerMaxChance(type);
+            const effective = actualItemChance(type);
+            const boost = hackerConfig.boosts[type] || 0;
+            const nextCost = boost >= 10 ? 0 : 100 * (boost + 1);
+            const card = document.createElement('div');
+            card.className = 'hacker-card';
+            card.innerHTML = `
+                <div class="hacker-card-title">[${itemIcon(type)}] ${itemLabel(type)}</div>
+                <div class="hacker-card-row"><span>現在の抽選確率</span><b id="chance-value-${type}">${effective.toFixed(1)}%</b></div>
+                <input id="chance-range-${type}" type="range" min="1" max="${max.toFixed(1)}" step="0.1" value="${current.toFixed(1)}" oninput="setHackerChance('${type}', this.value)">
+                <div class="hacker-card-row"><span>強化上限</span><span>+${boost}% → 設定値最大 ${max.toFixed(1)}</span></div>
+                <button class="hacker-upgrade" onclick="upgradeHackerChance('${type}')" ${boost>=10 || stats.coins<nextCost ? 'disabled' : ''}>${boost>=10 ? '最大強化 (+10%)' : `+1%強化 / ${nextCost} C`}</button>
+            `;
+            c.appendChild(card);
+        });
+        updateP2PStatus();
+    }
+
+    function setHackerChance(type, value) {
+        hackerConfig.chances[type] = Math.max(1, Math.min(hackerMaxChance(type), Number(value) || 1));
+        clampChanceState();
+        saveHackerConfig();
+        renderHackerRoom();
+        appendHackerLog(`${itemLabel(type)} chance adjusted to ${actualItemChance(type).toFixed(1)}%`);
+    }
+
+    function upgradeHackerChance(type) {
+        const boost = Number(hackerConfig.boosts[type] || 0);
+        if (boost >= 10) return;
+        const cost = 100 * (boost + 1);
+        if (stats.coins < cost) return;
+        stats.coins -= cost;
+        hackerConfig.boosts[type] = boost + 1;
+        hackerConfig.chances[type] = Math.min(hackerMaxChance(type), Number(hackerConfig.chances[type] || 25) + 1);
+        clampChanceState();
+        saveStats(); saveHackerConfig(); renderHackerRoom();
+        appendHackerLog(`${itemLabel(type)} +1% upgrade purchased (${cost} C)`);
+    }
+
+    function showHackerRoom() {
+        renderHackerRoom();
+        document.getElementById('hackerModal').style.display='block';
+        appendHackerLog('secure room opened');
+    }
+    function closeHackerRoom() { document.getElementById('hackerModal').style.display='none'; }
+
+    // Daily shop: 5 skins for every player on the same JST day.
+    const __originalRenderShop = renderShop;
+    renderShop = function() {
+        dailyShop = currentWorldShopIds();
+        const ids = new Set(dailyShop.ids);
+        const container = document.getElementById('shopContainer');
+        const header = document.querySelector('#shopModal .modal-header');
+        if (header) header.innerText = 'スキン ショップ（本日の5種）';
+        container.innerHTML = `<div class="shop-daily-badge" style="grid-column:1/-1;">TODAY'S 5 SKINS — P2P同期</div><div class="shop-refresh" style="grid-column:1/-1;">毎日0:00（日本時間）に5種類へ更新</div>`;
+        SKINS.filter(s => ids.has(s.id)).forEach(skin => {
+            const isUnlocked = unlockedSkins.includes(skin.id);
+            const isEquipped = equippedSkin === skin.id;
+            const div = document.createElement('div'); div.className=`shop-item ${isEquipped?'equipped':''}`;
+            let colorPreview=skin.color, previewContent='';
+            if (skin.color==='rainbow') colorPreview='linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet)';
+            else if (skin.color==='cyberpunk') colorPreview='linear-gradient(45deg, #00ffff, #ff00ff)';
+            else if (skin.color==='godemperor') colorPreview='linear-gradient(45deg, #ffd700, #ffffff)';
+            else if (skin.color==='supernova') colorPreview='linear-gradient(45deg, #ffffff, #ffaa00)';
+            if(skin.id==='crown') previewContent='<span style="font-size:16px;">👑</span>';
+            if(skin.id==='godemperor') previewContent='<span style="font-size:16px;">✨</span>';
+            let btn='';
+            if(isEquipped) btn=`<button class="shop-btn" disabled style="background:#000;color:#aaa;border-color:#555;box-shadow:none;">装備中</button>`;
+            else if(isUnlocked) btn=`<button class="shop-btn" onclick="equipSkin('${skin.id}')" style="background:#fff;color:#000;">装備する</button>`;
+            else { const canBuy=stats.coins>=skin.price; btn=`<button class="shop-btn" onclick="buySkin('${skin.id}', ${skin.price})" style="background:${canBuy?'#ffd700':'#444'};color:#000;" ${canBuy?'':'disabled'}>${skin.price} C</button>`; }
+            div.innerHTML=`<div class="shop-color-preview" style="background:${colorPreview};">${previewContent}</div><div class="shop-title">${skin.name}</div><div style="font-size:10px;color:#aaa;margin-bottom:8px;min-height:28px;">${skin.desc}</div>${btn}`;
+            container.appendChild(div);
+        });
+        updateCoinDisplays();
+    };
+
+    // Records: Personal / World tabs.
+    function setRecordTab(tab) { recordTab=tab; renderRecords(); }
+    renderRecords = function() {
+        const list = document.getElementById('recordsList');
+        const pBtn=document.getElementById('recordsPersonalBtn'), wBtn=document.getElementById('recordsWorldBtn');
+        if(pBtn) pBtn.className = recordTab==='personal' ? 'active' : '';
+        if(wBtn) wBtn.className = recordTab==='world' ? 'active' : '';
+        if(recordTab==='personal') {
+            document.getElementById('recordsHeader').innerText='プレイ記録';
+            list.innerHTML=`<div class="world-summary"><div>個人最高記録</div><div class="rank">${savedHighScore} 秒</div></div>`;
+            if(playHistory.length===0) return list.innerHTML += '<div class="world-empty">個人の記録がありません。</div>';
+            playHistory.forEach(r=>{ const div=document.createElement('div'); div.className='record-item'; div.innerHTML=`<span>${r.date}</span><span style="color:#00ffcc;font-weight:bold;">${r.score}秒</span>`; list.appendChild(div); });
+            return;
+        }
+        document.getElementById('recordsHeader').innerText='世界ランキング';
+        refreshWorldRank();
+    };
+
+    function refreshWorldRank() {
+        const list=document.getElementById('recordsList');
+        worldRecords = (Array.isArray(worldRecords)?worldRecords:[]).filter(r=>r && r.playerId && Number.isFinite(Number(r.score)));
+        worldRecords.sort((a,b)=>Number(b.score)-Number(a.score) || String(a.playerId).localeCompare(String(b.playerId)));
+        localStorage.setItem(EXTRA_KEYS.WORLD_RECORDS, JSON.stringify(worldRecords.slice(0,500)));
+        const rank=worldRecords.findIndex(r=>r.playerId===playerId)+1;
+        const total=worldRecords.length;
+        list.innerHTML=`<div class="world-summary"><div>あなたの現在順位</div><div class="rank">${rank>0?rank:'--'}位</div><div style="font-size:11px;color:#8aa;">P2P参加プレイヤー: ${total}人</div></div>`;
+        if(!worldRecords.length) { list.innerHTML += '<div class="world-empty">まだ世界記録が同期されていません。</div>'; return; }
+        const top100=worldRecords.slice(0,100);
+        top100.forEach((r,i)=>{ const div=document.createElement('div'); div.className='record-item'+(r.playerId===playerId?' world-row-me':''); const label=r.playerId===playerId?'あなた':`PLAYER-${String(r.playerId).slice(-5).toUpperCase()}`; div.innerHTML=`<span>${i+1}位　${label}</span><span style="color:#00ffcc;font-weight:bold;">${r.score}秒</span>`; list.appendChild(div); });
+        if(rank>100) { const me=worldRecords[rank-1]; const div=document.createElement('div'); div.className='record-item world-row-me'; div.innerHTML=`<span>… ${rank}位　あなた</span><span style="color:#00ffcc;font-weight:bold;">${me.score}秒</span>`; list.appendChild(div); }
+    }
+
+    // Character image overlay — uses the uploaded image and keeps the original game logic intact.
+    const __originalStartGame = startGame;
+    startGame = function() {
+        __originalStartGame();
+        if (gameActive) {
+            backgroundGameClockReset();
+            requestAnimationFrame(drawCharacterOverlay);
+        }
+    };
+
+    function drawCharacterOverlay() {
+        if(gameActive && playerCharacterImage.complete) {
+            const drawW=104, drawH=49.4;
+            ctx.save();
+            ctx.imageSmoothingEnabled=false;
+            ctx.globalAlpha=player.isGhost?0.48:1;
+            ctx.drawImage(playerCharacterImage, player.x-drawW/2, player.y-drawH/2, drawW, drawH);
+            ctx.restore();
+        }
+        if(gameActive) requestAnimationFrame(drawCharacterOverlay);
+    }
+
+    // Ghost: exactly 5 seconds, and every pickup adds another 5 seconds.
+    const __originalApplyItemEffect = applyItemEffect;
+    applyItemEffect = function(type) {
+        if(type==='ghost') {
+            itemsCollectedThisRun++;
+            stats.totalItems++;
+            const now=Date.now();
+            const base=Math.max(now, ghostEndTime || 0);
+            ghostEndTime=base+5000;
+            player.isGhost=true;
+            spawnFloatingText(player.x, player.y-20, 'GHOST!', '#ffffff');
+            saveStats();
+        } else {
+            __originalApplyItemEffect(type);
+            saveStats();
+        }
+        updateGhostTimerDisplay(Date.now());
+    };
+
+    function updateGhostTimerDisplay(now) {
+        const wrap=document.getElementById('ghost-timer-wrap'), el=document.getElementById('ghost-timer');
+        if(!wrap||!el) return;
+        const remain=Math.max(0, ghostEndTime?((ghostEndTime-now)/1000):0);
+        if(player.isGhost && remain>0) { wrap.style.display='inline-flex'; el.innerText=Math.ceil(remain); }
+        else wrap.style.display='none';
+    }
+    setInterval(()=>updateGhostTimerDisplay(Date.now()),100);
+
+    // Background tab simulation: when rendering is throttled, enemies keep advancing on real elapsed time.
+    let bgLastTick=Date.now();
+    function backgroundGameClockReset() { bgLastTick=Date.now(); }
+    document.addEventListener('visibilitychange', ()=>{ bgLastTick=Date.now(); });
+
+    setInterval(()=>{
+        if(!gameActive || !document.hidden) { bgLastTick=Date.now(); return; }
+        const now=Date.now();
+        const dt=Math.min(1.5, Math.max(0,(now-bgLastTick)/1000));
+        bgLastTick=now;
+        if(dt<=0) return;
+        score=Math.floor((now-startTime)/1000);
+        if(now-lastItemTime>3000) { spawnItem(); lastItemTime=now; }
+        if(player.isGhost && now>ghostEndTime) player.isGhost=false;
+        const speedMult=(now<freezeEndTime)?0.3:1.0;
+        // Keep the player anchored; only world hazards continue moving while this tab is hidden.
+        enemies.forEach((e,i)=>{
+            const dist=Math.hypot(player.x-e.x,player.y-e.y);
+            const move=(factor)=>factor*dt*60*speedMult;
+            if(e.type==='normal'||e.type==='small'||e.type==='giant'||e.type==='magnet') { if(dist>0) { const m=move(e.speed); e.x += ((player.x-e.x)/dist)*m; e.y += ((player.y-e.y)/dist)*m; } }
+            else if(e.type==='wavy') { e.angle += e.waveSpeed*dt*60*speedMult; if(dist>0) { const dirX=(player.x-e.x)/dist, dirY=(player.y-e.y)/dist, perpX=-dirY, perpY=dirX; const wf=(Math.sin(e.angle)*e.amplitude)+(Math.cos(e.angle*2.3)*(e.amplitude*0.6)); e.x += (dirX*e.speed+perpX*wf)*dt*60*speedMult; e.y += (dirY*e.speed+perpY*wf)*dt*60*speedMult; } }
+            else if(e.type==='charger') { e.timer += dt*60*speedMult; if(e.state==='chase') { if(dist>0) { e.x += ((player.x-e.x)/dist)*2*dt*60*speedMult; e.y += ((player.y-e.y)/dist)*2*dt*60*speedMult; } if(e.timer>120&&dist<300) {e.state='aim';e.timer=0;} } else if(e.state==='aim') { if(e.timer>30) {e.state='dash';e.timer=0;if(dist>0){e.dashVx=((player.x-e.x)/dist)*15;e.dashVy=((player.y-e.y)/dist)*15;} } } else if(e.state==='dash') { e.x+=e.dashVx*dt*60*speedMult; e.y+=e.dashVy*dt*60*speedMult; if(e.timer>40){e.state='chase';e.timer=0;} } }
+            else if(e.type==='splitter') { if(dist>0){e.x+=((player.x-e.x)/dist)*e.speed*dt*60*speedMult;e.y+=((player.y-e.y)/dist)*e.speed*dt*60*speedMult;} if(dist<150){ enemies.splice(i,1); for(let j=0;j<3;j++) enemies.push({x:e.x+(Math.random()-0.5)*40,y:e.y+(Math.random()-0.5)*40,type:'small',size:10,color:'#aaffaa',speed:e.speed*2}); } }
+            else if(e.type==='shooter') { e.timer+=dt*60*speedMult; if(dist<200){e.x-=((player.x-e.x)/dist)*e.speed*dt*60*speedMult;e.y-=((player.y-e.y)/dist)*e.speed*dt*60*speedMult;} else if(dist>250&&dist>0){e.x+=((player.x-e.x)/dist)*e.speed*dt*60*speedMult;e.y+=((player.y-e.y)/dist)*e.speed*dt*60*speedMult;} if(e.timer>100){e.timer=0;if(dist>0)spawnBullet(e.x,e.y,((player.x-e.x)/dist)*6,((player.y-e.y)/dist)*6);} }
+            // Collision while hidden
+            const nd=Math.hypot(player.x-e.x,player.y-e.y);
+            if(Math.abs(player.x-e.x)<(player.size+e.size-2)&&Math.abs(player.y-e.y)<(player.size+e.size-2)) {
+                if(player.isGhost) { } else if(player.hasShield) { player.hasShield=false; enemies.splice(i,1); } else { endGame(); }
+            }
+        });
+        for(let i=bullets.length-1;i>=0;i--) { const b=bullets[i]; b.x+=b.vx*dt*60*speedMult; b.y+=b.vy*dt*60*speedMult; if(Math.abs(player.x-b.x)<(player.size+b.size-2)&&Math.abs(player.y-b.y)<(player.size+b.size-2)) { if(player.isGhost){} else if(player.hasShield){player.hasShield=false;bullets.splice(i,1);} else if(gameActive) {endGame();break;} } if(b.x<-50||b.x>width+50||b.y<-50||b.y>height+50) bullets.splice(i,1); }
+        // Magnet force in hidden mode
+        enemies.forEach(e=>{ if(e.type==='magnet'){ const d=Math.hypot(player.x-e.x,player.y-e.y); if(d>0&&d<400){ const force=2.0*(1-d/400)*speedMult*dt*60; player.x+=((e.x-player.x)/d)*force; player.y+=((e.y-player.y)/d)*force; } } });
+        player.x=Math.max(player.size,Math.min(width-player.size,player.x));
+        player.y=Math.max(player.size,Math.min(height-player.size,player.y));
+    },100);
+
+    // Item probabilities now come from Hacker Room settings.
+    spawnItem = function() {
+        if(items.length>=3) return;
+        clampChanceState();
+        const total=totalItemWeight();
+        const roll=Math.random()*total; let acc=0;
+        let type=ITEM_TYPES[ITEM_TYPES.length-1];
+        for(const t of ITEM_TYPES) { acc+=Math.max(0.01, Number(hackerConfig.chances[t] || 0)); if(roll<=acc){type=t;break;} }
+        items.push({x:Math.random()*(width-100)+50,y:Math.random()*(height-100)+50,type,size:16,angle:0});
+    };
+
+    // P2P world state using WebRTC data channels via PeerJS.
+    let worldPeer=null, worldIsHost=false, worldConnections=new Set(), lastHostSeen=0;
+    let p2pInitialized=false;
+
+    function updateP2PStatus() {
+        const el=document.getElementById('p2pStatus'); if(!el) return;
+        if(worldIsHost) { el.className='p2p-online'; el.innerText='HOST / P2P ACTIVE'; }
+        else if(worldPeer && lastHostSeen>0) { el.className='p2p-online'; el.innerText='CLIENT / P2P ACTIVE'; }
+        else { el.className='p2p-offline'; el.innerText='接続待機中'; }
+    }
+
+    function saveWorldRecords() { localStorage.setItem(EXTRA_KEYS.WORLD_RECORDS, JSON.stringify(worldRecords.slice(0,500))); }
+
+    function mergeWorldRecord(rec) {
+        if(!rec||!rec.playerId) return;
+        const idx=worldRecords.findIndex(r=>r.playerId===rec.playerId);
+        const next={playerId:rec.playerId,score:Math.max(0,Math.floor(Number(rec.score)||0)),date:rec.date||''};
+        if(idx<0) worldRecords.push(next);
+        else if(next.score>Number(worldRecords[idx].score)) worldRecords[idx]=next;
+        worldRecords.sort((a,b)=>Number(b.score)-Number(a.score)||String(a.playerId).localeCompare(String(b.playerId)));
+        worldRecords=worldRecords.slice(0,500);
+        saveWorldRecords();
+    }
+
+    function broadcastWorld(message) {
+        worldConnections.forEach(conn=>{ try{ if(conn.open) conn.send(message); }catch(e){} });
+    }
+
+    function worldStatePayload() { return {type:'state',records:worldRecords.slice(0,500),shop:dailyShop}; }
+
+    function handleWorldConnection(conn) {
+        worldConnections.add(conn);
+        conn.on('open',()=>{
+            try{ conn.send(worldStatePayload()); conn.send({type:'heartbeat',ts:Date.now()}); }catch(e){}
+        });
+        conn.on('data',data=>{
+            if(!data||typeof data!=='object') return;
+            if(data.type==='hello') { try{conn.send(worldStatePayload());}catch(e){} return; }
+            if(data.type==='record' && worldIsHost) { mergeWorldRecord(data.record); broadcastWorld(worldStatePayload()); return; }
+            if(data.type==='state' && !worldIsHost) {
+                if(Array.isArray(data.records)) { worldRecords=data.records; saveWorldRecords(); }
+                if(data.shop && Array.isArray(data.shop.ids)) { dailyShop=data.shop; localStorage.setItem(EXTRA_KEYS.SHOP,JSON.stringify(dailyShop)); }
+                lastHostSeen=Date.now();
+                if(recordTab==='world') renderRecords();
+                return;
+            }
+            if(data.type==='heartbeat' && !worldIsHost) { lastHostSeen=Date.now(); updateP2PStatus(); }
+        });
+        const cleanup=()=>{worldConnections.delete(conn);};
+        conn.on('close',cleanup); conn.on('error',cleanup);
+    }
+
+    function becomeHost() {
+        worldIsHost=true; lastHostSeen=Date.now(); updateP2PStatus();
+        try { localStorage.setItem(EXTRA_KEYS.SHOP,JSON.stringify(dailyShop)); } catch(e) {}
+        appendHackerLog('P2P host role acquired');
+    }
+
+    function createClientPeer() {
+        if(!window.Peer) return;
+        try {
+            worldPeer = new Peer({debug:0});
+            worldPeer.on('open',()=>{ p2pInitialized=true; lastHostSeen=0; setTimeout(connectToWorldHost,500); updateP2PStatus(); });
+            worldPeer.on('connection',handleWorldConnection);
+            worldPeer.on('error',()=>{});
+        } catch(e) {}
+    }
+
+    function connectToWorldHost() {
+        if(!worldPeer || worldIsHost) return;
+        try { const conn=worldPeer.connect(WORLD_PEER_ID,{reliable:true}); handleWorldConnection(conn); conn.on('open',()=>{lastHostSeen=Date.now();conn.send({type:'hello',playerId});}); } catch(e) {}
+    }
+
+    function startWorldPeer() {
+        if(!window.Peer || p2pInitialized) return;
+        try {
+            worldPeer = new Peer(WORLD_PEER_ID,{debug:0});
+            worldPeer.on('open',()=>{ p2pInitialized=true; becomeHost(); });
+            worldPeer.on('connection',handleWorldConnection);
+            worldPeer.on('error',(err)=>{
+                if(err && err.type==='unavailable-id') {
+                    try{worldPeer.destroy();}catch(e){}
+                    p2pInitialized=false; worldIsHost=false; createClientPeer();
+                }
+            });
+        } catch(e) { createClientPeer(); }
+    }
+
+    setInterval(()=>{
+        if(worldIsHost) { broadcastWorld({type:'heartbeat',ts:Date.now()}); }
+        else if(worldPeer && lastHostSeen>0 && Date.now()-lastHostSeen>8000) {
+            try{worldPeer.destroy();}catch(e){}
+            worldPeer=null; p2pInitialized=false; worldIsHost=false; lastHostSeen=0;
+            setTimeout(startWorldPeer,1200);
+        }
+        updateP2PStatus();
+    },2000);
+
+    function submitWorldRecord(scoreValue) {
+        const rec={playerId,score:Math.floor(scoreValue),date:new Date().toLocaleString('ja-JP')};
+        mergeWorldRecord(rec);
+        if(worldIsHost) broadcastWorld(worldStatePayload());
+        else {
+            let sent=false;
+            worldConnections.forEach(conn=>{try{if(conn.open){conn.send({type:'record',record:rec});sent=true;}}catch(e){}});
+            if(!sent) setTimeout(()=>{worldConnections.forEach(conn=>{try{if(conn.open)conn.send({type:'record',record:rec});}catch(e){}})},1500);
+        }
+        if(recordTab==='world') refreshWorldRank();
+    }
+
+    const __originalEndGame = endGame;
+    endGame = function() { const endedScore=score; __originalEndGame(); submitWorldRecord(endedScore); };
+
+    // Keep settings accessible from the top-right menu while preserving the original setup page.
+    const __originalShowSetup=showSetup, __originalBackToMain=backToMain;
+    showSetup=function() { topMenu.style.display='none'; __originalShowSetup(); };
+    backToMain=function() { __originalBackToMain(); topMenu.style.display='flex'; };
+
+    // When records open, show the selected tab; world sync may update it live.
+    const __originalShowModal=showModal;
+    showModal=function(id) {
+        __originalShowModal(id);
+        if(id==='recordsModal') { recordTab='personal'; renderRecords(); }
+        if(id==='shopModal') renderShop();
+    };
+
+    startWorldPeer();
+    updateP2PStatus();
+    updateGhostTimerDisplay(Date.now());
+
+
+
+    /* ===== 追加機能パッチ2：ロッカー / 管理者 / 記録自動整理 ===== */
+
+    // Hacker Room removed: restore the original simple item selection so no hidden Hacker Room
+    // configuration affects gameplay.
+    spawnItem = function() {
+        if (items.length >= 3) return;
+        const types = ['shield', 'freeze', 'bomb', 'ghost'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        items.push({
+            x: Math.random()*(width-100)+50,
+            y: Math.random()*(height-100)+50,
+            type, size:16, angle:0
+        });
+    };
+
+    // Keep play history for 7 days only. The high score is stored separately and is never deleted here.
+    const PLAY_HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+    function prunePlayHistory() {
+        const cutoff = Date.now() - PLAY_HISTORY_RETENTION_MS;
+        const raw = Array.isArray(playHistory) ? playHistory : [];
+        playHistory = raw.filter(r => {
+            if (!r || typeof r.score !== 'number') return false;
+            if (!r.timestamp) return true;
+            return Number(r.timestamp) >= cutoff;
+        }).slice(0, 30);
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(playHistory));
+    }
+    prunePlayHistory();
+
+    // Add a real timestamp to future records and periodically prune old history.
+    const __endGameBeforeHistoryCleanup = endGame;
+    endGame = function() {
+        const before = Array.isArray(playHistory) ? playHistory.length : 0;
+        __endGameBeforeHistoryCleanup();
+        // The original endGame has already inserted the record. Give the newest record a timestamp.
+        if (Array.isArray(playHistory) && playHistory.length > before) {
+            playHistory[0].timestamp = Date.now();
+            localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(playHistory));
+        } else if (Array.isArray(playHistory) && playHistory.length) {
+            if (!playHistory[0].timestamp && Number(playHistory[0].score) === Number(score)) {
+                playHistory[0].timestamp = Date.now();
+                localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(playHistory));
+            }
+        }
+        prunePlayHistory();
+    };
+
+    // Migrate older personal records once: give them the current timestamp so cleanup works consistently.
+    if (Array.isArray(playHistory)) {
+        let migrated = false;
+        playHistory.forEach(r => {
+            if (r && !r.timestamp) { r.timestamp = Date.now(); migrated = true; }
+        });
+        if (migrated) localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(playHistory));
+    }
+    prunePlayHistory();
+    setInterval(prunePlayHistory, 6 * 60 * 60 * 1000);
+
+    // Key-kun image is reused for every shop/locker preview.
+    function keyKunPreviewHtml() {
+        return `<div class="shop-character-preview"><img src="${PLAYER_IMAGE_DATA}" alt="キー君"></div>`;
+    }
+
+    function renderKeyKunSkinCard(skin, mode) {
+        const isEquipped = equippedSkin === skin.id;
+        const div = document.createElement('div');
+        div.className = `shop-item ${isEquipped ? 'equipped' : ''}`;
+        let btn = '';
+        if (mode === 'locker') {
+            btn = isEquipped
+                ? `<button class="shop-btn" disabled style="background:#000;color:#aaa;border-color:#555;box-shadow:none;">装備中</button>`
+                : `<button class="shop-btn" onclick="equipFromLocker('${skin.id}')" style="background:#fff;color:#000;">このスキンに変更</button>`;
+        } else {
+            btn = unlockedSkins.includes(skin.id)
+                ? `<button class="shop-btn" disabled style="background:#000;color:#8dffbd;border-color:#00ff66;">入手済み</button>`
+                : `<button class="shop-btn" onclick="grantSkin('${skin.id}')" style="background:#3a0000;color:#fff;border-color:#ff6666;">無料で入手</button>`;
+        }
+        div.innerHTML = `${keyKunPreviewHtml()}
+            <div class="shop-title">${skin.name}</div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:8px;min-height:28px;">${skin.desc}</div>${btn}`;
+        return div;
+    }
+
+    function showLocker() {
+        renderLocker();
+        document.getElementById('lockerModal').style.display = 'block';
+    }
+
+    function renderLocker() {
+        const container = document.getElementById('lockerContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        const owned = SKINS.filter(s => unlockedSkins.includes(s.id));
+        if (!owned.length) {
+            container.innerHTML = '<div class="locker-empty" style="grid-column:1/-1;">所持スキンがありません。</div>';
+            return;
+        }
+        owned.forEach(skin => container.appendChild(renderKeyKunSkinCard(skin, 'locker')));
+    }
+
+    function equipFromLocker(id) {
+        if (!unlockedSkins.includes(id)) return;
+        equipSkin(id);
+        renderLocker();
+    }
+
+    // Replace the daily shop preview with the Key-kun image while keeping the same 5 daily skins.
+    const __dailyShopRenderBeforeKeyKun = renderShop;
+    renderShop = function() {
+        dailyShop = currentWorldShopIds();
+        const ids = new Set(dailyShop.ids);
+        const container = document.getElementById('shopContainer');
+        const header = document.querySelector('#shopModal .modal-header');
+        if (!container) return;
+        if (header) header.innerText = 'スキン ショップ（本日の5種）';
+        container.innerHTML =
+            `<div class="shop-daily-badge" style="grid-column:1/-1;">TODAY'S 5 SKINS — P2P同期</div>
+             <div class="shop-refresh" style="grid-column:1/-1;">毎日0:00（日本時間）に5種類へ更新</div>`;
+        SKINS.filter(s => ids.has(s.id)).forEach(skin => {
+            const isUnlocked = unlockedSkins.includes(skin.id);
+            const isEquipped = equippedSkin === skin.id;
+            const div = document.createElement('div');
+            div.className = `shop-item ${isEquipped ? 'equipped' : ''}`;
+            let btn = '';
+            if (isEquipped) {
+                btn = `<button class="shop-btn" disabled style="background:#000;color:#aaa;border-color:#555;box-shadow:none;">装備中</button>`;
+            } else if (isUnlocked) {
+                btn = `<button class="shop-btn" onclick="equipSkin('${skin.id}')" style="background:#fff;color:#000;">装備する</button>`;
+            } else {
+                const canBuy = stats.coins >= skin.price;
+                btn = `<button class="shop-btn" onclick="buySkin('${skin.id}', ${skin.price})" style="background:${canBuy?'#ffd700':'#444'};color:#000;" ${canBuy?'':'disabled'}>${skin.price} C</button>`;
+            }
+            div.innerHTML = `${keyKunPreviewHtml()}
+                <div class="shop-title">${skin.name}</div>
+                <div style="font-size:10px;color:#aaa;margin-bottom:8px;min-height:28px;">${skin.desc}</div>${btn}`;
+            container.appendChild(div);
+        });
+        updateCoinDisplays();
+    };
+
+    // Refresh the shared daily shop around midnight too, without changing the existing P2P structure.
+    let lastShopDateKeyForPatch = dailyShop && dailyShop.dateKey ? dailyShop.dateKey : '';
+    setInterval(() => {
+        const latest = currentWorldShopIds();
+        if (latest.dateKey !== lastShopDateKeyForPatch) {
+            lastShopDateKeyForPatch = latest.dateKey;
+            dailyShop = latest;
+            try { localStorage.setItem(EXTRA_KEYS.SHOP, JSON.stringify(dailyShop)); } catch(e) {}
+            if (typeof worldStatePayload === 'function' && typeof broadcastWorld === 'function' && worldIsHost) {
+                broadcastWorld(worldStatePayload());
+            }
+            const shopModal = document.getElementById('shopModal');
+            if (shopModal && shopModal.style.display === 'block') renderShop();
+        }
+    }, 60 * 1000);
+
+    // Admin code: type 140923 anywhere to open the administrator panel.
+    let adminCodeBuffer = '';
+    let adminCodeResetTimer = null;
+    window.addEventListener('keydown', e => {
+        if (!e.key || e.key.length !== 1 || !/[0-9]/.test(e.key)) return;
+        adminCodeBuffer = (adminCodeBuffer + e.key).slice(-6);
+        clearTimeout(adminCodeResetTimer);
+        adminCodeResetTimer = setTimeout(() => { adminCodeBuffer = ''; }, 2500);
+        if (adminCodeBuffer === '140923') {
+            adminCodeBuffer = '';
+            showAdminPanel();
+        }
+    });
+
+    function showAdminPanel() {
+        closeModal('adminSkinsModal');
+        document.getElementById('adminModal').style.display = 'block';
+    }
+
+    function openAdminSkins() {
+        renderAdminSkins();
+        document.getElementById('adminModal').style.display = 'none';
+        document.getElementById('adminSkinsModal').style.display = 'block';
+    }
+
+    function renderAdminSkins() {
+        const container = document.getElementById('adminSkinsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        SKINS.forEach(skin => container.appendChild(renderKeyKunSkinCard(skin, 'admin')));
+    }
+
+    function grantSkin(id) {
+        const skin = SKINS.find(s => s.id === id);
+        if (!skin) return;
+        if (!unlockedSkins.includes(id)) {
+            unlockedSkins.push(id);
+            localStorage.setItem(STORAGE_KEYS.SKINS, JSON.stringify(unlockedSkins));
+        }
+        renderAdminSkins();
+        renderLocker();
+        renderShop();
+    }
+
+    function grantAllSkins() {
+        unlockedSkins = SKINS.map(s => s.id);
+        localStorage.setItem(STORAGE_KEYS.SKINS, JSON.stringify(unlockedSkins));
+        renderAdminSkins();
+        renderLocker();
+        renderShop();
+    }
+
+    // Repaint the locker/admin/shop after equip/buy actions, without changing the original functions.
+    const __equipSkinBeforePatch2 = equipSkin;
+    equipSkin = function(id) {
+        __equipSkinBeforePatch2(id);
+        renderLocker();
+        renderAdminSkins();
+    };
+
+    const __buySkinBeforePatch2 = buySkin;
+    buySkin = function(id, price) {
+        __buySkinBeforePatch2(id, price);
+        renderShop();
+        renderLocker();
+    };
+
+    // Keep the original top-right settings behavior and ensure the new locker/admin modals close cleanly.
+    const __closeModalBeforePatch2 = closeModal;
+    closeModal = function(id) {
+        __closeModalBeforePatch2(id);
+    };
+
+    // The locker and admin menus are only available from the lobby, matching the existing top-right menu behavior.
+
+</script>
+</body>
+</html>
