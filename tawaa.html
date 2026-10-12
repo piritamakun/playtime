@@ -1,0 +1,3096 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER TOWER DEFENSE 2088</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#050814', neon: { blue: '#00f0ff', purple: '#b026ff', yellow: '#ffde00', pink: '#ff007f', green: '#00ff66' }
+                    }, fontFamily: { cyber: ['Orbitron', 'sans-serif'], jp: ['Noto Sans JP', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root { --neon-blue: #00f0ff; --neon-purple: #b026ff; --neon-yellow: #ffde00; --neon-pink: #ff007f; --neon-green: #00ff66; --bg-dark: #050814; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Noto Sans JP', sans-serif; overflow: hidden; user-select: none; }
+        .font-cyber { font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }
+        .cyber-modal { background: rgba(10, 15, 36, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 240, 255, 0.5); box-shadow: 0 0 20px rgba(0, 240, 255, 0.2), inset 0 0 20px rgba(0, 240, 255, 0.1); border-radius: 12px; }
+        .text-glow-blue { text-shadow: 0 0 10px var(--neon-blue); }
+        .text-glow-pink { text-shadow: 0 0 10px var(--neon-pink); }
+        .text-glow-yellow { text-shadow: 0 0 10px var(--neon-yellow); }
+        .btn-campaign { background: linear-gradient(90deg, #1e3a8a 0%, #00f0ff 100%); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4); transition: all 0.3s ease; }
+        .btn-boss { background: linear-gradient(90deg, #8a1e1e 0%, #ff007f 100%); border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4); transition: all 0.3s ease; }
+        .game-grid { display: grid; grid-template-columns: repeat(20, 1fr); grid-template-rows: repeat(10, 1fr); gap: 2px; background-color: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); padding: 2px; border-radius: 8px; }
+        .grid-cell { background-color: rgba(10, 15, 30, 0.8); border: 1px solid rgba(0, 240, 255, 0.1); border-radius: 4px; position: relative; }
+        .grid-cell.buildable:hover { background-color: rgba(255, 255, 255, 0.1); cursor: pointer; box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2); }
+        .grid-cell.path { background-color: rgba(0, 240, 255, 0.15); border-color: rgba(0, 240, 255, 0.6); box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.4), 0 0 5px rgba(0, 240, 255, 0.4); z-index: 10; }
+        .tower { position: absolute; top: 10%; left: 10%; right: 10%; bottom: 10%; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px currentColor; animation: pulse-glow 2s infinite alternate; }
+        @keyframes pulse-glow { from { filter: brightness(1); box-shadow: 0 0 5px currentColor; } to { filter: brightness(1.3); box-shadow: 0 0 15px currentColor; } }
+        .tower-card { background: rgba(20, 25, 45, 0.7); border: 2px solid rgba(100, 116, 139, 0.3); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .tower-card:hover { border-color: rgba(255, 255, 255, 0.5); }
+        .tower-card.selected { background: rgba(0, 0, 0, 0.8); transform: scale(1.05); border-width: 2px; }
+        
+        /* Specific selection effects injected via inline styles in JS */
+        
+        #game-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+        .boss-hp-bar { transition: width 0.1s linear; }
+    </style>
+</head>
+<body>
+    <div id="view-title" class="w-full h-screen flex items-center justify-center relative z-50">
+        <div class="cyber-modal w-[480px] p-8 flex flex-col gap-6 relative z-10">
+            <h1 class="text-4xl text-center font-cyber font-bold text-glow-blue text-neon-blue mb-4">CYBER TD<br>2088</h1>
+            <button onclick="startGame()" class="btn-campaign w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02]">
+                <i class="fa-solid fa-play"></i> プレイ / ロード
+            </button>
+            <button onclick="clearSave()" class="text-sm text-gray-400 hover:text-white transition-colors">
+                セーブデータを初期化
+            </button>
+        </div>
+    </div>
+
+    <div id="view-game" class="hidden w-full h-screen flex flex-col relative">
+        <header class="h-14 bg-gray-950/80 border-b border-cyan-900/50 flex items-center justify-between px-6 z-20">
+            <div class="flex items-center gap-6 font-cyber text-lg">
+                <span class="font-bold text-neon-pink text-glow-pink"><i class="fa-solid fa-heart mr-2"></i><span id="health-display">20/20</span></span>
+                <span class="font-bold text-neon-yellow text-glow-yellow"><i class="fa-solid fa-coins mr-2"></i><span id="gold-display">350</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="boss-timer" class="font-cyber text-neon-blue text-sm mr-4">BOSS DETECT: SCANNING...</div>
+                <button id="toggle-spawn-btn" onclick="toggleSpawning()" class="px-4 py-1 bg-red-900/50 text-red-400 border border-red-500 rounded font-bold cursor-pointer transition-colors shadow-[0_0_10px_rgba(255,0,0,0.3)]">敵襲来: OFF</button>
+                <button onclick="showBossSelection()" class="hidden px-4 py-1 bg-purple-900/50 text-purple-400 border border-purple-500 rounded font-bold cursor-pointer transition-colors" id="debug-boss">TEST BOSS</button>
+            </div>
+        </header>
+        
+        <div class="flex-1 flex min-h-0 relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-gray-950 to-gray-950">
+            <div class="flex-1 flex items-center justify-center p-4 relative w-full h-full">
+                <!-- Relative container for grid and canvas overlay -->
+                <div class="w-full max-w-7xl aspect-[2/1] relative">
+                    <div class="absolute inset-0 game-grid z-10" id="game-grid"></div>
+                    <!-- SVG Path layer -->
+                    <svg id="path-svg" class="absolute inset-0 w-full h-full pointer-events-none z-20"></svg>
+                    <!-- Canvas for enemies and projectiles -->
+                    <canvas id="game-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-30"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <footer id="tower-footer" class="h-28 bg-gray-950/95 border-t border-cyan-900/50 flex items-center justify-start gap-3 px-4 z-20 overflow-x-auto relative">
+            <!-- Tower cards dynamically injected here -->
+        </footer>
+    </div>
+
+    <div id="view-boss-select" class="hidden absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center">
+        <div class="cyber-modal w-[600px] p-8 flex flex-col gap-6 text-center border-neon-pink shadow-[0_0_30px_rgba(255,0,127,0.3)]">
+            <h2 class="text-3xl font-cyber font-bold text-glow-pink text-neon-pink">WARNING: BOSS DETECTED</h2>
+            <p class="text-gray-300">防衛タワーを3つ選択し、巨大ボスを迎撃せよ！</p>
+            
+            <div id="boss-weapon-select" class="grid grid-cols-4 gap-3">
+                <!-- Selectable weapons injected here -->
+            </div>
+            
+            <div class="text-sm text-cyan-400">選択済み: <span id="boss-select-count" class="font-bold text-white">0</span> / 3</div>
+            
+            <button id="btn-start-boss" onclick="startBossBattle()" disabled class="btn-boss w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed">
+                <i class="fa-solid fa-skull"></i> 迎撃開始
+            </button>
+        </div>
+    </div>
+
+    <div id="view-boss-battle" class="hidden w-full h-screen flex flex-col relative bg-gray-950 items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+        <div class="absolute inset-0 bg-gradient-to-b from-red-900/20 to-black pointer-events-none"></div>
+        
+        <div class="w-full max-w-4xl flex flex-col gap-8 z-10 p-8">
+            <!-- Boss Area -->
+            <div class="flex flex-col items-center gap-4">
+                <h3 class="font-cyber text-2xl text-neon-pink text-glow-pink animate-pulse">CYBER TITAN "OMEGA"</h3>
+                <div class="w-full h-8 bg-gray-900 border-2 border-red-500/50 rounded-full overflow-hidden relative">
+                    <div id="boss-hp-fill" class="h-full bg-gradient-to-r from-red-600 to-neon-pink boss-hp-bar w-full"></div>
+                    <div id="boss-hp-text" class="absolute inset-0 flex items-center justify-center font-bold font-cyber text-sm">5000 / 5000</div>
+                </div>
+                <!-- Boss Sprite -->
+                <div id="boss-entity" class="w-32 h-32 bg-gray-800 border-4 border-neon-pink rounded-xl flex items-center justify-center shadow-[0_0_30px_rgba(255,0,127,0.5)] mt-4 relative">
+                    <i class="fa-solid fa-robot text-6xl text-neon-pink"></i>
+                    <!-- Hit flashes overlay -->
+                    <div id="boss-flash" class="absolute inset-0 bg-white opacity-0 rounded-lg pointer-events-none transition-opacity duration-100"></div>
+                </div>
+            </div>
+
+            <!-- VS Divider -->
+            <div class="text-center font-cyber text-gray-500 font-bold text-xl my-4">VS</div>
+
+            <!-- Player Selected Towers Area -->
+            <div id="boss-player-towers" class="flex justify-center gap-12">
+                <!-- Injected selected towers -->
+            </div>
+            
+            <div class="text-center mt-8">
+                <canvas id="boss-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS & STATE ---
+        const GRID_W = 20;
+        const GRID_H = 10;
+        
+        // 1. Dynamic Longer Path
+        const pathCoords = [
+            {x:0, y:1}, {x:1, y:1}, {x:2, y:1}, {x:3, y:1}, {x:4, y:1}, {x:5, y:1}, {x:6, y:1}, {x:7, y:1}, {x:8, y:1}, {x:9, y:1},
+            {x:9, y:2}, {x:9, y:3}, {x:9, y:4}, {x:8, y:4}, {x:7, y:4}, {x:6, y:4}, {x:5, y:4}, {x:4, y:4}, {x:3, y:4}, {x:2, y:4},
+            {x:2, y:5}, {x:2, y:6}, {x:2, y:7}, {x:3, y:7}, {x:4, y:7}, {x:5, y:7}, {x:6, y:7}, {x:7, y:7}, {x:8, y:7}, {x:9, y:7},
+            {x:10, y:7}, {x:11, y:7}, {x:12, y:7}, {x:13, y:7}, {x:14, y:7}, {x:15, y:7}, {x:16, y:7}, {x:16, y:6}, {x:16, y:5},
+            {x:16, y:4}, {x:16, y:3}, {x:16, y:2}, {x:17, y:2}, {x:18, y:2}, {x:19, y:2}
+        ];
+
+        // 3. More Weapons (Sniper, Poison added. BossGatling hidden initially)
+        const TOWER_TYPES = {
+            machineGun: { id:'machineGun', name:'マシンガン', cost: 50, dmg: 10, range: 2.5, rate: 20, color: '#00ff66', icon: 'fa-crosshairs' },
+            laser:      { id:'laser', name:'レーザー', cost: 100, dmg: 25, range: 3.5, rate: 40, color: '#00f0ff', icon: 'fa-bolt' },
+            plasma:     { id:'plasma', name:'プラズマ', cost: 150, dmg: 50, range: 3, rate: 60, color: '#ffde00', icon: 'fa-sun' },
+            missile:    { id:'missile', name:'ミサイル', cost: 200, dmg: 120, range: 4.5, rate: 100, color: '#ff007f', icon: 'fa-rocket' },
+            emp:        { id:'emp', name:'EMP', cost: 250, dmg: 5, range: 3.5, rate: 50, color: '#b026ff', icon: 'fa-satellite-dish', effect: 'slow' },
+            sniper:     { id:'sniper', name:'スナイパー', cost: 300, dmg: 200, range: 8, rate: 150, color: '#ffffff', icon: 'fa-crosshairs' },
+            poison:     { id:'poison', name:'ポイズン', cost: 120, dmg: 5, range: 2.5, rate: 30, color: '#a3e635', icon: 'fa-biohazard', effect: 'poison' },
+            bossGatling:{ id:'bossGatling', name:'ボスガトリング', cost: 800, dmg: 80, range: 5, rate: 10, color: '#ff4500', icon: 'fa-fire', secret: true }
+        };
+
+        // State variables
+        let gold = 350;
+        let playerHealth = 20;
+        let builtTowers = [];
+        let enemies = [];
+        let particles = [];
+        
+        let selectedTowerType = 'machineGun';
+        let isSpawning = false; // 4. Manual Spawning
+        let bossGatlingUnlocked = false;
+        
+        // Loop controls
+        let gameLoopId;
+        let lastTime = 0;
+        let spawnTimer = 0;
+        
+        // Boss State
+        let lastBossMinute = -1;
+        let selectedBossWeapons = [];
+        let bossData = { hp: 5000, maxHp: 5000 };
+        let bossBattleInterval = null;
+
+        // --- DOM Elements ---
+        const uiGold = document.getElementById('gold-display');
+        const uiHealth = document.getElementById('health-display');
+        const gridEl = document.getElementById('game-grid');
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const btnSpawn = document.getElementById('toggle-spawn-btn');
+
+        // 2. Auto-Save via localStorage
+        function saveGame() {
+            const state = {
+                gold, playerHealth, builtTowers, bossGatlingUnlocked
+            };
+            localStorage.setItem('cyberTD2088Save', JSON.stringify(state));
+            
+            // Show brief flash on gold text to indicate save
+            uiGold.classList.add('text-white');
+            setTimeout(() => uiGold.classList.remove('text-white'), 300);
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('cyberTD2088Save');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    gold = state.gold ?? 350;
+                    playerHealth = state.playerHealth ?? 20;
+                    builtTowers = state.builtTowers ?? [];
+                    bossGatlingUnlocked = state.bossGatlingUnlocked ?? false;
+                } catch (e) {
+                    console.error("Save load failed", e);
+                }
+            }
+        }
+
+        function clearSave() {
+            localStorage.removeItem('cyberTD2088Save');
+            // Flash red UI briefly
+            document.querySelector('.cyber-modal').style.borderColor = 'red';
+            setTimeout(() => { document.querySelector('.cyber-modal').style.borderColor = 'rgba(0, 240, 255, 0.5)'; }, 500);
+        }
+
+        function startGame() {
+            document.getElementById('view-title').classList.add('hidden');
+            document.getElementById('view-game').classList.remove('hidden');
+            
+            loadGame();
+            initGrid();
+            renderFooter();
+            updateUI();
+            
+            // Resize canvas to fit grid
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Auto save every 10 seconds
+            setInterval(saveGame, 10000);
+            
+            // Start main loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resizeCanvas() {
+            canvas.width = gridEl.clientWidth;
+            canvas.height = gridEl.clientHeight;
+        }
+
+        function initGrid() {
+            gridEl.innerHTML = '';
+            drawContinuousPathLine(gridEl);
+
+            for (let y = 0; y < GRID_H; y++) {
+                for (let x = 0; x < GRID_W; x++) {
+                    const cell = document.createElement('div');
+                    const isPath = pathCoords.some(p => p.x === x && p.y === y);
+                    cell.className = `grid-cell ${isPath ? 'path' : 'buildable'} flex items-center justify-center`;
+                    
+                    if (!isPath) {
+                        cell.onclick = () => handleCellClick(x, y, cell);
+                    }
+                    gridEl.appendChild(cell);
+
+                    // Re-render towers if loaded
+                    const existingTower = builtTowers.find(t => t.x === x && t.y === y);
+                    if (existingTower) {
+                        renderTowerDOM(cell, existingTower);
+                    }
+                }
+            }
+        }
+
+        // 1. Dynamic SVG Path drawing
+        function drawContinuousPathLine(container) {
+            const svg = document.getElementById('path-svg');
+            svg.innerHTML = '';
+            let d = '';
+            
+            pathCoords.forEach((p, i) => {
+                // Calculate percentage positions based on grid structure
+                const cx = (p.x + 0.5) * (100 / GRID_W);
+                const cy = (p.y + 0.5) * (100 / GRID_H);
+                if(i === 0) d += `M ${cx}% ${cy}% `;
+                else d += `L ${cx}% ${cy}% `;
+            });
+            
+            const pathNode = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            pathNode.setAttribute('d', d);
+            pathNode.setAttribute('stroke', 'rgba(0, 240, 255, 0.4)');
+            pathNode.setAttribute('stroke-width', '8');
+            pathNode.setAttribute('stroke-linecap', 'round');
+            pathNode.setAttribute('stroke-linejoin', 'round');
+            pathNode.setAttribute('fill', 'none');
+            pathNode.style.filter = "drop-shadow(0 0 8px rgba(0, 240, 255, 0.8))";
+            
+            // Add animated dashed stroke for cyber feel
+            pathNode.setAttribute('stroke-dasharray', '10 15');
+            
+            const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+            animate.setAttribute('attributeName', 'stroke-dashoffset');
+            animate.setAttribute('values', '100;0');
+            animate.setAttribute('dur', '2s');
+            animate.setAttribute('repeatCount', 'indefinite');
+            pathNode.appendChild(animate);
+            
+            svg.appendChild(pathNode);
+        }
+
+        function renderFooter() {
+            const footer = document.getElementById('tower-footer');
+            footer.innerHTML = '';
+            
+            Object.values(TOWER_TYPES).forEach(t => {
+                if (t.secret && !bossGatlingUnlocked) return;
+                
+                const card = document.createElement('div');
+                const isSel = selectedTowerType === t.id;
+                card.className = `tower-card min-w-[90px] h-20 flex flex-col items-center justify-center gap-1 ${isSel ? 'selected' : ''}`;
+                card.style.borderColor = isSel ? t.color : 'rgba(100,116,139,0.3)';
+                if (isSel) card.style.boxShadow = `0 0 15px ${t.color}66`;
+                
+                card.innerHTML = `
+                    <i class="fa-solid ${t.icon} text-2xl" style="color:${t.color}"></i>
+                    <div class="text-[10px] font-bold text-white tracking-wider">${t.name}</div>
+                    <div class="text-xs text-yellow-400 font-cyber">¥${t.cost}</div>
+                `;
+                card.onclick = () => {
+                    selectedTowerType = t.id;
+                    renderFooter();
+                };
+                footer.appendChild(card);
+            });
+        }
+
+        function updateUI() {
+            uiGold.innerText = Math.floor(gold);
+            uiHealth.innerText = `${playerHealth}/20`;
+        }
+
+        // 4. Toggle Manual Spawning
+        function toggleSpawning() {
+            isSpawning = !isSpawning;
+            if (isSpawning) {
+                btnSpawn.innerText = "敵襲来: ON";
+                btnSpawn.className = "px-4 py-1 bg-green-900/50 text-green-400 border border-green-500 rounded font-bold cursor-pointer transition-colors shadow-[0_0_10px_rgba(0,255,0,0.3)]";
+            } else {
+                btnSpawn.innerText = "敵襲来: OFF";
+                btnSpawn.className = "px-4 py-1 bg-red-900/50 text-red-400 border border-red-500 rounded font-bold cursor-pointer transition-colors shadow-[0_0_10px_rgba(255,0,0,0.3)]";
+            }
+        }
+
+        // 5. Tower Placement and Upgrades
+        function handleCellClick(x, y, cellElement) {
+            const existingTower = builtTowers.find(t => t.x === x && t.y === y);
+            
+            if (existingTower) {
+                // Upgrade Logic
+                const tBase = TOWER_TYPES[existingTower.type];
+                const upgradeCost = tBase.cost * existingTower.level;
+                
+                if (gold >= upgradeCost) {
+                    gold -= upgradeCost;
+                    existingTower.level++;
+                    existingTower.dmg = tBase.dmg * existingTower.level * 1.2; // slight damage scalar
+                    existingTower.range = tBase.range + (existingTower.level * 0.2);
+                    
+                    updateUI();
+                    renderTowerDOM(cellElement, existingTower); // Refresh DOM to show Lv
+                    saveGame();
+                    spawnParticle(x, y, 'upgrade');
+                } else {
+                    // Custom non-alert error via DOM effect
+                    cellElement.style.backgroundColor = 'rgba(255,0,0,0.3)';
+                    setTimeout(() => cellElement.style.backgroundColor = '', 200);
+                }
+            } else {
+                // Build Logic
+                const tBase = TOWER_TYPES[selectedTowerType];
+                if (gold >= tBase.cost) {
+                    gold -= tBase.cost;
+                    
+                    const tower = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        type: selectedTowerType,
+                        x: x, y: y,
+                        level: 1,
+                        dmg: tBase.dmg,
+                        range: tBase.range,
+                        cooldown: 0
+                    };
+                    
+                    builtTowers.push(tower);
+                    renderTowerDOM(cellElement, tower);
+                    updateUI();
+                    saveGame();
+                    spawnParticle(x, y, 'build');
+                }
+            }
+        }
+
+        function renderTowerDOM(cell, tower) {
+            const tBase = TOWER_TYPES[tower.type];
+            cell.innerHTML = '';
+            const tEl = document.createElement('div');
+            tEl.className = 'tower';
+            tEl.style.color = tBase.color;
+            tEl.innerHTML = `
+                <i class="fa-solid ${tBase.icon} text-lg"></i>
+                <div class="absolute -bottom-2 -right-2 text-[9px] bg-gray-900 text-white px-1 border rounded font-cyber" style="border-color:${tBase.color};">Lv${tower.level}</div>
+            `;
+            cell.appendChild(tEl);
+        }
+
+        function spawnEnemy() {
+            const hp = 50 + (Math.random() * 100);
+            enemies.push({
+                hp: hp,
+                maxHp: hp,
+                speed: 1.5 + Math.random(), // units per second
+                progress: 0, // index in pathCoords
+                poison: 0
+            });
+        }
+
+        // Utility: grid coord to canvas pixels
+        function getPixelPos(gx, gy) {
+            const cellW = canvas.width / GRID_W;
+            const cellH = canvas.height / GRID_H;
+            return {
+                x: (gx + 0.5) * cellW,
+                y: (gy + 0.5) * cellH
+            };
+        }
+
+        function spawnParticle(gx, gy, type) {
+            // simplified particle handling
+            const pos = getPixelPos(gx, gy);
+            particles.push({
+                x: pos.x, y: pos.y, 
+                type: type, 
+                life: 1.0,
+                vx: (Math.random() - 0.5) * 50,
+                vy: (Math.random() - 0.5) * 50
+            });
+        }
+
+        function gameLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            // 6. Boss 5-min Check
+            checkBossEvent();
+
+            // Only update main logic if view-game is active (not in boss battle)
+            if (!document.getElementById('view-game').classList.contains('hidden')) {
+                updateGame(dt);
+                drawGame();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateGame(dt) {
+            if (isSpawning) {
+                spawnTimer += dt;
+                if (spawnTimer > 1.5) {
+                    spawnEnemy();
+                    spawnTimer = 0;
+                }
+            }
+
+            // Update enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                
+                // Poison effect
+                if (e.poison > 0) {
+                    e.hp -= e.poison * dt * 10;
+                    e.poison -= dt;
+                }
+
+                e.progress += (e.speed * dt);
+                const pathIdx = Math.floor(e.progress);
+                
+                if (pathIdx >= pathCoords.length - 1) {
+                    // Reached end
+                    playerHealth = Math.max(0, playerHealth - 1);
+                    updateUI();
+                    enemies.splice(i, 1);
+                    if (playerHealth <= 0) {
+                        alert("GAME OVER!"); // standard native alert for hard fail ok, but user requested no alert. 
+                        // Let's just reset instead
+                        playerHealth = 20; gold = 350; builtTowers = []; saveGame(); location.reload();
+                    }
+                    continue;
+                }
+
+                if (e.hp <= 0) {
+                    gold += 10;
+                    updateUI();
+                    const cp = pathCoords[pathIdx];
+                    spawnParticle(cp.x, cp.y, 'explosion');
+                    enemies.splice(i, 1);
+                }
+            }
+
+            // Update towers
+            builtTowers.forEach(tower => {
+                const tBase = TOWER_TYPES[tower.type];
+                if (tower.cooldown > 0) {
+                    tower.cooldown -= dt * 60; // normalize to ~frames
+                } else {
+                    // Find target
+                    const tPos = getPixelPos(tower.x, tower.y);
+                    const cellW = canvas.width / GRID_W;
+                    const pixelRange = tower.range * cellW;
+                    
+                    let target = null;
+                    let targetDist = Infinity;
+                    
+                    // Simple logic: target closest to tower
+                    for (let e of enemies) {
+                        const pathIdx = Math.floor(e.progress);
+                        if (pathIdx >= pathCoords.length) continue;
+                        const p1 = pathCoords[pathIdx];
+                        const p2 = pathCoords[Math.min(pathIdx+1, pathCoords.length-1)];
+                        const fract = e.progress - pathIdx;
+                        
+                        const ex = p1.x + (p2.x - p1.x) * fract;
+                        const ey = p1.y + (p2.y - p1.y) * fract;
+                        
+                        const ep = getPixelPos(ex, ey);
+                        const dist = Math.hypot(ep.x - tPos.x, ep.y - tPos.y);
+                        
+                        if (dist <= pixelRange && dist < targetDist) {
+                            target = e;
+                            targetDist = dist;
+                            // Attach pixel coords for drawing laser
+                            target.px = ep.x; target.py = ep.y;
+                        }
+                    }
+
+                    if (target) {
+                        target.hp -= tower.dmg;
+                        if (tBase.effect === 'poison') target.poison = 3;
+                        if (tBase.effect === 'slow') target.speed = Math.max(0.5, target.speed - 0.5);
+                        
+                        tower.cooldown = tBase.rate;
+                        
+                        // Draw shot line via particles system trick
+                        particles.push({
+                            x: tPos.x, y: tPos.y,
+                            tx: target.px, ty: target.py,
+                            type: 'laser',
+                            color: tBase.color,
+                            life: 0.2
+                        });
+                    }
+                }
+            });
+            
+            // Update particles
+            particles.forEach(p => {
+                p.life -= dt * 2;
+                if(p.type === 'explosion' || p.type === 'upgrade' || p.type === 'build') {
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                }
+            });
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Enemies
+            enemies.forEach(e => {
+                const pathIdx = Math.floor(e.progress);
+                if (pathIdx >= pathCoords.length) return;
+                const p1 = pathCoords[pathIdx];
+                const p2 = pathCoords[Math.min(pathIdx+1, pathCoords.length-1)];
+                const fract = e.progress - pathIdx;
+                
+                const ex = p1.x + (p2.x - p1.x) * fract;
+                const ey = p1.y + (p2.y - p1.y) * fract;
+                const pos = getPixelPos(ex, ey);
+                
+                ctx.fillStyle = e.poison > 0 ? '#a3e635' : '#ff0055';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0; // reset
+                
+                // HP bar
+                ctx.fillStyle = 'black';
+                ctx.fillRect(pos.x - 10, pos.y - 12, 20, 3);
+                ctx.fillStyle = '#00ff66';
+                ctx.fillRect(pos.x - 10, pos.y - 12, 20 * (e.hp / e.maxHp), 3);
+            });
+            
+            // Draw Lasers/Particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                if (p.type === 'laser') {
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.tx, p.ty);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = p.type === 'upgrade' ? '#00f0ff' : '#ffde00';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function checkBossEvent() {
+            const jstDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+            const min = jstDate.getMinutes();
+            
+            // Update UI Tracker
+            const nextBoss = 5 - (min % 5);
+            document.getElementById('boss-timer').innerText = `NEXT BOSS: ${nextBoss} MIN`;
+            
+            if (min % 5 === 0 && lastBossMinute !== min) {
+                lastBossMinute = min;
+                showBossSelection();
+            }
+        }
+
+        function showBossSelection() {
+            // Pause spawning
+            isSpawning = false;
+            toggleSpawning(); // update UI to OFF
+            
+            document.getElementById('view-boss-select').classList.remove('hidden');
+            
+            const container = document.getElementById('boss-weapon-select');
+            container.innerHTML = '';
+            selectedBossWeapons = [];
+            
+            Object.values(TOWER_TYPES).forEach(t => {
+                if (t.secret && !bossGatlingUnlocked) return;
+                
+                const btn = document.createElement('div');
+                btn.className = 'p-3 border border-gray-600 rounded cursor-pointer hover:border-cyan-400 transition-all flex flex-col items-center justify-center';
+                btn.innerHTML = `<i class="fa-solid ${t.icon} text-2xl mb-2" style="color:${t.color}"></i><span class="text-xs font-bold text-gray-300">${t.name}</span>`;
+                
+                btn.onclick = () => {
+                    const idx = selectedBossWeapons.indexOf(t);
+                    if (idx > -1) {
+                        selectedBossWeapons.splice(idx, 1);
+                        btn.classList.remove('border-neon-pink', 'bg-pink-900/30', 'shadow-[0_0_10px_rgba(255,0,127,0.3)]');
+                    } else if (selectedBossWeapons.length < 3) {
+                        selectedBossWeapons.push(t);
+                        btn.classList.add('border-neon-pink', 'bg-pink-900/30', 'shadow-[0_0_10px_rgba(255,0,127,0.3)]');
+                    }
+                    
+                    document.getElementById('boss-select-count').innerText = selectedBossWeapons.length;
+                    document.getElementById('btn-start-boss').disabled = selectedBossWeapons.length !== 3;
+                };
+                
+                container.appendChild(btn);
+            });
+        }
+
+        function startBossBattle() {
+            document.getElementById('view-boss-select').classList.add('hidden');
+            document.getElementById('view-game').classList.add('hidden');
+            document.getElementById('view-boss-battle').classList.remove('hidden');
+            
+            // Setup boss data
+            bossData.hp = 5000;
+            bossData.maxHp = 5000;
+            updateBossHPUI();
+            
+            // Render player towers
+            const pContainer = document.getElementById('boss-player-towers');
+            pContainer.innerHTML = '';
+            selectedBossWeapons.forEach(t => {
+                const el = document.createElement('div');
+                el.className = 'w-16 h-16 rounded-full border-2 flex items-center justify-center bg-gray-900 shadow-[0_0_15px_currentColor] relative';
+                el.style.color = t.color;
+                el.style.borderColor = t.color;
+                el.innerHTML = `<i class="fa-solid ${t.icon} text-2xl"></i>`;
+                
+                // Add firing animation element
+                const beam = document.createElement('div');
+                beam.className = 'absolute bottom-full left-1/2 w-1 -translate-x-1/2 origin-bottom transition-all duration-100 opacity-0 bg-white shadow-[0_0_10px_currentColor]';
+                beam.style.height = '150px';
+                beam.style.color = t.color;
+                el.appendChild(beam);
+                
+                // Attach reference for loop
+                t.domElement = el;
+                t.beamElement = beam;
+                t.currentCooldown = 0;
+                
+                pContainer.appendChild(el);
+            });
+            
+            // Start auto-battle loop (runs at 60fps independent of main game)
+            if(bossBattleInterval) clearInterval(bossBattleInterval);
+            bossBattleInterval = setInterval(updateBossBattle, 1000/60);
+        }
+
+        function updateBossBattle() {
+            const dt = 1/60;
+            let totalDmgThisFrame = 0;
+            
+            selectedBossWeapons.forEach(t => {
+                if (t.currentCooldown > 0) {
+                    t.currentCooldown -= dt * 60;
+                    t.beamElement.style.opacity = '0';
+                } else {
+                    // Fire!
+                    totalDmgThisFrame += t.dmg;
+                    t.currentCooldown = t.rate; // reuse rate from normal game
+                    
+                    // Visual beam effect
+                    t.beamElement.style.opacity = '1';
+                    t.beamElement.style.height = (100 + Math.random()*100) + 'px';
+                }
+            });
+            
+            if (totalDmgThisFrame > 0) {
+                bossData.hp -= totalDmgThisFrame;
+                updateBossHPUI();
+                
+                // Flash boss
+                const flash = document.getElementById('boss-flash');
+                flash.style.opacity = '0.5';
+                setTimeout(() => flash.style.opacity = '0', 50);
+            }
+            
+            if (bossData.hp <= 0) {
+                endBossBattle(true);
+            }
+        }
+
+        function updateBossHPUI() {
+            const pct = Math.max(0, (bossData.hp / bossData.maxHp) * 100);
+            document.getElementById('boss-hp-fill').style.width = `${pct}%`;
+            document.getElementById('boss-hp-text').innerText = `${Math.floor(Math.max(0, bossData.hp))} / ${bossData.maxHp}`;
+        }
+
+        function endBossBattle(won) {
+            clearInterval(bossBattleInterval);
+            
+            if (won) {
+                // Reward UI (simple inline overlay for brevity without using alerts)
+                gold += 1000;
+                if (!bossGatlingUnlocked) {
+                    bossGatlingUnlocked = true;
+                    // Custom message
+                    const msg = document.createElement('div');
+                    msg.className = "fixed inset-0 flex items-center justify-center z-50 bg-black/80 font-cyber text-4xl text-neon-yellow text-glow-yellow animate-pulse";
+                    msg.innerHTML = "BOSS DEFEATED<br>+1000 G<br>BOSS GATLING UNLOCKED!";
+                    document.body.appendChild(msg);
+                    setTimeout(() => msg.remove(), 3000);
+                }
+                updateUI();
+                renderFooter();
+                saveGame();
+            }
+            
+            // Return to main game
+            setTimeout(() => {
+                document.getElementById('view-boss-battle').classList.add('hidden');
+                document.getElementById('view-game').classList.remove('hidden');
+            }, won ? 3000 : 1000);
+        }
+
+    </script>
+
+    <!-- ================= 追加機能（ここから下は新規追加。上の既存コードは無変更） ================= -->
+    <style id="ext-style">
+/* =========================================================
+   追加機能用スタイル（既存のCSSは一切変更していません）
+   ========================================================= */
+.font-cyber { font-family: 'Orbitron', 'Noto Sans JP', sans-serif; }
+.bb-hide { display: none !important; }
+
+@keyframes bb-pop { from { opacity: 0; transform: scale(.88) translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes bb-blink { 50% { opacity: .35; } }
+@keyframes bb-spin { to { transform: rotate(360deg); } }
+
+/* ---------- アップグレード費用バッジ ---------- */
+.upg-badge {
+    position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+    z-index: 15; pointer-events: none; white-space: nowrap;
+    font: 700 9px/1 'Orbitron', 'Noto Sans JP', sans-serif;
+    padding: 2px 4px; border-radius: 6px;
+    background: rgba(5, 8, 20, .92);
+    border: 1px solid rgba(255, 90, 120, .75); color: #ff6b81;
+    box-shadow: 0 0 6px rgba(255, 90, 120, .35);
+}
+.upg-badge i { font-size: 7px; margin-right: 2px; }
+.upg-badge.can {
+    border-color: #ffde00; color: #ffde00; box-shadow: 0 0 8px rgba(255, 222, 0, .6);
+    animation: upg-bob 1.4s ease-in-out infinite;
+}
+@keyframes upg-bob { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-2px); } }
+
+/* ---------- タワー情報ツールチップ ---------- */
+#tower-tip {
+    position: fixed; z-index: 70; display: none; pointer-events: none; min-width: 220px;
+    padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.6; color: #e6f7ff;
+    background: rgba(8, 12, 30, .96); border: 1px solid rgba(0, 240, 255, .55);
+    box-shadow: 0 0 18px rgba(0, 240, 255, .25);
+}
+#tower-tip .tt-head { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 14px; margin-bottom: 4px; }
+#tower-tip .tt-lv { margin-left: auto; font-family: 'Orbitron', sans-serif; color: #00f0ff; }
+#tower-tip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
+#tower-tip .tt-row b { color: #fff; }
+#tower-tip .tt-up { margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(0, 240, 255, .3); }
+#tower-tip .ok { color: #ffde00; font-weight: 900; }
+#tower-tip .ng { color: #ff6b81; font-weight: 900; }
+
+/* ---------- トースト ---------- */
+#bb-toasts { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+.bb-toast {
+    padding: 8px 18px; border-radius: 999px; font-weight: 700; font-size: 13px; color: #e6faff;
+    background: rgba(8, 12, 30, .96); border: 1px solid rgba(0, 240, 255, .6);
+    box-shadow: 0 0 14px rgba(0, 240, 255, .3);
+    animation: bb-pop .25s ease-out; transition: opacity .45s, transform .45s;
+}
+.bb-toast.warn { border-color: #ff007f; box-shadow: 0 0 14px rgba(255, 0, 127, .45); }
+.bb-toast.out { opacity: 0; transform: translateY(-8px); }
+
+/* ---------- ボス出現カウントダウン ---------- */
+#boss-timer { white-space: nowrap; }
+#boss-timer .bb-cd { font-family: 'Orbitron', 'Noto Sans JP', sans-serif; font-weight: 700; color: #fff; text-shadow: 0 0 8px #00f0ff; }
+#boss-timer.bb-urgent { color: #ff007f; text-shadow: 0 0 10px #ff007f; animation: bb-blink .7s steps(2) infinite; }
+#boss-timer.bb-urgent .bb-cd { text-shadow: 0 0 8px #ff007f; }
+#bb-countdown-big { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 45; pointer-events: none; text-align: center; display: none; }
+#bb-countdown-big .num { font: 900 76px/1 'Orbitron', sans-serif; color: #ff007f; text-shadow: 0 0 26px #ff007f, 0 0 60px rgba(255, 0, 127, .5); animation: bb-pop .35s ease-out; }
+#bb-countdown-big .lbl { margin-top: 4px; font-size: 13px; font-weight: 900; letter-spacing: .25em; color: #ffb3d9; }
+
+/* ---------- 共通ダイアログ ---------- */
+.bb-overlay {
+    position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, .78); backdrop-filter: blur(4px);
+}
+.bb-dialog {
+    width: min(520px, 92vw); padding: 28px 28px 24px; text-align: center;
+    border-color: #ff007f !important;
+    box-shadow: 0 0 40px rgba(255, 0, 127, .35), inset 0 0 24px rgba(255, 0, 127, .12) !important;
+    animation: bb-pop .3s cubic-bezier(.2, 1.4, .4, 1);
+}
+.bb-dialog h2 { font-size: 28px; font-weight: 900; color: #ff007f; text-shadow: 0 0 12px #ff007f; margin-bottom: 12px; letter-spacing: .08em; }
+.bb-dialog p { color: #d1d5db; line-height: 1.8; }
+.bb-dialog .bb-note { margin-top: 10px; font-size: 12px; color: #94a3b8; line-height: 1.7; }
+.bb-stripe { height: 8px; margin: -28px -28px 20px; border-radius: 10px 10px 0 0; background: repeating-linear-gradient(-45deg, #ff007f 0 14px, #1a0612 14px 28px); animation: bb-stripe 1s linear infinite; background-size: 40px 40px; }
+@keyframes bb-stripe { to { background-position: 40px 0; } }
+.bb-btn-row { display: flex; gap: 14px; margin-top: 22px; }
+.bb-btn {
+    flex: 1; padding: 14px 0; border-radius: 10px; font-weight: 900; font-size: 18px; color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .15s, filter .15s;
+}
+.bb-btn:hover { transform: scale(1.03); filter: brightness(1.15); }
+.bb-btn:active { transform: scale(.97); }
+.bb-btn-ghost { background: rgba(30, 41, 59, .85); border: 1px solid rgba(148, 163, 184, .55); color: #cbd5e1; }
+
+/* ---------- ボス選択画面（マシーン選択） ---------- */
+#boss-weapon-select { max-height: 44vh; overflow-y: auto; padding: 4px; }
+.bs-card {
+    position: relative; padding: 12px 6px 9px; border: 1px solid rgba(100, 116, 139, .7); border-radius: 8px;
+    background: rgba(15, 20, 40, .75); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    transition: all .15s;
+}
+.bs-card:hover { border-color: #00f0ff; transform: translateY(-2px); }
+.bs-card.sel { border-color: #ff007f; background: rgba(131, 24, 67, .38); box-shadow: 0 0 14px rgba(255, 0, 127, .5); }
+.bs-card .bs-icon { font-size: 26px; margin-bottom: 3px; }
+.bs-card .bs-name { font-size: 12px; font-weight: 900; color: #e5e7eb; }
+.bs-card .bs-lv { font: 900 12px 'Orbitron', sans-serif; color: #00f0ff; }
+.bs-card .bs-atk { font-size: 12px; font-weight: 900; color: #ffde00; }
+.bs-card .bs-sub { font-size: 10px; color: #94a3b8; }
+.bs-card .bs-order {
+    position: absolute; top: 4px; right: 5px; min-width: 18px; height: 18px; border-radius: 9px; padding: 0 4px;
+    background: #ff007f; color: #fff; font: 900 11px/18px 'Orbitron', sans-serif; text-align: center; display: none;
+}
+.bs-card.sel .bs-order { display: block; }
+.bs-card.deny { animation: bb-deny .3s; }
+@keyframes bb-deny { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.bs-empty { grid-column: 1 / -1; padding: 18px 0; color: #94a3b8; font-size: 13px; }
+#btn-cancel-boss { margin-top: -6px; font-size: 14px; padding: 10px 0; }
+
+/* ---------- 基地破壊アラート / 襲来ボタンのロック ---------- */
+.bb-spawn-locked { padding: 4px 16px; border-radius: 4px; font-weight: 700; cursor: not-allowed; background: rgba(55, 65, 81, .6); color: #9ca3af; border: 1px solid #6b7280; }
+#bb-base-alert {
+    position: fixed; inset: 0; z-index: 85; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, rgba(255, 0, 60, 0) 25%, rgba(255, 0, 60, .5) 100%);
+}
+#bb-base-alert.show { animation: bb-alert 4s ease-out forwards; }
+#bb-base-alert .card { text-align: center; padding: 22px 36px; border-radius: 12px; background: rgba(20, 4, 10, .88); border: 1px solid #ff3b5c; box-shadow: 0 0 40px rgba(255, 40, 80, .6); }
+#bb-base-alert .t { font-size: 30px; font-weight: 900; color: #ff3b5c; text-shadow: 0 0 14px #ff3b5c; letter-spacing: .08em; }
+#bb-base-alert .s { margin-top: 6px; color: #fecdd3; font-size: 14px; }
+@keyframes bb-alert { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+/* =========================================================
+   ボス戦（演出強化）
+   ========================================================= */
+#bb-bg, #bb-fx { position: absolute; left: 0; top: 0; pointer-events: none; }
+#bb-bg { z-index: 0; }
+#bb-fx { z-index: 40; }
+
+#view-boss-battle.bb-active .bb-wrap { gap: 8px; padding: 12px 24px; }
+#view-boss-battle.bb-active .bb-wrap > div:first-child { gap: 10px; }
+#view-boss-battle.bb-active .bb-vs { margin: 0; font-size: 13px; letter-spacing: .5em; }
+#view-boss-battle.bb-active .bb-holder { display: none; }
+#view-boss-battle.bb-active #boss-entity {
+    width: min(34vh, 300px); height: min(34vh, 300px); margin-top: 0;
+    background: transparent; border-color: transparent; box-shadow: none;
+}
+#view-boss-battle.bb-active #boss-entity > i,
+#view-boss-battle.bb-active #boss-flash { display: none; }
+#view-boss-battle.bb-active #boss-hp-fill { position: relative; z-index: 1; }
+#view-boss-battle.bb-active #boss-hp-text { z-index: 2; text-shadow: 0 1px 3px #000; }
+#bb-hp-ghost { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; z-index: 0; background: linear-gradient(90deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .85)); transition: width .9s ease-out .35s; }
+#view-boss-battle.bb-active #boss-player-towers { gap: clamp(14px, 4vw, 56px); align-items: flex-start; }
+
+/* マシーン（戦闘用） */
+.bb-unit { position: relative; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.bb-unit-circle {
+    position: relative; width: 76px; height: 76px; border-radius: 50%; border: 3px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .16), rgba(8, 12, 28, .96) 70%);
+    box-shadow: 0 0 18px currentColor, inset 0 0 14px rgba(0, 0, 0, .6);
+    transition: filter .4s, opacity .4s;
+}
+.bb-unit-circle::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; border: 1px dashed currentColor; opacity: .5; animation: bb-spin 8s linear infinite; }
+.bb-unit-circle i { font-size: 30px; filter: drop-shadow(0 0 6px currentColor); }
+.bb-unit-lv { position: absolute; right: -8px; bottom: -4px; padding: 1px 6px; border-radius: 6px; background: #0b1022; border: 1px solid currentColor; font: 900 11px/1.3 'Orbitron', sans-serif; color: #fff; }
+.bb-unit-name { font-size: 13px; font-weight: 900; color: #e5e7eb; }
+.bb-unit-hp { position: relative; width: 100%; height: 14px; border-radius: 7px; background: #0a0f1f; border: 1px solid rgba(255, 255, 255, .28); overflow: hidden; }
+.bb-unit-hp .ghost, .bb-unit-hp .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; }
+.bb-unit-hp .ghost { background: rgba(255, 255, 255, .75); transition: width .7s ease-out .3s; }
+.bb-unit-hp .fill { transition: width .12s linear; }
+.bb-unit-hp .txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 700 9px 'Orbitron', sans-serif; color: #fff; text-shadow: 0 1px 2px #000; z-index: 2; }
+.bb-unit-atk { font-size: 11px; font-weight: 700; color: #ffde00; }
+.bb-unit.low .bb-unit-hp { animation: bb-blink .5s steps(2) infinite; }
+.bb-unit .bb-down-tag {
+    display: none; position: absolute; top: 24px; left: 50%; transform: translateX(-50%) rotate(-8deg); z-index: 5; white-space: nowrap;
+    padding: 2px 10px; border-radius: 4px; background: #7f1d1d; border: 1px solid #f87171; color: #fff; font-weight: 900; font-size: 12px; letter-spacing: .1em;
+}
+.bb-unit.down .bb-down-tag { display: block; }
+.bb-unit.down .bb-unit-circle, .bb-unit.down .bb-unit-name, .bb-unit.down .bb-unit-atk { filter: grayscale(1) brightness(.5); }
+.bb-unit.down .bb-unit-circle::before { animation: none; opacity: .15; }
+
+/* バナー & 結果 */
+.bb-banner { position: absolute; top: 4%; left: 50%; transform: translateX(-50%); z-index: 50; pointer-events: none; text-align: center; opacity: 0; white-space: nowrap; font-size: 30px; font-weight: 900; letter-spacing: .12em; }
+.bb-banner.info { color: #7ff3ff; text-shadow: 0 0 16px #00f0ff; }
+.bb-banner.warn { color: #ff5fa8; text-shadow: 0 0 16px #ff007f; }
+.bb-banner.show { animation: bb-banner 1.7s ease-out forwards; }
+@keyframes bb-banner { 0% { opacity: 0; transform: translateX(-50%) scale(1.5); } 12% { opacity: 1; transform: translateX(-50%) scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-12px); } }
+
+#bb-result { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, rgba(0, 0, 0, .35), rgba(0, 0, 0, .88)); }
+.bb-result-card { width: min(460px, 90vw); padding: 30px 28px 26px; text-align: center; border-radius: 14px; background: rgba(8, 12, 30, .92); animation: bb-pop .4s cubic-bezier(.2, 1.4, .4, 1); }
+.bb-result-card.win { border: 1px solid #ffde00; box-shadow: 0 0 40px rgba(255, 222, 0, .35); }
+.bb-result-card.lose { border: 1px solid #ff3b5c; box-shadow: 0 0 40px rgba(255, 60, 90, .35); }
+.bb-result-title { font-size: 34px; font-weight: 900; letter-spacing: .1em; }
+.win .bb-result-title { color: #ffde00; text-shadow: 0 0 16px #ffde00; }
+.lose .bb-result-title { color: #ff3b5c; text-shadow: 0 0 16px #ff3b5c; }
+.bb-result-sub { margin-top: 8px; color: #cbd5e1; font-size: 14px; line-height: 1.7; }
+.bb-result-reward { margin-top: 16px; font: 900 24px 'Orbitron', 'Noto Sans JP', sans-serif; color: #ffde00; text-shadow: 0 0 10px #ffde00; }
+.bb-result-unlock { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 69, 0, .15); border: 1px solid #ff4500; color: #ffb38a; font-weight: 900; font-size: 14px; }
+.bb-result-stat { margin-top: 10px; color: #94a3b8; font-size: 13px; }
+.bb-result-card .bb-btn { width: 100%; margin-top: 20px; flex: none; }
+</style>
+    <script id="ext-script">
+/* =========================================================
+   追加機能スクリプト
+   既存スクリプトの関数を「包む／差し替える」形で拡張しており、
+   既存コード自体には一切手を加えていません。
+   ========================================================= */
+(function () {
+    'use strict';
+
+    /* ---------- 調整用の設定値 ---------- */
+    const CFG = {
+        extraSpawnInterval: 1.0,   // 追加で湧く敵の間隔(秒)  ※元の1.5秒間隔に上乗せ
+        waveInterval: 25,          // 大群ウェーブの間隔(秒)
+        waveSize: 6,               // 大群の数
+        waveStagger: 0.22,         // 大群の出現間隔(秒)
+        baseMaxHp: 20,             // 基地の最大体力
+        repairSeconds: 6,          // 基地破壊後の修復時間(秒)
+        bossSlotMs: 5 * 60 * 1000, // ボス出現周期
+        bossMaxPick: 3,            // ボス戦に連れていける台数
+        unitHpBase: 400,           // マシーン体力(Lv1)
+        unitHpPerLevel: 150,       // レベルごとの体力加算
+        bossAttackInterval: 2.4,   // ボスの攻撃間隔(秒)
+        boltDmg: 45, pulseDmg: 25, laserDmg: 120,
+        rewardGold: 1000
+    };
+
+    /* ---------- ユーティリティ ---------- */
+    const $ = (id) => document.getElementById(id);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const fmt = (n) => Math.floor(n).toLocaleString('ja-JP');
+    const fmtCost = (n) => (n >= 10000 ? (n / 10000).toFixed(1).replace(/\.0$/, '') + '万' : String(Math.floor(n)));
+    const fmtNum1 = (n) => String(Math.round(n * 10) / 10);
+    const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+
+    const toastBox = document.createElement('div');
+    toastBox.id = 'bb-toasts';
+    document.body.appendChild(toastBox);
+    function toast(msg, kind) {
+        while (toastBox.children.length >= 3) toastBox.firstChild.remove();
+        const el = document.createElement('div');
+        el.className = 'bb-toast' + (kind ? ' ' + kind : '');
+        el.textContent = msg;
+        toastBox.appendChild(el);
+        setTimeout(() => el.classList.add('out'), 2600);
+        setTimeout(() => el.remove(), 3100);
+    }
+
+    /* =====================================================
+     *  1. 日本語化
+     * ===================================================== */
+    function localize() {
+        document.title = 'サイバー・タワーディフェンス 2088';
+        TOWER_TYPES.emp.name = '電磁パルス';
+        const h1 = document.querySelector('#view-title h1');
+        if (h1) h1.innerHTML = 'サイバー・タワー<br>ディフェンス 2088';
+        const dbg = $('debug-boss'); if (dbg) dbg.textContent = 'ボステスト';
+        const timer = $('boss-timer'); if (timer) timer.textContent = '次のボスまで --分--秒';
+        const h2 = document.querySelector('#view-boss-select h2'); if (h2) h2.textContent = '警告：巨大ボス出現';
+        const bn = document.querySelector('#view-boss-battle h3'); if (bn) bn.textContent = 'サイバータイタン「オメガ」';
+        document.querySelectorAll('#view-boss-battle div').forEach((d) => {
+            if (d.children.length === 0 && d.textContent.trim() === 'VS') { d.textContent = '― 対 決 ―'; d.classList.add('bb-vs'); }
+        });
+    }
+    localize();
+
+    /* =====================================================
+     *  状態
+     * ===================================================== */
+    let baseLocked = false;     // 基地修復中（襲来ロック）
+    let inBattle = false;       // ボス戦中
+    let confirmOpen = false;    // 「行く/行かない」表示中
+    let extraTimer = 0, waveTimer = 0, waveLeft = 0, waveGap = 0;
+    let lastSlot = null;
+
+    const isSelectOpen = () => !$('view-boss-select').classList.contains('hidden');
+    const isGameVisible = () => !$('view-game').classList.contains('hidden');
+
+    /* =====================================================
+     *  2. アップグレード費用の表示（バッジ＋ツールチップ）
+     * ===================================================== */
+    const upgradeCost = (tower) => TOWER_TYPES[tower.type].cost * tower.level;
+
+    function updateBadgeState(b, tower) {
+        b.classList.toggle('can', gold >= upgradeCost(tower));
+    }
+    function attachUpgradeBadge(cell, tower) {
+        const old = cell.querySelector('.upg-badge');
+        if (old) old.remove();
+        const b = document.createElement('div');
+        b.className = 'upg-badge';
+        b.innerHTML = `<i class="fa-solid fa-arrow-up"></i>¥${fmtCost(upgradeCost(tower))}`;
+        cell.appendChild(b);
+        updateBadgeState(b, tower);
+    }
+    function refreshBadges() {
+        document.querySelectorAll('.grid-cell .upg-badge').forEach((b) => {
+            const cell = b.parentElement;
+            if (cell && cell._tower) updateBadgeState(b, cell._tower);
+        });
+    }
+
+    const origRenderTowerDOM = window.renderTowerDOM;
+    window.renderTowerDOM = function (cell, tower) {
+        origRenderTowerDOM(cell, tower);
+        cell._tower = tower;
+        attachUpgradeBadge(cell, tower);
+    };
+
+    const origUpdateUI = window.updateUI;
+    window.updateUI = function () {
+        origUpdateUI();
+        refreshBadges();
+    };
+
+    const origHandleCellClick = window.handleCellClick;
+    window.handleCellClick = function (x, y, cell) {
+        const ex = builtTowers.find((t) => t.x === x && t.y === y);
+        if (ex) {
+            const cost = upgradeCost(ex);
+            if (gold < cost) toast(`資金が足りません！ アップグレードには ¥${fmt(cost)} 必要（あと ¥${fmt(Math.ceil(cost - gold))}）`, 'warn');
+        } else {
+            const base = TOWER_TYPES[selectedTowerType];
+            if (gold < base.cost) toast(`資金が足りません！ ${base.name}の設置には ¥${fmt(base.cost)} 必要（あと ¥${fmt(Math.ceil(base.cost - gold))}）`, 'warn');
+        }
+        return origHandleCellClick(x, y, cell);
+    };
+
+    // ツールチップ
+    const tip = document.createElement('div');
+    tip.id = 'tower-tip';
+    document.body.appendChild(tip);
+    gridEl.addEventListener('mousemove', (e) => {
+        const cell = e.target.closest ? e.target.closest('.grid-cell') : null;
+        if (!cell || !cell._tower) { tip.style.display = 'none'; return; }
+        const t = cell._tower, base = TOWER_TYPES[t.type];
+        const cost = upgradeCost(t);
+        const nDmg = base.dmg * (t.level + 1) * 1.2;
+        const nRange = base.range + (t.level + 1) * 0.2;
+        const can = gold >= cost;
+        tip.innerHTML = `
+            <div class="tt-head"><i class="fa-solid ${base.icon}" style="color:${base.color}"></i>${base.name}<span class="tt-lv">Lv ${t.level}</span></div>
+            <div class="tt-row"><span>攻撃力</span><b>${fmtNum1(t.dmg)}</b></div>
+            <div class="tt-row"><span>射程</span><b>${fmtNum1(t.range)} マス</b></div>
+            <div class="tt-row"><span>発射間隔</span><b>${(base.rate / 60).toFixed(2)} 秒</b></div>
+            <div class="tt-up">
+                <div class="tt-row"><span>アップグレード費用</span><b class="${can ? 'ok' : 'ng'}">¥${fmt(cost)}</b></div>
+                <div class="tt-row"><span>Lv ${t.level + 1} 攻撃力</span><b>${fmtNum1(nDmg)}</b></div>
+                <div class="tt-row"><span>Lv ${t.level + 1} 射程</span><b>${fmtNum1(nRange)} マス</b></div>
+                <div class="${can ? 'ok' : 'ng'}">${can ? 'クリックで強化できます' : `資金不足（あと ¥${fmt(Math.ceil(cost - gold))}）`}</div>
+            </div>`;
+        tip.style.display = 'block';
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        let x = e.clientX + 16, y = e.clientY + 16;
+        if (x + w > window.innerWidth - 8) x = e.clientX - w - 16;
+        if (y + h > window.innerHeight - 8) y = e.clientY - h - 16;
+        tip.style.left = Math.max(8, x) + 'px';
+        tip.style.top = Math.max(8, y) + 'px';
+    });
+    gridEl.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+
+    /* =====================================================
+     *  3. 襲来ON/OFF の制御
+     * ===================================================== */
+    const origToggleSpawning = window.toggleSpawning;
+    function setSpawning(on) {          // 状態を確実に on にする
+        isSpawning = !on;
+        origToggleSpawning();
+    }
+    window.toggleSpawning = function () {
+        if (baseLocked) { toast('基地を修復中です。しばらくお待ちください', 'warn'); return; }
+        origToggleSpawning();
+    };
+
+    /* =====================================================
+     *  4. 敵の増量
+     * ===================================================== */
+    function startWave() {
+        waveLeft = CFG.waveSize;
+        waveGap = 0;
+        toast('⚠ 敵の大群が接近中！', 'warn');
+    }
+    function processWave(dt) {
+        if (waveLeft <= 0) return;
+        waveGap -= dt;
+        if (waveGap <= 0) { spawnEnemy(); waveLeft--; waveGap = CFG.waveStagger; }
+    }
+
+    /* =====================================================
+     *  5. 基地の体力が尽きたら襲来を強制終了
+     * ===================================================== */
+    const alertEl = document.createElement('div');
+    alertEl.id = 'bb-base-alert';
+    alertEl.innerHTML = '<div class="card"><div class="t">基地の体力が尽きた！</div><div class="s">敵の襲来を強制終了しました。基地を修復します…</div></div>';
+    document.body.appendChild(alertEl);
+
+    function baseDestroyed() {
+        if (baseLocked) return;
+        baseLocked = true;
+        setSpawning(false);
+        enemies.forEach((e) => {
+            const cp = pathCoords[Math.min(Math.floor(e.progress), pathCoords.length - 1)];
+            if (cp) spawnParticle(cp.x, cp.y, 'explosion');
+        });
+        enemies.length = 0;
+        waveLeft = 0; waveTimer = 0; extraTimer = 0;
+        alertEl.classList.remove('show'); void alertEl.offsetWidth; alertEl.classList.add('show');
+
+        let remain = CFG.repairSeconds;
+        const setLabel = () => {
+            btnSpawn.textContent = `基地修復中… ${remain}`;
+            btnSpawn.className = 'bb-spawn-locked';
+        };
+        setLabel();
+        const iv = setInterval(() => {
+            remain--;
+            if (remain > 0) { setLabel(); return; }
+            clearInterval(iv);
+            baseLocked = false;
+            playerHealth = CFG.baseMaxHp;
+            setSpawning(false);        // ボタン表示を「敵襲来: OFF」に戻す
+            updateUI();
+            saveGame();
+            toast('基地の修復が完了しました', 'info');
+        }, 1000);
+    }
+
+    /* =====================================================
+     *  6. updateGame を包む（敵増量・基地破壊・一時停止）
+     * ===================================================== */
+    const origUpdateGame = window.updateGame;
+    window.updateGame = function (dt) {
+        dt = Math.min(dt, 0.1);
+        if (inBattle || confirmOpen || isSelectOpen()) return;   // ボス関連の画面中は一時停止
+
+        if (!baseLocked && playerHealth <= 0) { playerHealth = CFG.baseMaxHp; updateUI(); }  // セーブ読込時の保険
+
+        // 基地に到達する敵を先に処理（元の「ゲームオーバー→リセット」に到達させない）
+        const limit = pathCoords.length - 1;
+        let leaked = false, destroyed = false;
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            const e = enemies[i];
+            if (Math.floor(e.progress + e.speed * dt) >= limit) {
+                enemies.splice(i, 1);
+                playerHealth = Math.max(0, playerHealth - 1);
+                leaked = true;
+                if (playerHealth <= 0) { destroyed = true; break; }
+            }
+        }
+        if (leaked) updateUI();
+        if (destroyed) { baseDestroyed(); return; }
+
+        // 追加スポーン
+        if (isSpawning && !baseLocked) {
+            extraTimer += dt;
+            while (extraTimer >= CFG.extraSpawnInterval) { extraTimer -= CFG.extraSpawnInterval; spawnEnemy(); }
+            waveTimer += dt;
+            if (waveTimer >= CFG.waveInterval) { waveTimer = 0; startWave(); }
+            processWave(dt);
+        } else {
+            extraTimer = 0; waveTimer = 0; waveLeft = 0;
+        }
+
+        origUpdateGame(dt);
+    };
+
+    /* =====================================================
+     *  7. ボスまでのカウントダウン（秒まで表示）
+     * ===================================================== */
+    const timerEl = $('boss-timer');
+    const bigCd = document.createElement('div');
+    bigCd.id = 'bb-countdown-big';
+    bigCd.innerHTML = '<div class="num"></div><div class="lbl">ボス出現まで</div>';
+    document.body.appendChild(bigCd);
+    let lastTimerText = '', lastBig = -1;
+
+    function canPrompt() {
+        return isGameVisible() && !inBattle && !confirmOpen && !isSelectOpen();
+    }
+
+    window.checkBossEvent = function () {
+        const now = Date.now();
+        const slot = Math.floor(now / CFG.bossSlotMs);
+        const remain = CFG.bossSlotMs - (now % CFG.bossSlotMs);
+        const sec = Math.ceil(remain / 1000);
+        const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+        const ss = String(sec % 60).padStart(2, '0');
+        const html = `<i class="fa-solid fa-skull"></i> 次のボスまで <span class="bb-cd">${mm}</span>分<span class="bb-cd">${ss}</span>秒`;
+        if (html !== lastTimerText) {
+            timerEl.innerHTML = html;
+            lastTimerText = html;
+            timerEl.classList.toggle('bb-urgent', sec <= 10);
+        }
+        // 残り10秒の大型カウントダウン
+        const big = (sec <= 10 && canPrompt()) ? sec : -1;
+        if (big !== lastBig) {
+            lastBig = big;
+            if (big > 0) {
+                bigCd.querySelector('.num').textContent = big;
+                bigCd.style.display = 'block';
+            } else bigCd.style.display = 'none';
+        }
+
+        if (lastSlot === null) lastSlot = slot;
+        if (slot !== lastSlot) {
+            lastSlot = slot;
+            if (canPrompt()) openBossConfirm();
+        }
+    };
+
+    /* =====================================================
+     *  8. 「行く / 行かない」確認ダイアログ
+     * ===================================================== */
+    const confirmEl = document.createElement('div');
+    confirmEl.id = 'bb-confirm';
+    confirmEl.className = 'bb-overlay bb-hide';
+    confirmEl.innerHTML = `
+        <div class="cyber-modal bb-dialog">
+            <div class="bb-stripe"></div>
+            <h2>警告：巨大ボス出現！</h2>
+            <p>サイバータイタン「オメガ」が基地に接近しています。<br>ボス戦に向かいますか？</p>
+            <div class="bb-note">※ボス戦では設置済みのマシーンを最大${CFG.bossMaxPick}台連れていけます。<br>ボスの攻撃でマシーンの体力が0になると戦闘不能になります。</div>
+            <div class="bb-btn-row">
+                <button id="bb-go" class="btn-boss bb-btn"><i class="fa-solid fa-skull"></i> 行く</button>
+                <button id="bb-nogo" class="bb-btn bb-btn-ghost">行かない</button>
+            </div>
+        </div>`;
+    document.body.appendChild(confirmEl);
+
+    function openBossConfirm() {
+        confirmOpen = true;
+        bigCd.style.display = 'none'; lastBig = -1;
+        confirmEl.classList.remove('bb-hide');
+    }
+    $('bb-go').onclick = () => { showBossSelection(); };
+    $('bb-nogo').onclick = () => {
+        confirmOpen = false;
+        confirmEl.classList.add('bb-hide');
+        toast('ボス戦を見送りました。次のボスは5分後です');
+    };
+
+    /* =====================================================
+     *  9. ボス戦に連れていくマシーンの選択（設置済みのみ／Lv・攻撃力表示）
+     * ===================================================== */
+    const unitMaxHp = (lv) => Math.round(CFG.unitHpBase + CFG.unitHpPerLevel * (lv - 1));
+
+    function makeUnit(t) {
+        const base = TOWER_TYPES[t.type];
+        const maxHp = unitMaxHp(t.level);
+        return {
+            tower: t, type: t.type, name: base.name, icon: base.icon, color: base.color,
+            level: t.level, dmg: t.dmg, rate: base.rate, period: base.rate / 60,
+            maxHp, hp: maxHp, alive: true, cd: 0, aim: null, aimEnt: null
+        };
+    }
+
+    window.showBossSelection = function () {
+        confirmOpen = false;
+        confirmEl.classList.add('bb-hide');
+        const modal = $('view-boss-select');
+        modal.classList.remove('hidden');
+
+        const towers = builtTowers.slice().sort((a, b) => b.dmg - a.dmg);
+        const need = Math.min(CFG.bossMaxPick, towers.length);
+        selectedBossWeapons = [];
+
+        modal.querySelector('p').textContent = towers.length
+            ? `設置済みのマシーンから${need}台を選んで、巨大ボスを迎撃せよ！（レベルと攻撃力を確認して選ぼう）`
+            : '設置済みのマシーンがありません。マシーンを設置してからボスに挑もう！';
+        $('boss-select-count').parentElement.innerHTML =
+            `選択済み: <span id="boss-select-count" class="font-bold text-white">0</span> / ${need}`;
+
+        const startBtn = $('btn-start-boss');
+        startBtn.disabled = true;
+
+        let cancel = $('btn-cancel-boss');
+        if (!cancel) {
+            cancel = document.createElement('button');
+            cancel.id = 'btn-cancel-boss';
+            cancel.className = 'bb-btn bb-btn-ghost';
+            cancel.textContent = '戻る（ボス戦に行かない）';
+            startBtn.parentElement.appendChild(cancel);
+        }
+        cancel.onclick = () => {
+            modal.classList.add('hidden');
+            toast('ボス戦を見送りました。次のボスは5分後です');
+        };
+
+        const cont = $('boss-weapon-select');
+        cont.innerHTML = '';
+        if (!towers.length) {
+            cont.innerHTML = '<div class="bs-empty">マシーンが1台も設置されていません</div>';
+            return;
+        }
+        const cards = [];
+        const refresh = () => {
+            cards.forEach(({ card, unit }) => {
+                const i = selectedBossWeapons.indexOf(unit);
+                card.classList.toggle('sel', i > -1);
+                card.querySelector('.bs-order').textContent = i > -1 ? i + 1 : '';
+            });
+            $('boss-select-count').textContent = selectedBossWeapons.length;
+            startBtn.disabled = selectedBossWeapons.length !== need;
+        };
+        towers.forEach((t) => {
+            const unit = makeUnit(t);
+            const card = document.createElement('div');
+            card.className = 'bs-card';
+            card.innerHTML = `
+                <div class="bs-order"></div>
+                <i class="fa-solid ${unit.icon} bs-icon" style="color:${unit.color}"></i>
+                <div class="bs-name">${unit.name}</div>
+                <div class="bs-lv">Lv ${unit.level}</div>
+                <div class="bs-atk">攻撃力 ${fmtNum1(unit.dmg)}</div>
+                <div class="bs-sub">体力 ${unit.maxHp}</div>`;
+            card.onclick = () => {
+                const i = selectedBossWeapons.indexOf(unit);
+                if (i > -1) selectedBossWeapons.splice(i, 1);
+                else if (selectedBossWeapons.length < need) selectedBossWeapons.push(unit);
+                else {
+                    card.classList.remove('deny'); void card.offsetWidth; card.classList.add('deny');
+                    return;
+                }
+                refresh();
+            };
+            cards.push({ card, unit });
+            cont.appendChild(card);
+        });
+    };
+
+    /* =====================================================
+     *  10. ボス戦（体力付きマシーン＋高品質アタックアニメーション）
+     * ===================================================== */
+    let B = null;
+    let fxCv = null, fxC = null, bgCv = null, bgC = null, bbWrap = null;
+    let VW = 800, VH = 600, DPR = 1;
+
+    /* ---------- スプライト（グロー） ---------- */
+    const spriteCache = {};
+    function hexRgb(h) {
+        h = h.replace('#', '');
+        if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+        const n = parseInt(h, 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function sprite(color) {
+        if (spriteCache[color]) return spriteCache[color];
+        const s = document.createElement('canvas');
+        s.width = s.height = 64;
+        const g = s.getContext('2d');
+        const [r, gg, b] = hexRgb(color);
+        const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+        gr.addColorStop(0, `rgba(${r},${gg},${b},1)`);
+        gr.addColorStop(0.35, `rgba(${r},${gg},${b},.55)`);
+        gr.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+        g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+        return (spriteCache[color] = s);
+    }
+    function G(c, x, y, r, color, a) {
+        c.globalAlpha = a === undefined ? 1 : a;
+        c.drawImage(sprite(color), x - r, y - r, r * 2, r * 2);
+    }
+
+    /* ---------- DOM準備（初回のみ） ---------- */
+    function prepBattleDOM() {
+        if (fxCv) return;
+        const view = $('view-boss-battle');
+        bbWrap = view.querySelector(':scope > .z-10') || view.children[1];
+        bbWrap.classList.add('bb-wrap');
+        const cv0 = $('boss-canvas');
+        if (cv0 && cv0.parentElement) cv0.parentElement.classList.add('bb-holder');
+
+        bgCv = document.createElement('canvas'); bgCv.id = 'bb-bg';
+        view.insertBefore(bgCv, view.firstChild); bgC = bgCv.getContext('2d');
+        fxCv = document.createElement('canvas'); fxCv.id = 'bb-fx';
+        view.appendChild(fxCv); fxC = fxCv.getContext('2d');
+
+        const bn = document.createElement('div'); bn.id = 'bb-banner'; bn.className = 'bb-banner'; view.appendChild(bn);
+        const rs = document.createElement('div'); rs.id = 'bb-result'; rs.className = 'bb-hide'; view.appendChild(rs);
+
+        const fill = $('boss-hp-fill');
+        const gh = document.createElement('div'); gh.id = 'bb-hp-ghost';
+        fill.parentElement.insertBefore(gh, fill);
+
+        window.addEventListener('resize', () => { if (B) measure(); });
+    }
+
+    function banner(text, kind) {
+        const el = $('bb-banner');
+        el.textContent = text;
+        el.className = 'bb-banner ' + (kind || 'info');
+        void el.offsetWidth;
+        el.classList.add('show');
+    }
+
+    function measure() {
+        const view = $('view-boss-battle');
+        const vr = view.getBoundingClientRect();
+        VW = Math.max(1, vr.width); VH = Math.max(1, vr.height);
+        DPR = Math.min(window.devicePixelRatio || 1, 2);
+        [bgCv, fxCv].forEach((cv) => {
+            cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
+            cv.style.width = VW + 'px'; cv.style.height = VH + 'px';
+        });
+        if (!B) return;
+        const be = $('boss-entity').getBoundingClientRect();
+        const b = B.boss;
+        b.ax = be.left - vr.left + be.width / 2;
+        b.ay = be.top - vr.top + be.height / 2;
+        b.size = Math.max(120, Math.min(be.width, be.height));
+        b.S = b.size / 230; b.rx = b.size * 0.30; b.ry = b.size * 0.34;
+        B.units.forEach((u) => {
+            const r = u.circle.getBoundingClientRect();
+            u.cx = r.left - vr.left + r.width / 2;
+            u.cy = r.top - vr.top + r.height / 2;
+            u.mx = u.cx; u.my = u.cy - r.height * 0.55;
+        });
+        B.stars = [];
+        for (let i = 0; i < 70; i++) B.stars.push({ x: rand(0, VW), y: rand(0, VH), v: rand(.1, .6), s: rand(.8, 2.2), p: rand(0, 6) });
+    }
+
+    /* ---------- 開始 ---------- */
+    window.startBossBattle = function () {
+        if (!selectedBossWeapons.length) return;
+        inBattle = true; confirmOpen = false;
+        setSpawning(false);
+        bigCd.style.display = 'none'; lastBig = -1;
+        $('view-boss-select').classList.add('hidden');
+        $('view-game').classList.add('hidden');
+        const view = $('view-boss-battle');
+        view.classList.remove('hidden');
+        view.classList.add('bb-active');
+        prepBattleDOM();
+
+        bossData.hp = 5000; bossData.maxHp = 5000;
+        updateBossHPUI();
+        $('bb-hp-ghost').style.width = '100%';
+
+        // マシーンDOM
+        const box = $('boss-player-towers');
+        box.innerHTML = '';
+        selectedBossWeapons.forEach((u) => {
+            u.hp = u.maxHp; u.alive = true; u.cd = 0; u.aim = null; u.aimEnt = null;
+            const el = document.createElement('div');
+            el.className = 'bb-unit';
+            el.style.color = u.color;
+            el.innerHTML = `
+                <div class="bb-unit-circle"><i class="fa-solid ${u.icon}"></i><span class="bb-unit-lv">Lv${u.level}</span></div>
+                <div class="bb-unit-name">${u.name}</div>
+                <div class="bb-unit-hp"><div class="ghost"></div><div class="fill"></div><span class="txt"></span></div>
+                <div class="bb-unit-atk">攻撃力 ${fmtNum1(u.dmg)}</div>
+                <div class="bb-down-tag">戦闘不能</div>`;
+            u.el = el; u.circle = el.querySelector('.bb-unit-circle');
+            u.fill = el.querySelector('.fill'); u.ghost = el.querySelector('.ghost'); u.txt = el.querySelector('.txt');
+            setUnitHP(u);
+            box.appendChild(el);
+        });
+
+        B = {
+            t: 0, last: performance.now(), raf: 0, phase: 'intro', introT: 0,
+            units: selectedBossWeapons, ents: [], parts: [], nums: [], timers: [], stars: [],
+            shake: 0, sx: 0, sy: 0, flashW: 0, flashR: 0, bgPulse: 0, hitStop: 0, autoLeave: 0, dyT: 0, dyNext: 0,
+            boss: {
+                ax: 0, ay: 0, px: 0, py: 0, size: 200, S: 1, rx: 60, ry: 70, bob: 0, flash: 0, kick: 0, shx: 0, shy: 0,
+                charge: 0, chargeCol: '#ff4fa3', mode: 'idle', timer: 1.4, tt: 0, teleDur: 1, type: 'bolt', target: null,
+                count: 0, enraged: false, hand: [0, 0], handSide: 0, poisonT: 0, visible: true, alpha: 1,
+                lookX: 0, lookY: 0, introK: 0
+            }
+        };
+        measure();
+        B.last = performance.now();
+        B.raf = requestAnimationFrame(tick);
+    };
+
+    function setUnitHP(u) {
+        const pct = clamp(u.hp / u.maxHp, 0, 1) * 100;
+        u.fill.style.width = pct + '%';
+        u.ghost.style.width = pct + '%';
+        u.fill.style.background = pct > 50 ? 'linear-gradient(90deg,#16a34a,#4ade80)' : pct > 25 ? 'linear-gradient(90deg,#ca8a04,#facc15)' : 'linear-gradient(90deg,#b91c1c,#f87171)';
+        u.txt.textContent = `${Math.ceil(u.hp)} / ${u.maxHp}`;
+        u.el.classList.toggle('low', pct <= 25 && pct > 0);
+    }
+
+    /* ---------- メインループ ---------- */
+    function tick(now) {
+        if (!B) return;
+        const dt = clamp((now - B.last) / 1000, 0.001, 0.05);
+        B.last = now;
+        update(dt);
+        render();
+        if (B) B.raf = requestAnimationFrame(tick);
+    }
+
+    function after(d, fn) { B.timers.push({ t: d, fn }); }
+    function addEnt(e) { e.t = 0; B.ents.push(e); return e; }
+    function addP(p) { if (B.parts.length < 900) { p.t = 0; B.parts.push(p); } }
+    function shake(n) { B.shake = Math.min(14, Math.max(B.shake, n)); }
+
+    function update(dt) {
+        B.t += dt;
+        for (let i = B.timers.length - 1; i >= 0; i--) {
+            const tm = B.timers[i];
+            tm.t -= dt;
+            if (tm.t <= 0) { B.timers.splice(i, 1); tm.fn(); if (!B) return; }
+        }
+        B.hitStop = Math.max(0, B.hitStop - dt);
+        const b = B.boss;
+        const bdt = B.hitStop > 0 ? 0 : dt;
+        b.bob += bdt;
+        b.kick = Math.max(0, b.kick - dt * 4);
+        b.flash = Math.max(0, b.flash - dt * 5);
+        b.shx = rand(-1, 1) * b.kick * 7; b.shy = rand(-1, 1) * b.kick * 7;
+        const intro = 1 - easeOut(b.introK);
+        b.px = b.ax;
+        b.py = b.ay + Math.sin(b.bob * 1.5) * 6 * b.S - intro * (b.ay + b.size);
+
+        B.shake = Math.max(0, B.shake - dt * 28);
+        B.flashW = Math.max(0, B.flashW - dt * 1.3);
+        B.flashR = Math.max(0, B.flashR - dt * 1.4);
+        B.bgPulse = Math.max(0, B.bgPulse - dt * 1.6);
+
+        if (B.phase === 'intro') updateIntro(dt);
+        else if (B.phase === 'fight') updateFight(dt, bdt);
+        else if (B.phase === 'dying') updateDying(dt);
+        else if (B.phase === 'lost') {
+            B.lostT = (B.lostT || 0) + dt;
+            if (B.lostT > 1.6 && !B.resultShown) showResult(false);
+        }
+        updateEnts(dt); updateParts(dt); updateNums(dt);
+        B.stars.forEach((s) => { s.y -= s.v * 60 * dt; if (s.y < -4) { s.y = VH + 4; s.x = rand(0, VW); } });
+    }
+
+    function updateIntro(dt) {
+        const b = B.boss;
+        B.introT += dt;
+        if (!B.introWarn) { B.introWarn = true; banner('警告！ 巨大ボス接近中…', 'warn'); B.bgPulse = 1; }
+        b.introK = clamp(B.introT / 2.0, 0, 1);
+        if (b.introK < 1 && Math.random() < dt * 60) {
+            addP({ type: 'glow', x: b.px + rand(-40, 40) * b.S, y: b.py + 10 * b.S, vx: 0, vy: -rand(40, 160), life: .5, size: rand(8, 18), color: '#ff4fa3', grow: 0 });
+        }
+        if (b.introK >= 1) {
+            B.phase = 'fight';
+            shake(9);
+            ringEnt(b.px, b.py + 70 * b.S, '#ff4fa3', 240 * b.S, .8, 6);
+            ringEnt(b.px, b.py + 70 * b.S, '#ffffff', 160 * b.S, .6, 3);
+            banner('戦闘開始！', 'info');
+            B.units.forEach((u) => { u.cd = rand(.25, .8); });
+        }
+    }
+
+    function updateFight(dt, bdt) {
+        B.units.forEach((u) => updateUnit(u, dt));
+        updateBossAI(bdt);
+        const b = B.boss, pct = bossData.hp / bossData.maxHp;
+        if (pct < .5 && Math.random() < dt * (pct < .25 ? 14 : 6)) {
+            const s = Math.random() < .5 ? -1 : 1;
+            puff(b.px + s * 70 * b.S, b.py - 20 * b.S, '#3a3f5c', 14 * b.S, 1.0, rand(-10, 10), rand(-70, -35));
+            if (pct < .25) glowP(b.px + s * 70 * b.S, b.py - 15 * b.S, '#ff7a1a', 16 * b.S, .3);
+        }
+        if (b.poisonT > 0 && Math.random() < dt * 16) {
+            puff(b.px + rand(-1, 1) * b.rx, b.py + rand(-.3, 1) * b.ry, '#a3e635', 16 * b.S, 1.1, rand(-8, 8), rand(-40, -15), false, .32);
+        }
+    }
+
+    function updateDying(dt) {
+        const b = B.boss;
+        B.dyT += dt;
+        b.kick = 1; b.charge = 0;
+        B.dyNext -= dt;
+        if (B.dyNext <= 0 && B.dyT < 2.5) {
+            B.dyNext = Math.max(.05, .22 - B.dyT * .07);
+            const x = b.px + rand(-1, 1) * b.rx, y = b.py + rand(-1, 1) * b.ry;
+            explosion(x, y, { scale: rand(.35, .7) });
+            shake(5); b.flash = 1;
+        }
+        if (!B.dyBoom && B.dyT >= 2.6) { B.dyBoom = true; megaBoom(); }
+        if (B.dyT >= 4.0 && !B.resultShown) showResult(true);
+    }
+
+    /* ---------- パーティクル／演出ヘルパー ---------- */
+    function spark(x, y, color, n, speed, life, size) {
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), s = rand(.3, 1) * speed;
+            addP({ type: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.6, 1) * life, size: size || 2, color, drag: 2.5, grav: 220 });
+        }
+    }
+    function puff(x, y, color, size, life, vx, vy, add, a) {
+        addP({ type: 'puff', x, y, vx, vy, life, size, color, add: !!add, a: a === undefined ? .5 : a, drag: .6 });
+    }
+    function glowP(x, y, color, size, life, grow) {
+        addP({ type: 'glow', x, y, vx: 0, vy: 0, life, size, color, grow: grow || 0 });
+    }
+    function debris(x, y, color, n, spd) {
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), s = rand(.3, 1) * (spd || 300);
+            addP({ type: 'debris', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, grav: 800, rot: rand(0, 6), vr: rand(-12, 12), size: rand(3, 7), color, life: rand(.6, 1.1) });
+        }
+    }
+    function casing(u, col) {
+        addP({ type: 'debris', x: u.mx + rand(-4, 4), y: u.my + 14, vx: rand(-120, 120), vy: rand(-220, -90), grav: 900, rot: rand(0, 6), vr: rand(-14, 14), size: 4, color: col || '#ffd86b', life: .7 });
+    }
+    function ringEnt(x, y, col, maxR, life, w) {
+        return addEnt({
+            life, draw(c, k) {
+                const r = maxR * easeOut(k);
+                c.globalCompositeOperation = 'lighter'; c.globalAlpha = 1 - k;
+                c.strokeStyle = col; c.lineWidth = Math.max(.6, (w || 3) * (1 - k));
+                c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke();
+            }
+        });
+    }
+    function explosion(x, y, o) {
+        o = o || {};
+        const s = o.scale || 1;
+        glowP(x, y, '#ffffff', 60 * s, .14);
+        glowP(x, y, '#ffb347', 100 * s, .35);
+        glowP(x, y, '#ff3b00', 140 * s, .55);
+        ringEnt(x, y, '#ffd9a0', 130 * s, .45, 6);
+        ringEnt(x, y, '#ff6a2b', 90 * s, .35, 4);
+        spark(x, y, '#ffcf66', Math.round(22 * s), 520 * s, .7, 2.2);
+        spark(x, y, '#ff5522', Math.round(14 * s), 360 * s, .8, 2);
+        for (let i = 0; i < 6; i++) puff(x + rand(-14, 14), y + rand(-14, 14), '#3a3f5c', 18 * s, rand(.7, 1.1), rand(-60, 60), rand(-90, -20));
+        debris(x, y, '#4a5075', 8, 380 * s);
+    }
+    function megaBoom() {
+        const b = B.boss, x = b.px, y = b.py;
+        b.visible = false;
+        B.flashW = 1; shake(14);
+        explosion(x, y, { scale: 2.8 });
+        const R = Math.max(VW, VH);
+        ringEnt(x, y, '#ffffff', R * .7, 1.0, 10);
+        after(.12, () => ringEnt(x, y, '#ff4fa3', R * .6, 1.1, 8));
+        after(.28, () => ringEnt(x, y, '#ffde00', R * .5, 1.2, 6));
+        spark(x, y, '#ffffff', 60, 900, 1.1, 2.4);
+        spark(x, y, '#ff4fa3', 50, 700, 1.2, 2.2);
+        spark(x, y, '#ffb347', 40, 560, 1.3, 2.4);
+        for (let i = 0; i < 26; i++) {
+            addP({ type: 'debris', x: x + rand(-30, 30), y: y + rand(-30, 30), vx: rand(-520, 520), vy: rand(-620, 200), grav: 700, rot: rand(0, 6), vr: rand(-10, 10), size: rand(6, 16), color: pick(['#3b4478', '#ff4fa3', '#222a52', '#ffb347']), life: rand(1.2, 2) });
+        }
+    }
+
+    /* ---------- エンティティ / パーティクルの更新と描画 ---------- */
+    function updateEnts(dt) {
+        for (let i = B.ents.length - 1; i >= 0; i--) {
+            const e = B.ents[i];
+            e.t += dt;
+            if (e.update) e.update(dt, e);
+            if (e.t >= e.life || e.dead) { B.ents.splice(i, 1); if (e.end) e.end(e); if (!B) return; }
+        }
+    }
+    function updateParts(dt) {
+        const a = B.parts;
+        for (let i = a.length - 1; i >= 0; i--) {
+            const p = a[i];
+            p.t += dt;
+            if (p.t >= p.life) { a.splice(i, 1); continue; }
+            if (p.drag) { const f = Math.max(0, 1 - p.drag * dt); p.vx *= f; p.vy *= f; }
+            if (p.grav) p.vy += p.grav * dt;
+            p.x += p.vx * dt; p.y += p.vy * dt;
+            if (p.vr) p.rot += p.vr * dt;
+        }
+    }
+    function drawEnts(c) {
+        for (const e of B.ents) {
+            if (!e.draw) continue;
+            c.save();
+            e.draw(c, e.t / e.life, e);
+            c.restore();
+        }
+    }
+    function drawParts(c) {
+        for (const p of B.parts) {
+            const k = p.t / p.life;
+            switch (p.type) {
+                case 'spark':
+                    c.globalCompositeOperation = 'lighter'; c.globalAlpha = 1 - k;
+                    c.strokeStyle = p.color; c.lineWidth = p.size * (1 - k * .5);
+                    c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - p.vx * .04, p.y - p.vy * .04); c.stroke();
+                    break;
+                case 'glow': {
+                    const r = Math.max(1, p.size * (p.grow ? (1 + k * p.grow) : (1 - k * .6)));
+                    c.globalCompositeOperation = 'lighter';
+                    G(c, p.x, p.y, r, p.color, 1 - k);
+                    break;
+                }
+                case 'puff': {
+                    const r = p.size * (1 + k * 1.4);
+                    c.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
+                    G(c, p.x, p.y, r, p.color, (1 - k) * p.a);
+                    break;
+                }
+                case 'debris':
+                    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1 - k * k;
+                    c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.fillStyle = p.color;
+                    c.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); c.restore();
+                    break;
+                case 'drop':
+                    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1 - k * k; c.fillStyle = p.color;
+                    c.beginPath(); c.arc(p.x, p.y, Math.max(.5, p.size * (1 - k * .4)), 0, Math.PI * 2); c.fill();
+                    break;
+            }
+        }
+        c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    }
+
+    /* ---------- ダメージ数字 ---------- */
+    function addNum(x, y, val, color, scale) {
+        if (B.nums.length > 60) B.nums.shift();
+        B.nums.push({ x, y, val: String(val), color, scale: scale || 1, t: 0, life: .9, vx: rand(-20, 20) });
+    }
+    function updateNums(dt) {
+        for (let i = B.nums.length - 1; i >= 0; i--) {
+            const n = B.nums[i];
+            n.t += dt;
+            if (n.t >= n.life) { B.nums.splice(i, 1); continue; }
+            n.y -= (70 * (1 - n.t / n.life) + 20) * dt; n.x += n.vx * dt;
+        }
+    }
+    function drawNums(c) {
+        c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+        for (const n of B.nums) {
+            const k = n.t / n.life;
+            const pop = k < .12 ? 1 + (1 - k / .12) * .7 : 1;
+            c.globalAlpha = k > .65 ? 1 - (k - .65) / .35 : 1;
+            c.font = `900 ${Math.round(20 * n.scale * pop)}px Orbitron, 'Noto Sans JP', sans-serif`;
+            c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.85)';
+            c.strokeText(n.val, n.x, n.y);
+            c.fillStyle = n.color; c.fillText(n.val, n.x, n.y);
+        }
+        c.globalAlpha = 1;
+    }
+
+    /* ---------- ビーム／稲妻 ---------- */
+    function beam(c, x1, y1, x2, y2, col, w, a) {
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+        const line = () => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+        c.strokeStyle = col; c.globalAlpha = a * .22; c.lineWidth = w * 3.4; line();
+        c.globalAlpha = a * .7; c.lineWidth = w * 1.5; line();
+        c.strokeStyle = '#ffffff'; c.globalAlpha = a; c.lineWidth = Math.max(1, w * .5); line();
+    }
+    function jag(x1, y1, x2, y2, off) {
+        let pts = [[x1, y1], [x2, y2]];
+        let o = off;
+        for (let pass = 0; pass < 5; pass++) {
+            const next = [];
+            for (let i = 0; i < pts.length - 1; i++) {
+                const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+                const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy) || 1;
+                const d = rand(-o, o);
+                next.push(pts[i], [(ax + bx) / 2 + (-dy / len) * d, (ay + by) / 2 + (dx / len) * d]);
+            }
+            next.push(pts[pts.length - 1]);
+            pts = next; o *= .55;
+        }
+        return pts;
+    }
+    function polyline(c, pts, col, a) {
+        c.globalCompositeOperation = 'lighter'; c.lineCap = 'round'; c.lineJoin = 'round';
+        const path = () => { c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke(); };
+        c.strokeStyle = col; c.globalAlpha = a * .28; c.lineWidth = 7; path();
+        c.globalAlpha = a * .9; c.lineWidth = 2.6; path();
+        c.strokeStyle = '#ffffff'; c.globalAlpha = a; c.lineWidth = 1; path();
+    }
+
+    /* ---------- ボスへの命中処理 ---------- */
+    function tgt(fx, fy) {
+        const b = B.boss, dx = fx * b.rx, dy = fy * b.ry;
+        return { get x() { return B.boss.px + dx; }, get y() { return B.boss.py + dy; } };
+    }
+    const rndT = (w, h) => tgt(rand(-w, w), rand(-h, h));
+
+    function hitBoss(dmg, x, y, o) {
+        o = o || {};
+        const b = B.boss;
+        b.flash = Math.min(1, b.flash + (o.flash === undefined ? .3 : o.flash));
+        b.kick = Math.min(1, b.kick + dmg / 300);
+        if (B.phase !== 'fight' || dmg <= 0) return;
+        bossData.hp = Math.max(0, bossData.hp - dmg);
+        updateBossHPUI();
+        $('bb-hp-ghost').style.width = Math.max(0, bossData.hp / bossData.maxHp * 100) + '%';
+        addNum(x + rand(-12, 12), y - 10, Math.round(dmg), o.color || '#ffffff', dmg >= 100 ? 1.35 : 1);
+        if (!b.enraged && bossData.hp > 0 && bossData.hp / bossData.maxHp < .3) enrage();
+        if (bossData.hp <= 0) startDying();
+    }
+    function enrage() {
+        const b = B.boss;
+        b.enraged = true;
+        banner('オメガが激昂した！ 攻撃が激しくなる…', 'warn');
+        B.flashR = .6; shake(8);
+        ringEnt(b.px, b.py, '#ff2a2a', 260 * b.S, .8, 6);
+    }
+    function startDying() {
+        if (B.phase !== 'fight') return;
+        B.phase = 'dying'; B.dyT = 0; B.dyNext = 0;
+        B.boss.mode = 'idle'; B.boss.charge = 0;
+        B.units.forEach((u) => { if (u.aimEnt) u.aimEnt.dead = true; });
+        banner('とどめだ！', 'info');
+    }
+
+    /* ---------- 武器ごとの攻撃アニメーション ---------- */
+    function muzzleFlash(u, col, size, ox) {
+        const x = u.mx + (ox || 0), y = u.my;
+        addEnt({
+            life: .09, draw(c, k) {
+                c.globalCompositeOperation = 'lighter';
+                G(c, x, y, 28 * size, col, 1 - k);
+                G(c, x, y, 12 * size, '#ffffff', 1 - k);
+                c.globalAlpha = 1 - k; c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.beginPath();
+                for (let i = 0; i < 3; i++) {
+                    const a = -Math.PI / 2 + (i - 1) * .5, L = 34 * size * (1 - k * .4);
+                    c.moveTo(x, y); c.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L);
+                }
+                c.stroke();
+            }
+        });
+    }
+    function recoil(u) {
+        try {
+            u.circle.animate([
+                { transform: 'translateY(0) scale(1)', filter: 'brightness(1)' },
+                { transform: 'translateY(5px) scale(.94)', filter: 'brightness(1.9)', offset: .25 },
+                { transform: 'translateY(0) scale(1)', filter: 'brightness(1)' }
+            ], { duration: 160, easing: 'ease-out' });
+        } catch (e) { /* noop */ }
+    }
+
+    function tracer(x, y, T, color, speed, dmg, o) {
+        o = o || {};
+        addEnt({
+            life: 3, x, y, trav: 0, ang: 0,
+            update(dt, e) {
+                const dx = T.x - e.x, dy = T.y - e.y, d = Math.hypot(dx, dy), step = speed * dt;
+                e.ang = Math.atan2(dy, dx);
+                if (d <= step) {
+                    e.x = T.x; e.y = T.y; e.dead = true;
+                    if (dmg > 0) hitBoss(dmg, e.x, e.y, { color: o.numColor || '#ffffff', flash: o.flash || .3 });
+                    else B.boss.flash = Math.min(1, B.boss.flash + .08);
+                    if (o.onHit) o.onHit(e.x, e.y);
+                    else { spark(e.x, e.y, color, o.spark || 6, 300, .35, 2); glowP(e.x, e.y, color, 24, .12); }
+                } else { e.x += dx / d * step; e.y += dy / d * step; e.trav += step; }
+            },
+            draw(c, k, e) {
+                const L = Math.min(o.len || 70, e.trav + 6);
+                const tx = e.x - Math.cos(e.ang) * L, ty = e.y - Math.sin(e.ang) * L;
+                const g = c.createLinearGradient(tx, ty, e.x, e.y);
+                g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.6, color); g.addColorStop(1, '#ffffff');
+                c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+                c.strokeStyle = g; c.lineWidth = o.w || 2.4;
+                c.beginPath(); c.moveTo(tx, ty); c.lineTo(e.x, e.y); c.stroke();
+                G(c, e.x, e.y, 9, color, .9);
+            }
+        });
+    }
+
+    function impactBurst(x, y, col, o) {
+        const g = o.glow || 40;
+        glowP(x, y, '#ffffff', g * .7, .12);
+        glowP(x, y, col, g * 1.4, .28);
+        for (let i = 0; i < (o.rings || 0); i++) ringEnt(x, y, col, g * (1.6 + i * .8), .35 + i * .1, 3);
+        spark(x, y, col, o.sparks || 8, o.speed || 320, .5, 2);
+    }
+
+    const WEAPON = {};
+
+    WEAPON.machineGun = (u) => {
+        muzzleFlash(u, u.color, 1);
+        casing(u);
+        for (let i = 0; i < 3; i++) {
+            after(i * .05, () => tracer(u.mx + rand(-4, 4), u.my, rndT(.55, .65), u.color, 2700, i === 0 ? u.dmg : 0, { len: 74, w: 2.4, spark: 6 }));
+        }
+    };
+
+    WEAPON.laser = (u) => {
+        const col = u.color, T = rndT(.2, .3);
+        muzzleFlash(u, col, 1.3);
+        addEnt({
+            life: .34, did: false,
+            update(dt, e) {
+                if (!e.did && e.t > .06) {
+                    e.did = true;
+                    hitBoss(u.dmg, T.x, T.y, { color: '#aef9ff', flash: .4 });
+                    impactBurst(T.x, T.y, col, { rings: 1, sparks: 10, glow: 46 });
+                    shake(1.6);
+                }
+                if (e.t > .06 && Math.random() < dt * 40) spark(T.x, T.y, col, 2, 240, .3, 1.8);
+            },
+            draw(c, k, e) {
+                const grow = clamp(e.t / .06, 0, 1), fade = 1 - clamp((e.t - .14) / .2, 0, 1);
+                const w = 9 * grow * fade * (1 + .12 * Math.sin(e.t * 90));
+                if (w > .2) beam(c, u.mx, u.my, T.x, T.y, col, w, fade);
+            }
+        });
+    };
+
+    WEAPON.plasma = (u) => {
+        const col = u.color, T = rndT(.35, .4);
+        muzzleFlash(u, col, 1.4);
+        addEnt({
+            life: 3, x: u.mx, y: u.my, ph: rand(0, 6),
+            update(dt, e) {
+                const dx = T.x - e.x, dy = T.y - e.y, d = Math.hypot(dx, dy), step = 820 * dt;
+                const w = Math.sin(e.t * 18 + e.ph) * 120 * dt;
+                if (Math.random() < dt * 90) glowP(e.x, e.y, col, 10, .25);
+                if (d <= step + 8) {
+                    e.dead = true;
+                    hitBoss(u.dmg, T.x, T.y, { color: '#fff3a0', flash: .55 });
+                    impactBurst(T.x, T.y, col, { rings: 2, sparks: 18, glow: 70 });
+                    shake(3.5);
+                } else { e.x += dx / d * step + (-dy / d) * w; e.y += dy / d * step + (dx / d) * w; }
+            },
+            draw(c, k, e) {
+                c.globalCompositeOperation = 'lighter';
+                G(c, e.x, e.y, 26, col, .55);
+                G(c, e.x, e.y, 11, '#ffffff', 1);
+                c.strokeStyle = col; c.lineWidth = 1.6; c.globalAlpha = .9;
+                for (let i = 0; i < 3; i++) {
+                    const a = rand(0, 6.28);
+                    c.beginPath(); c.moveTo(e.x, e.y);
+                    c.lineTo(e.x + Math.cos(a) * 9 + rand(-5, 5), e.y + Math.sin(a) * 9 + rand(-5, 5));
+                    c.lineTo(e.x + Math.cos(a) * 20, e.y + Math.sin(a) * 20); c.stroke();
+                }
+            }
+        });
+    };
+
+    function missileBoom(x, y, dmg) {
+        hitBoss(dmg, x, y, { color: '#ffb3d9', flash: .7 });
+        explosion(x, y, { scale: 1 });
+        shake(6);
+    }
+    WEAPON.missile = (u) => {
+        const T = rndT(.3, .35);
+        muzzleFlash(u, '#ffb347', 1.5);
+        const a0 = -Math.PI / 2 + rand(-1.1, 1.1);
+        addEnt({
+            life: 3, x: u.mx, y: u.my, vx: Math.cos(a0) * 320, vy: Math.sin(a0) * 320, spd: 320, ang: a0,
+            update(dt, e) {
+                const want = Math.atan2(T.y - e.y, T.x - e.x);
+                let cur = Math.atan2(e.vy, e.vx);
+                const diff = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
+                const turn = (3.2 + e.t * 6) * dt;
+                cur += clamp(diff, -turn, turn);
+                e.spd = Math.min(1050, e.spd + 900 * dt);
+                e.vx = Math.cos(cur) * e.spd; e.vy = Math.sin(cur) * e.spd; e.ang = cur;
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                puff(e.x - Math.cos(cur) * 12, e.y - Math.sin(cur) * 12, '#9aa0b8', 7, .7, rand(-14, 14), rand(-14, 14), false, .45);
+                glowP(e.x - Math.cos(cur) * 10, e.y - Math.sin(cur) * 10, '#ff9a3c', 11, .18);
+                if (Math.hypot(T.x - e.x, T.y - e.y) < 26 || e.t > 2.6) { e.dead = true; missileBoom(e.x, e.y, u.dmg); }
+            },
+            draw(c, k, e) {
+                c.translate(e.x, e.y); c.rotate(e.ang);
+                c.globalCompositeOperation = 'lighter';
+                G(c, -14, 0, 14 + Math.random() * 4, '#ff9a3c', .9);
+                c.globalCompositeOperation = 'source-over';
+                c.fillStyle = '#e5e7eb'; c.fillRect(-9, -3, 18, 6);
+                c.fillStyle = '#ff007f'; c.beginPath(); c.moveTo(9, -3); c.lineTo(16, 0); c.lineTo(9, 3); c.closePath(); c.fill();
+                c.fillStyle = '#9ca3af'; c.beginPath(); c.moveTo(-9, -3); c.lineTo(-13, -8); c.lineTo(-5, -3); c.closePath(); c.fill();
+                c.beginPath(); c.moveTo(-9, 3); c.lineTo(-13, 8); c.lineTo(-5, 3); c.closePath(); c.fill();
+            }
+        });
+    };
+
+    WEAPON.emp = (u) => {
+        const col = u.color, T = rndT(.3, .35);
+        ringEnt(u.cx, u.cy, col, 70, .55, 3);
+        ringEnt(u.cx, u.cy, '#e5c0ff', 45, .4, 2);
+        muzzleFlash(u, col, 1.2);
+        addEnt({
+            life: .45, did: false, pts: [], regen: 0,
+            update(dt, e) {
+                e.regen -= dt;
+                if (e.regen <= 0) {
+                    e.regen = .045;
+                    e.pts = [0, 1, 2].map(() => jag(u.mx, u.my, T.x + rand(-14, 14), T.y + rand(-14, 14), 38));
+                }
+                if (!e.did && e.t > .08) {
+                    e.did = true;
+                    hitBoss(u.dmg, T.x, T.y, { color: '#e5c0ff', flash: .5 });
+                    glowP(T.x, T.y, col, 80, .3);
+                    ringEnt(T.x, T.y, col, 100, .4, 4);
+                    spark(T.x, T.y, col, 14, 380, .5, 2);
+                    for (let i = 0; i < 4; i++) after(i * .05, () => {
+                        const p = [T.x + rand(-1, 1) * B.boss.rx, T.y + rand(-1, 1) * B.boss.ry];
+                        const q = [T.x + rand(-1, 1) * B.boss.rx, T.y + rand(-1, 1) * B.boss.ry];
+                        const pts = jag(p[0], p[1], q[0], q[1], 22);
+                        addEnt({ life: .13, draw(c, k) { polyline(c, pts, col, 1 - k); } });
+                    });
+                }
+            },
+            draw(c, k, e) {
+                const a = 1 - clamp((e.t - .22) / .23, 0, 1);
+                e.pts.forEach((p) => polyline(c, p, col, a));
+            }
+        });
+    };
+
+    function beginAim(u) {
+        u.aim = { dx: rand(-.2, .2), dy: rand(-.25, .25) };
+        u.aimEnt = addEnt({
+            life: 1.2,
+            draw(c) {
+                const b = B.boss, a = clamp(1 - u.cd / .6, 0, 1);
+                const x = b.px + u.aim.dx * b.rx, y = b.py + u.aim.dy * b.ry;
+                c.globalCompositeOperation = 'lighter';
+                c.strokeStyle = '#ff5a5a'; c.globalAlpha = .15 + .6 * a; c.lineWidth = 1.4;
+                c.beginPath(); c.moveTo(u.mx, u.my); c.lineTo(x, y); c.stroke();
+                c.translate(x, y); c.rotate(B.t * 1.5);
+                const r = 30 - 14 * a;
+                c.globalAlpha = .4 + .5 * a; c.strokeStyle = '#ffffff'; c.lineWidth = 1.6;
+                c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke();
+                for (let i = 0; i < 4; i++) {
+                    c.rotate(Math.PI / 2); c.beginPath(); c.moveTo(r - 6, 0); c.lineTo(r + 10, 0); c.stroke();
+                }
+            }
+        });
+    }
+    WEAPON.sniper = (u) => {
+        const T = u.aim ? tgt(u.aim.dx, u.aim.dy) : rndT(.2, .25);
+        if (u.aimEnt) u.aimEnt.dead = true;
+        u.aim = null; u.aimEnt = null;
+        muzzleFlash(u, '#ffffff', 2.2);
+        ringEnt(u.mx, u.my, '#ffffff', 60, .25, 3);
+        const sx = u.mx, sy = u.my;
+        addEnt({
+            life: .5, did: false,
+            update(dt, e) {
+                if (!e.did && e.t >= .03) {
+                    e.did = true;
+                    hitBoss(u.dmg, T.x, T.y, { color: '#ffd27a', flash: .9 });
+                    glowP(T.x, T.y, '#ffffff', 110, .2);
+                    glowP(T.x, T.y, '#9fd8ff', 170, .45);
+                    ringEnt(T.x, T.y, '#ffffff', 170, .5, 5);
+                    ringEnt(T.x, T.y, '#7cc8ff', 110, .4, 3);
+                    spark(T.x, T.y, '#ffffff', 30, 600, .7, 2.2);
+                    spark(T.x, T.y, '#7cc8ff', 20, 420, .8, 2);
+                    shake(9); B.hitStop = .07;
+                }
+            },
+            draw(c, k, e) {
+                const a = 1 - clamp((e.t - .05) / .35, 0, 1);
+                if (a <= 0) return;
+                beam(c, sx, sy, T.x, T.y, '#9fd8ff', 7 * a, a);
+                const ang = Math.atan2(T.y - sy, T.x - sx);
+                c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#9fd8ff'; c.lineWidth = 1.5;
+                for (let i = 1; i <= 6; i++) {
+                    const f = i / 7, r = 6 + e.t * 90;
+                    c.save(); c.translate(sx + (T.x - sx) * f, sy + (T.y - sy) * f); c.rotate(ang);
+                    c.globalAlpha = a * .5; c.beginPath(); c.ellipse(0, 0, r * .25, r, 0, 0, Math.PI * 2); c.stroke(); c.restore();
+                }
+            }
+        });
+    };
+
+    WEAPON.poison = (u) => {
+        const col = u.color, T = rndT(.4, .45);
+        muzzleFlash(u, col, 1);
+        const x0 = u.mx, y0 = u.my, dur = .62;
+        const arc = Math.min(170, Math.abs(T.y - y0) * .5 + 70);
+        addEnt({
+            life: dur, x: x0, y: y0,
+            update(dt, e) {
+                const k = e.t / dur;
+                e.x = x0 + (T.x - x0) * k;
+                e.y = y0 + (T.y - y0) * k - Math.sin(k * Math.PI) * arc;
+                if (Math.random() < dt * 40) addP({ type: 'drop', x: e.x + rand(-5, 5), y: e.y + rand(-5, 5), vx: rand(-20, 20), vy: rand(-10, 30), life: .45, size: rand(2, 4), color: '#bef264', grav: 200 });
+            },
+            draw(c, k, e) {
+                c.globalCompositeOperation = 'lighter'; G(c, e.x, e.y, 20, col, .5);
+                c.globalCompositeOperation = 'source-over';
+                c.fillStyle = '#84cc16'; c.beginPath(); c.arc(e.x, e.y, 8, 0, Math.PI * 2); c.fill();
+                c.fillStyle = 'rgba(255,255,255,.7)'; c.beginPath(); c.arc(e.x - 2.5, e.y - 3, 2.4, 0, Math.PI * 2); c.fill();
+            },
+            end() {
+                hitBoss(u.dmg, T.x, T.y, { color: '#d9f99d', flash: .3 });
+                B.boss.poisonT = 2.4;
+                glowP(T.x, T.y, col, 60, .3);
+                ringEnt(T.x, T.y, col, 80, .45, 3);
+                for (let i = 0; i < 12; i++) addP({ type: 'drop', x: T.x, y: T.y, vx: rand(-170, 170), vy: -rand(120, 280), life: .8, size: rand(2.5, 5), color: pick(['#a3e635', '#84cc16', '#bef264']), grav: 650 });
+                for (let i = 0; i < 6; i++) puff(T.x + rand(-16, 16), T.y + rand(-12, 12), '#a3e635', 20, 1.5, rand(-14, 14), rand(-45, -15), false, .35);
+            }
+        });
+    };
+
+    WEAPON.bossGatling = (u) => {
+        u._s = !u._s;
+        const side = u._s ? -1 : 1;
+        muzzleFlash(u, '#ffb347', 1.5, side * 9);
+        casing(u, '#ffcf66'); casing(u, '#ffcf66');
+        tracer(u.mx + side * 9, u.my, rndT(.7, .75), '#ff7a1a', 3400, u.dmg, {
+            len: 90, w: 3.2, flash: .22,
+            onHit: (x, y) => { spark(x, y, '#ffb347', 7, 380, .4, 2); glowP(x, y, '#ff7a1a', 34, .16); }
+        });
+        shake(.9);
+    };
+
+    /* ---------- マシーンの更新・発射 ---------- */
+    function updateUnit(u, dt) {
+        if (!u.alive) return;
+        u.cd -= dt;
+        if (u.type === 'sniper' && !u.aim && u.cd < .6 && u.cd > 0) beginAim(u);
+        if (u.cd <= 0) {
+            u.cd = Math.max(u.cd + u.period, .05);
+            recoil(u);
+            (WEAPON[u.type] || WEAPON.machineGun)(u);
+        }
+    }
+
+    /* ---------- ボスのAIと攻撃 ---------- */
+    function startAttack() {
+        const b = B.boss;
+        const alive = B.units.filter((u) => u.alive);
+        if (!alive.length) return;
+        b.count++;
+        let type = 'bolt';
+        if (b.count % 6 === 0) type = 'laser';
+        else if (b.count % 4 === 0) type = 'pulse';
+        b.type = type; b.mode = 'tele'; b.tt = 0;
+        b.teleDur = type === 'bolt' ? .6 : type === 'pulse' ? 1.0 : 1.35;
+        b.chargeCol = type === 'laser' ? '#ff2a2a' : type === 'pulse' ? '#ffde00' : '#ff4fa3';
+        b.target = type === 'laser' ? alive.reduce((a, u) => (u.dmg > a.dmg ? u : a)) : pick(alive);
+        if (type === 'pulse') banner('パルスウェーブ！', 'warn');
+        if (type === 'laser') banner('ギガレーザー！ 照準ロック', 'warn');
+    }
+
+    function updateBossAI(dt) {
+        const b = B.boss;
+        b.hand[0] = Math.max(0, b.hand[0] - dt * 3);
+        b.hand[1] = Math.max(0, b.hand[1] - dt * 3);
+        b.poisonT = Math.max(0, b.poisonT - dt);
+        if (b.mode === 'idle') {
+            b.timer -= dt;
+            b.charge = Math.max(0, b.charge - dt * 3);
+            b.lookX *= 1 - Math.min(1, dt * 4); b.lookY *= 1 - Math.min(1, dt * 4);
+            if (b.timer <= 0) startAttack();
+            return;
+        }
+        b.tt += dt;
+        b.charge = clamp(b.tt / b.teleDur, 0, 1);
+        if (Math.random() < dt * 50) {
+            const a = rand(0, Math.PI * 2), R = rand(60, 110) * b.S;
+            addP({ type: 'spark', x: b.px + Math.cos(a) * R, y: b.py + 4 * b.S + Math.sin(a) * R, vx: -Math.cos(a) * R * 3, vy: -Math.sin(a) * R * 3, life: .33, size: 2, color: b.chargeCol, drag: 0, grav: 0 });
+        }
+        if (b.target && b.target.alive) {
+            const dx = b.target.cx - b.px, dy = b.target.cy - b.py, L = Math.hypot(dx, dy) || 1;
+            b.lookX += (dx / L * 3 - b.lookX) * Math.min(1, dt * 6);
+            b.lookY += (dy / L * 3 - b.lookY) * Math.min(1, dt * 6);
+        }
+        if (b.tt >= b.teleDur) {
+            executeAttack();
+            if (!B) return;
+            b.mode = 'idle'; b.charge = 0;
+            b.timer = CFG.bossAttackInterval * (b.enraged ? .68 : 1) * rand(.85, 1.15);
+        }
+    }
+
+    function handPos(side) {
+        const b = B.boss;
+        return { x: b.px + (side ? 1 : -1) * 94 * b.S, y: b.py + (40 + Math.sin(b.bob * 1.7 + (side ? Math.PI : 0)) * 5) * b.S };
+    }
+
+    function executeAttack() {
+        const b = B.boss, k = b.enraged ? 1.2 : 1;
+        let target = b.target;
+        if (!target || !target.alive) target = pick(B.units.filter((u) => u.alive));
+        if (!target) return;
+        B.bgPulse = 1;
+        if (b.type === 'bolt') bossBolt(target, Math.round(CFG.boltDmg * k * rand(.9, 1.1)));
+        else if (b.type === 'pulse') bossPulse(Math.round(CFG.pulseDmg * k * rand(.9, 1.1)));
+        else bossLaser(target, Math.round(CFG.laserDmg * k * rand(.9, 1.1)));
+    }
+
+    function bossBolt(u, dmg) {
+        const b = B.boss;
+        b.handSide ^= 1;
+        b.hand[b.handSide] = 1;
+        const h = handPos(b.handSide);
+        addEnt({
+            life: 2, x: h.x, y: h.y, trav: 0, ph: rand(0, 6),
+            update(dt, e) {
+                const dx = u.cx - e.x, dy = u.cy - e.y, d = Math.hypot(dx, dy), step = 1000 * dt;
+                glowP(e.x, e.y, '#ff4fa3', 14, .3);
+                if (Math.random() < dt * 60) spark(e.x, e.y, '#ffb3d9', 1, 80, .3, 1.6);
+                if (d <= step) { e.dead = true; damageUnit(u, dmg, '#ff4fa3'); }
+                else { e.x += dx / d * step; e.y += dy / d * step; }
+            },
+            draw(c, k, e) {
+                c.globalCompositeOperation = 'lighter';
+                G(c, e.x, e.y, 30, '#ff4fa3', .6);
+                G(c, e.x, e.y, 13, '#ffffff', 1);
+                c.save(); c.translate(e.x, e.y); c.rotate(e.t * 9); c.strokeStyle = '#ffb3d9'; c.lineWidth = 1.6; c.globalAlpha = .9;
+                c.strokeRect(-9, -9, 18, 18); c.restore();
+            }
+        });
+    }
+
+    function bossPulse(dmg) {
+        const b = B.boss, cx = b.px, cy = b.py + 4 * b.S, SPD = 820;
+        let maxD = 0;
+        B.units.forEach((u) => {
+            if (!u.alive) return;
+            const d = Math.hypot(u.cx - cx, u.cy - cy);
+            maxD = Math.max(maxD, d);
+            after(d / SPD, () => damageUnit(u, dmg, '#ffde00'));
+        });
+        shake(5);
+        addEnt({
+            life: Math.max(1.0, maxD / SPD + .25),
+            draw(c, k, e) {
+                const r = SPD * e.t, a = clamp(1 - e.t / (maxD / SPD + .25), 0, 1);
+                c.globalCompositeOperation = 'lighter';
+                c.strokeStyle = '#ffde00'; c.globalAlpha = a * .35; c.lineWidth = 26;
+                c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+                c.strokeStyle = '#ff4fa3'; c.globalAlpha = a * .9; c.lineWidth = 8;
+                c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+                c.strokeStyle = '#ffffff'; c.globalAlpha = a; c.lineWidth = 2.5;
+                c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+            }
+        });
+        glowP(cx, cy, '#ffde00', 120 * b.S, .4);
+    }
+
+    function bossLaser(u, dmg) {
+        const b = B.boss, sx = b.px, sy = b.py - 54 * b.S;
+        shake(6);
+        addEnt({
+            life: .8, did: false,
+            update(dt, e) {
+                if (!e.did && e.t > .1) {
+                    e.did = true;
+                    damageUnit(u, dmg, '#ff2a2a');
+                    shake(11);
+                    ringEnt(u.cx, u.cy, '#ff2a2a', 110, .5, 5);
+                }
+                if (e.t > .1 && e.t < .6 && Math.random() < dt * 60) spark(u.cx, u.cy, '#ffb3b3', 2, 340, .35, 2);
+            },
+            draw(c, k, e) {
+                const grow = clamp(e.t / .1, 0, 1), fade = 1 - clamp((e.t - .5) / .3, 0, 1);
+                const w = 16 * grow * fade * (1 + .1 * Math.sin(e.t * 80));
+                if (w > .3) beam(c, sx, sy, u.cx, u.cy, '#ff2a2a', w, fade);
+                c.globalCompositeOperation = 'lighter';
+                G(c, u.cx, u.cy, 60 * grow * fade, '#ff5a5a', .7);
+            }
+        });
+    }
+
+    function damageUnit(u, dmg, col) {
+        if (!u.alive || B.phase !== 'fight') return;
+        u.hp = Math.max(0, u.hp - dmg);
+        setUnitHP(u);
+        addNum(u.cx + rand(-10, 10), u.cy - 42, dmg, '#ff6b81', 1.15);
+        spark(u.cx, u.cy, col, 12, 320, .45, 2);
+        glowP(u.cx, u.cy, col, 60, .2);
+        ringEnt(u.cx, u.cy, col, 70, .3, 3);
+        shake(3 + dmg / 40);
+        try {
+            u.el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-9px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(0)' }], { duration: 320 });
+            u.circle.animate([{ filter: 'brightness(2.4) saturate(2)' }, { filter: 'none' }], { duration: 320 });
+        } catch (e) { /* noop */ }
+        if (u.hp <= 0) unitDown(u);
+    }
+
+    function unitDown(u) {
+        u.alive = false;
+        u.el.classList.add('down'); u.el.classList.remove('low');
+        if (u.aimEnt) u.aimEnt.dead = true;
+        explosion(u.cx, u.cy, { scale: .8 });
+        shake(8);
+        banner(`${u.name} 戦闘不能！`, 'warn');
+        addEnt({
+            life: 3.2,
+            update(dt) {
+                if (Math.random() < dt * 14) puff(u.cx + rand(-12, 12), u.cy - 10, '#3a3f5c', 14, 1.1, rand(-12, 12), rand(-60, -30));
+                if (Math.random() < dt * 4) spark(u.cx, u.cy, '#ffb347', 2, 200, .4, 1.6);
+            }
+        });
+        if (B.phase === 'fight' && B.units.every((x) => !x.alive)) {
+            B.phase = 'lost'; B.lostT = 0;
+            B.boss.mode = 'idle'; B.boss.charge = 0;
+        }
+    }
+
+    /* ---------- 描画 ---------- */
+    function drawBg(t) {
+        const c = bgC;
+        c.setTransform(DPR, 0, 0, DPR, 0, 0);
+        c.clearRect(0, 0, VW, VH);
+        const b = B.boss, enr = b.enraged, hy = VH * .6;
+        let g = c.createLinearGradient(0, 0, 0, VH);
+        g.addColorStop(0, '#16061f'); g.addColorStop(.6, '#0b0a1d'); g.addColorStop(1, '#04050d');
+        c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+        const rg = c.createRadialGradient(b.ax, b.ay, 10, b.ax, b.ay, Math.max(VW, VH) * .55);
+        rg.addColorStop(0, enr ? 'rgba(255,40,40,.30)' : 'rgba(255,0,127,.26)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = rg; c.fillRect(0, 0, VW, VH);
+
+        c.save();
+        c.beginPath(); c.rect(0, hy, VW, VH - hy); c.clip();
+        c.strokeStyle = enr ? 'rgba(255,80,80,.22)' : 'rgba(0,240,255,.18)'; c.lineWidth = 1;
+        const n = 14, off = (t * .35) % 1;
+        for (let i = 0; i <= n; i++) {
+            const k = (i + off) / n, y = hy + (VH - hy) * k * k;
+            c.beginPath(); c.moveTo(0, y); c.lineTo(VW, y); c.stroke();
+        }
+        const cx = VW / 2;
+        for (let j = -14; j <= 14; j++) { c.beginPath(); c.moveTo(cx + j * 10, hy); c.lineTo(cx + j * VW * .12, VH); c.stroke(); }
+        c.restore();
+
+        g = c.createLinearGradient(0, 0, VW, 0);
+        g.addColorStop(0, 'rgba(255,0,127,0)'); g.addColorStop(.5, enr ? 'rgba(255,80,80,.7)' : 'rgba(0,240,255,.6)'); g.addColorStop(1, 'rgba(255,0,127,0)');
+        c.fillStyle = g; c.fillRect(0, hy - 1, VW, 2);
+
+        c.fillStyle = '#ffffff';
+        B.stars.forEach((s) => { c.globalAlpha = .25 + .25 * Math.sin(t * 2 + s.p); c.fillRect(s.x, s.y, s.s, s.s); });
+        c.globalAlpha = 1;
+        if (B.bgPulse > 0) { c.fillStyle = `rgba(255,0,80,${B.bgPulse * .14})`; c.fillRect(0, 0, VW, VH); }
+        g = c.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * .35, VW / 2, VH / 2, Math.max(VW, VH) * .75);
+        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.65)');
+        c.fillStyle = g; c.fillRect(0, 0, VW, VH);
+    }
+
+    const P = (pts) => {
+        const p = new Path2D();
+        p.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0], pts[i][1]);
+        p.closePath();
+        return p;
+    };
+    const mirror = (pts) => pts.map(([x, y]) => [-x, y]).reverse();
+    const lg = (c, x0, y0, x1, y1, stops) => {
+        const g = c.createLinearGradient(x0, y0, x1, y1);
+        stops.forEach(([o, col]) => g.addColorStop(o, col));
+        return g;
+    };
+
+    function drawBoss(c) {
+        const b = B.boss;
+        if (!b.visible) return;
+        const t = B.t, S = b.S;
+        const eyeCol = b.enraged ? '#ff2a2a' : '#ff4fa3';
+        const flashList = [];
+        c.save();
+        c.translate(b.px + b.shx, b.py + b.shy);
+        c.scale(S, S);
+        c.globalAlpha = b.alpha;
+
+        const part = (pts, fill, edge, lw, glow) => {
+            const p = P(pts);
+            c.fillStyle = fill; c.fill(p);
+            c.shadowColor = edge; c.shadowBlur = glow === undefined ? 10 : glow;
+            c.strokeStyle = edge; c.lineWidth = lw || 2; c.lineJoin = 'round'; c.stroke(p);
+            c.shadowBlur = 0;
+            flashList.push(p);
+        };
+        const steel = (y0, y1) => lg(c, 0, y0, 0, y1, [[0, '#3b4478'], [.5, '#222a52'], [1, '#10142c']]);
+
+        // スラスター
+        const fl = 1 + Math.sin(t * 30) * .12;
+        c.globalCompositeOperation = 'lighter';
+        G(c, 0, 92, 46 * fl, '#ff007f', .55); G(c, -22, 76, 18 * fl, '#ff9ad0', .6); G(c, 22, 76, 18 * fl, '#ff9ad0', .6);
+        if (b.poisonT > 0) G(c, 0, 0, 125, '#a3e635', .25 * Math.min(1, b.poisonT));
+        c.globalCompositeOperation = 'source-over';
+
+        // ハロー
+        c.save();
+        c.translate(0, -4);
+        for (let i = 0; i < 3; i++) {
+            const a = t * .9 + i * Math.PI * 2 / 3;
+            c.save(); c.translate(Math.cos(a) * 100, Math.sin(a) * 100); c.rotate(a);
+            c.fillStyle = eyeCol; c.shadowColor = eyeCol; c.shadowBlur = 10; c.fillRect(-4, -4, 8, 8); c.restore();
+        }
+        c.rotate(t * .35);
+        c.strokeStyle = 'rgba(255,79,163,.6)'; c.lineWidth = 3; c.setLineDash([46, 20, 12, 20]);
+        c.shadowColor = '#ff4fa3'; c.shadowBlur = 14;
+        c.beginPath(); c.arc(0, 0, 100, 0, Math.PI * 2); c.stroke();
+        c.rotate(-t * 1.25);
+        c.lineWidth = 1.6; c.setLineDash([3, 9]); c.strokeStyle = 'rgba(124,200,255,.55)'; c.shadowColor = '#7cc8ff';
+        c.beginPath(); c.arc(0, 0, 88, 0, Math.PI * 2); c.stroke();
+        c.setLineDash([]); c.shadowBlur = 0;
+        c.restore();
+
+        // 翼
+        const wing = [[-34, -30], [-84, -78], [-112, -60], [-78, -8], [-46, 0]];
+        const wf = lg(c, -100, -70, -40, 0, [[0, '#4b1e7a'], [1, '#170a2e']]);
+        part(wing, wf, '#b026ff', 2, 8);
+        part(mirror(wing), lg(c, 100, -70, 40, 0, [[0, '#4b1e7a'], [1, '#170a2e']]), '#b026ff', 2, 8);
+
+        // 腕のエネルギーライン
+        c.strokeStyle = 'rgba(255,79,163,.4)'; c.lineWidth = 2; c.setLineDash([4, 5]);
+        [-1, 1].forEach((s, i) => {
+            const hy = 40 + Math.sin(t * 1.7 + i * Math.PI) * 5;
+            c.beginPath(); c.moveTo(s * 70, -6); c.lineTo(s * 94, hy); c.stroke();
+        });
+        c.setLineDash([]);
+
+        // 肩
+        const sh = [[-46, -40], [-88, -34], [-104, -8], [-86, 14], [-46, 4]];
+        part(sh, steel(-40, 14), eyeCol, 2.2, 10);
+        part(mirror(sh), steel(-40, 14), eyeCol, 2.2, 10);
+        c.fillStyle = 'rgba(255,79,163,.85)';
+        [-1, 1].forEach((s) => { c.fillRect(s * 74 - 8, -14, 16, 3); c.fillRect(s * 74 - 8, -8, 16, 3); });
+
+        // 胴体
+        const torso = [[-46, -36], [46, -36], [42, 36], [24, 60], [-24, 60], [-42, 36]];
+        part(torso, steel(-36, 60), eyeCol, 2.5, 12);
+        c.strokeStyle = 'rgba(255,255,255,.14)'; c.lineWidth = 1.4; c.beginPath();
+        c.moveTo(-30, -26); c.lineTo(-24, 40); c.moveTo(30, -26); c.lineTo(24, 40); c.moveTo(-34, 22); c.lineTo(34, 22); c.stroke();
+        part([[-18, 60], [18, 60], [10, 74], [-10, 74]], steel(60, 74), eyeCol, 1.8, 6);
+
+        // コア
+        const cp = 1 + Math.sin(t * 4) * .08 + b.charge * .5;
+        const cc = b.mode === 'tele' ? b.chargeCol : eyeCol;
+        c.globalCompositeOperation = 'lighter';
+        G(c, 0, 4, 40 * cp + b.charge * 60, cc, .55 + b.charge * .4);
+        c.globalCompositeOperation = 'source-over';
+        const cg = c.createRadialGradient(0, 4, 0, 0, 4, 18 * cp);
+        cg.addColorStop(0, '#ffffff'); cg.addColorStop(.45, '#ff7ac0'); cg.addColorStop(1, '#8a0f52');
+        c.fillStyle = cg; c.beginPath(); c.arc(0, 4, 16 * cp, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#ffd0ea'; c.lineWidth = 2.2; c.shadowColor = cc; c.shadowBlur = 10;
+        c.beginPath(); c.arc(0, 4, 22, 0, Math.PI * 2); c.stroke(); c.shadowBlur = 0;
+        if (b.charge > 0) {
+            c.strokeStyle = cc; c.globalAlpha = b.charge; c.lineWidth = 2;
+            c.beginPath(); c.arc(0, 4, 70 * (1 - b.charge) + 24, 0, Math.PI * 2); c.stroke(); c.globalAlpha = b.alpha;
+        }
+        c.save(); c.translate(0, 4); c.rotate(t * 1.5); c.fillStyle = 'rgba(255,255,255,.65)';
+        c.beginPath(); for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3; c.lineTo(Math.cos(a) * 9, Math.sin(a) * 9); } c.closePath(); c.fill(); c.restore();
+
+        // 頭
+        const horn = [[-24, -66], [-40, -92], [-18, -70]];
+        part(horn, '#2a1740', eyeCol, 1.8, 6); part(mirror(horn), '#2a1740', eyeCol, 1.8, 6);
+        part([[-7, -72], [0, -100], [7, -72]], '#2a1740', eyeCol, 1.8, 6);
+        const head = [[-24, -72], [24, -72], [32, -52], [22, -38], [-22, -38], [-32, -52]];
+        part(head, lg(c, 0, -72, 0, -38, [[0, '#454f8c'], [1, '#1b2147']]), eyeCol, 2.4, 12);
+        c.fillStyle = '#07040f'; c.beginPath();
+        c.moveTo(-22, -60); c.lineTo(22, -60); c.lineTo(18, -47); c.lineTo(-18, -47); c.closePath(); c.fill();
+        const ex = b.lookX, ey = b.lookY * .6;
+        c.globalCompositeOperation = 'lighter';
+        G(c, -10 + ex, -54 + ey, 18, eyeCol, .8); G(c, 10 + ex, -54 + ey, 18, eyeCol, .8);
+        c.globalCompositeOperation = 'source-over';
+        c.fillStyle = eyeCol; c.shadowColor = eyeCol; c.shadowBlur = 10;
+        c.fillRect(-17 + ex, -56 + ey, 12, 5); c.fillRect(5 + ex, -56 + ey, 12, 5);
+        c.shadowBlur = 0;
+        c.fillStyle = '#fff'; c.fillRect(-13 + ex, -55 + ey, 4, 3); c.fillRect(9 + ex, -55 + ey, 4, 3);
+
+        // 浮遊する拳
+        [-1, 1].forEach((s, i) => {
+            const hy = 40 + Math.sin(t * 1.7 + i * Math.PI) * 5;
+            const hex = [];
+            for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + Math.PI / 6; hex.push([s * 94 + Math.cos(a) * 19, hy + Math.sin(a) * 19]); }
+            part(hex, steel(hy - 19, hy + 19), eyeCol, 2.2, 10);
+            c.globalCompositeOperation = 'lighter';
+            G(c, s * 94, hy + 6, 14 + b.hand[i] * 26, '#ff7ac0', .6 + .4 * b.hand[i]);
+            c.globalCompositeOperation = 'source-over';
+        });
+
+        if (b.flash > .02) {
+            c.fillStyle = `rgba(255,255,255,${Math.min(.5, b.flash * .6)})`;
+            flashList.forEach((p) => c.fill(p));
+        }
+        c.restore();
+    }
+
+    function drawTelegraph(c) {
+        const b = B.boss;
+        if (b.mode !== 'tele' || !b.target || !b.target.alive || B.phase !== 'fight') return;
+        const k = b.tt / b.teleDur, u = b.target;
+        if (b.type === 'pulse') return;
+        const col = b.type === 'laser' ? '#ff2a2a' : '#ff4fa3';
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        if (b.type === 'laser') {
+            c.strokeStyle = col; c.globalAlpha = (.2 + .5 * k) * (.6 + .4 * Math.sin(B.t * 40)); c.lineWidth = 1.5;
+            c.beginPath(); c.moveTo(b.px, b.py - 54 * b.S); c.lineTo(u.cx, u.cy); c.stroke();
+        }
+        c.translate(u.cx, u.cy); c.rotate(B.t * 2.2);
+        const r = 56 - 22 * k;
+        c.strokeStyle = col; c.lineWidth = 2; c.globalAlpha = .55 + .35 * Math.sin(B.t * 18);
+        c.setLineDash([10, 8]); c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+        for (let i = 0; i < 4; i++) { c.rotate(Math.PI / 2); c.beginPath(); c.moveTo(r - 6, 0); c.lineTo(r + 8, 0); c.stroke(); }
+        c.restore();
+    }
+
+    function render() {
+        drawBg(B.t);
+        const c = fxC;
+        c.setTransform(DPR, 0, 0, DPR, 0, 0);
+        c.clearRect(0, 0, VW, VH);
+        if (B.shake > .05) { B.sx = rand(-1, 1) * B.shake; B.sy = rand(-1, 1) * B.shake; } else { B.sx = 0; B.sy = 0; }
+        c.save();
+        c.translate(B.sx, B.sy);
+        drawBoss(c); drawTelegraph(c); drawEnts(c); drawParts(c); drawNums(c);
+        c.restore();
+        bbWrap.style.transform = (B.sx || B.sy) ? `translate(${B.sx}px, ${B.sy}px)` : '';
+        c.globalCompositeOperation = 'source-over';
+        if (B.flashW > .01) { c.globalAlpha = Math.min(1, B.flashW); c.fillStyle = '#ffffff'; c.fillRect(0, 0, VW, VH); }
+        if (B.flashR > .01) { c.globalAlpha = B.flashR * .35; c.fillStyle = '#ff1a1a'; c.fillRect(0, 0, VW, VH); }
+        c.globalAlpha = 1;
+    }
+
+    /* ---------- 結果表示・基地へ戻る ---------- */
+    function showResult(won) {
+        if (B.resultShown) return;
+        B.resultShown = true;
+        B.phase = won ? 'won' : 'lost';
+        const total = B.units.length, alive = B.units.filter((u) => u.alive).length;
+        let html;
+        if (won) {
+            gold += CFG.rewardGold;
+            const unlocked = !bossGatlingUnlocked;
+            if (unlocked) bossGatlingUnlocked = true;
+            updateUI(); renderFooter(); saveGame();
+            html = `<div class="bb-result-card win">
+                <div class="bb-result-title">ボス撃破！</div>
+                <div class="bb-result-sub">サイバータイタン「オメガ」を撃破した！</div>
+                <div class="bb-result-reward"><i class="fa-solid fa-coins"></i> 報酬 +¥${fmt(CFG.rewardGold)}</div>
+                ${unlocked ? '<div class="bb-result-unlock"><i class="fa-solid fa-fire"></i> 新兵器「ボスガトリング」が解放された！</div>' : ''}
+                <div class="bb-result-stat">生存マシーン ${alive} / ${total}</div>
+                <button id="bb-result-btn" class="btn-campaign bb-btn">基地に戻る</button></div>`;
+        } else {
+            const dealt = Math.floor(bossData.maxHp - bossData.hp);
+            html = `<div class="bb-result-card lose">
+                <div class="bb-result-title">全機戦闘不能…</div>
+                <div class="bb-result-sub">ボスを倒せなかった。マシーンを強化して再挑戦しよう！</div>
+                <div class="bb-result-stat">与えたダメージ ${fmt(dealt)} / ${fmt(bossData.maxHp)}</div>
+                <button id="bb-result-btn" class="btn-boss bb-btn">基地に戻る</button></div>`;
+        }
+        const rs = $('bb-result');
+        rs.innerHTML = html;
+        rs.classList.remove('bb-hide');
+        $('bb-result-btn').onclick = leaveBattle;
+        B.autoLeave = setTimeout(leaveBattle, won ? 9000 : 7000);
+    }
+
+    function leaveBattle() {
+        if (!B) return;
+        clearTimeout(B.autoLeave);
+        cancelAnimationFrame(B.raf);
+        B = null;
+        inBattle = false;
+        const rs = $('bb-result');
+        rs.classList.add('bb-hide'); rs.innerHTML = '';
+        const view = $('view-boss-battle');
+        view.classList.add('hidden'); view.classList.remove('bb-active');
+        bbWrap.style.transform = '';
+        $('view-game').classList.remove('hidden');
+        resizeCanvas();   // ボス戦中のリサイズでキャンバスが潰れるのを防ぐ
+        updateUI();
+    }
+
+    // 旧実装との互換用（呼ばれても安全なように差し替え）
+    window.updateBossBattle = function () { /* 新しいループに置き換え済み */ };
+    window.endBossBattle = function () { leaveBattle(); };
+})();
+</script>
+
+<!-- =========================================================
+     CYBER TD 2088 拡張パック v2
+     既存コードは削除せず、最後に追加する互換拡張です。
+     ========================================================= -->
+<style id="cyber-ext-v2-style">
+:root{--x-cyan:#00f0ff;--x-pink:#ff007f;--x-gold:#ffde00;--x-panel:rgba(6,11,29,.96)}
+.cyber-v2-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 12px;border:1px solid rgba(0,240,255,.55);border-radius:8px;background:linear-gradient(135deg,rgba(0,240,255,.16),rgba(176,38,255,.14));color:#e7fcff;font-weight:900;font-size:12px;white-space:nowrap;cursor:pointer;transition:transform .18s,box-shadow .18s,filter .18s}
+.cyber-v2-btn:hover{transform:translateY(-1px);filter:brightness(1.18);box-shadow:0 0 16px rgba(0,240,255,.23)}
+.cyber-v2-btn:active{transform:scale(.97)}
+.cyber-v2-btn.pink{border-color:rgba(255,0,127,.7);background:linear-gradient(135deg,rgba(255,0,127,.2),rgba(99,10,75,.24))}
+.cyber-v2-btn.gold{border-color:rgba(255,222,0,.72);background:linear-gradient(135deg,rgba(255,222,0,.2),rgba(255,120,0,.12));color:#fff4ad}
+.cyber-v2-btn:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(1);transform:none}
+.cyber-v2-overlay{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(ellipse at 50% 30%,rgba(13,34,72,.77),rgba(0,0,0,.92));backdrop-filter:blur(9px);animation:cx-v2-fade .2s ease-out}
+.cyber-v2-overlay[hidden]{display:none!important}
+@keyframes cx-v2-fade{from{opacity:0}to{opacity:1}}
+.cyber-v2-panel{width:min(960px,96vw);max-height:92vh;overflow:auto;position:relative;border:1px solid rgba(0,240,255,.55);border-radius:18px;background:linear-gradient(145deg,rgba(10,18,42,.98),rgba(4,6,18,.98));box-shadow:0 0 55px rgba(0,240,255,.13),inset 0 0 30px rgba(0,240,255,.04);padding:clamp(16px,3vw,30px)}
+.cyber-v2-panel:before{content:"";position:absolute;top:0;left:7%;right:7%;height:2px;background:linear-gradient(90deg,transparent,#00f0ff,#b026ff,#ff007f,transparent);box-shadow:0 0 14px #00f0ff}
+.cyber-v2-title{font-family:'Orbitron','Noto Sans JP',sans-serif;font-size:clamp(22px,3vw,32px);font-weight:900;letter-spacing:.06em;color:#c8fbff;text-shadow:0 0 15px rgba(0,240,255,.55);margin:4px 0 7px}
+.cyber-v2-sub{font-size:13px;color:#a7b4cf;line-height:1.8;margin-bottom:18px}
+.cyber-v2-close{position:absolute;right:16px;top:16px;width:36px;height:36px;border:1px solid rgba(148,163,184,.35);border-radius:8px;color:#cbd5e1;background:rgba(15,23,42,.8);cursor:pointer;font-size:20px}
+.cyber-v2-close:hover{color:white;border-color:#ff007f;box-shadow:0 0 12px rgba(255,0,127,.3)}
+.cyber-v2-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:13px}
+.cyber-v2-card{position:relative;overflow:hidden;border:1px solid rgba(90,115,157,.45);border-radius:13px;background:linear-gradient(145deg,rgba(17,28,55,.91),rgba(7,12,29,.92));padding:16px;transition:transform .2s,border-color .2s,box-shadow .2s}
+.cyber-v2-card:hover{transform:translateY(-2px);border-color:rgba(0,240,255,.75);box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.cyber-v2-card.active{border-color:rgba(0,255,151,.75);box-shadow:inset 0 0 22px rgba(0,255,151,.06),0 0 16px rgba(0,255,151,.09)}
+.cyber-v2-card.active:after{content:"ONLINE";position:absolute;right:-27px;top:12px;transform:rotate(35deg);width:105px;text-align:center;background:#087e56;color:#d7fff1;font:900 9px 'Orbitron',sans-serif;letter-spacing:.13em;padding:4px}
+.cyber-v2-card h3{font-size:17px;font-weight:900;color:#f2f8ff;margin:0 0 8px;padding-right:45px}
+.cyber-v2-card p{font-size:12px;line-height:1.8;color:#b4c1d9;min-height:64px;margin:0 0 14px}
+.cyber-v2-card .cyber-v2-btn{width:100%;min-height:38px}
+.cyber-v2-status{display:flex;align-items:center;gap:6px;margin-bottom:12px;color:#94a3b8;font-size:11px}
+.cyber-v2-status i{font-size:9px;color:#6b7280}.cyber-v2-card.active .cyber-v2-status{color:#a7f3d0}.cyber-v2-card.active .cyber-v2-status i{color:#34d399;text-shadow:0 0 9px #34d399}
+#cyber-inventory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.cyber-v2-machine{display:flex;align-items:center;gap:12px;min-width:0;padding:12px;border-radius:11px;background:rgba(15,23,42,.77);border:1px solid rgba(100,116,139,.34)}
+.cyber-v2-machine .machine-icon{flex:none;width:46px;height:46px;display:grid;place-items:center;border:1px solid currentColor;border-radius:12px;background:rgba(255,255,255,.025);font-size:20px;box-shadow:0 0 13px currentColor}
+.cyber-v2-machine .machine-info{flex:1;min-width:0}.cyber-v2-machine .machine-info b{display:block;color:#f1f5f9;font-size:13px}.cyber-v2-machine .machine-info small{display:block;color:#94a3b8;font-size:11px;line-height:1.6;margin-top:3px}
+.cyber-v2-empty{padding:18px;border:1px dashed rgba(100,116,139,.4);border-radius:12px;color:#94a3b8;text-align:center;font-size:13px}
+.cyber-v2-section{margin:19px 0 10px;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:900;color:#d8f8ff}
+.cyber-v2-section:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(0,240,255,.35),transparent)}
+#cyber-boss-picker .cyber-v2-panel{width:min(1000px,96vw)}
+#cyber-boss-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.cyber-boss-card{position:relative;text-align:left;padding:15px;border-radius:13px;background:linear-gradient(145deg,rgba(20,25,52,.97),rgba(5,8,22,.98));border:1px solid rgba(100,116,139,.5);cursor:pointer;overflow:hidden;transition:transform .22s,border-color .22s,box-shadow .22s}
+.cyber-boss-card:hover{transform:translateY(-3px) scale(1.01);border-color:var(--boss-color);box-shadow:0 0 24px color-mix(in srgb,var(--boss-color),transparent 68%)}
+.cyber-boss-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 0,color-mix(in srgb,var(--boss-color),transparent 78%),transparent 58%);pointer-events:none}
+.cyber-boss-card .rank{position:absolute;right:12px;top:12px;width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--boss-color);border-radius:8px;color:var(--boss-color);font:900 14px 'Orbitron',sans-serif;box-shadow:0 0 10px color-mix(in srgb,var(--boss-color),transparent 75%)}
+.cyber-boss-card .boss-art{width:56px;height:56px;display:grid;place-items:center;border:2px solid var(--boss-color);border-radius:16px;color:var(--boss-color);font-size:25px;background:radial-gradient(circle,rgba(255,255,255,.12),rgba(0,0,0,.25));box-shadow:0 0 24px color-mix(in srgb,var(--boss-color),transparent 66%);margin-bottom:11px;animation:cyber-boss-float 3s ease-in-out infinite}
+@keyframes cyber-boss-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.cyber-boss-card h3{font-size:15px;font-weight:900;color:#f8fafc;margin:0 38px 5px 0}.cyber-boss-card .strength{font:900 11px 'Orbitron',sans-serif;color:var(--boss-color);margin-bottom:8px}.cyber-boss-card p{font-size:11px;line-height:1.7;color:#aab8d0;margin:0 0 10px;min-height:38px}.cyber-boss-card .hp{font-size:11px;color:#e2e8f0;border-top:1px solid rgba(148,163,184,.16);padding-top:8px}
+#cyber-selected-boss{margin:0 0 12px;padding:11px 14px;border:1px solid rgba(255,0,127,.45);border-radius:10px;background:linear-gradient(90deg,rgba(255,0,127,.12),rgba(0,240,255,.05));font-size:12px;color:#dcecff;box-shadow:inset 0 0 15px rgba(255,0,127,.04)}
+#cyber-custom-table{width:100%;border-collapse:separate;border-spacing:0 6px;min-width:660px}
+#cyber-custom-table th{text-align:left;font-size:11px;color:#9fb2d0;padding:8px 10px}
+#cyber-custom-table td{padding:8px 10px;background:rgba(15,23,42,.75);border-top:1px solid rgba(100,116,139,.2);border-bottom:1px solid rgba(100,116,139,.2);font-size:12px;color:#e5edf9}
+#cyber-custom-table td:first-child{border-left:1px solid rgba(100,116,139,.2);border-radius:8px 0 0 8px;font-weight:800;min-width:150px}
+#cyber-custom-table td:last-child{border-right:1px solid rgba(100,116,139,.2);border-radius:0 8px 8px 0}
+#cyber-custom-table input{width:100%;min-width:80px;padding:8px;border:1px solid rgba(0,240,255,.25);border-radius:7px;background:rgba(2,6,23,.85);color:#f8fafc;outline:none}
+#cyber-custom-table input:focus{border-color:#00f0ff;box-shadow:0 0 9px rgba(0,240,255,.15)}
+.cyber-v2-footnote{font-size:11px;line-height:1.8;color:#94a3b8;margin-top:10px}
+/* ゲーム全体の視認性・動きの改善 */
+.grid-cell.buildable{transition:background-color .15s,border-color .15s,box-shadow .15s}
+.grid-cell.buildable:hover{border-color:rgba(0,240,255,.6)!important;box-shadow:inset 0 0 14px rgba(0,240,255,.12),0 0 8px rgba(0,240,255,.08)}
+.tower{transition:transform .18s;filter:drop-shadow(0 0 4px currentColor)}
+.tower:hover{transform:scale(1.08)}
+.tower-card{position:relative;overflow:hidden;min-width:105px!important}
+.tower-card:after{content:"";position:absolute;inset:-100% 60% -100% -60%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.09),transparent);transform:rotate(25deg);transition:left .45s}
+.tower-card:hover:after{left:130%}
+.tower-card.ext-unavailable{opacity:.55;filter:saturate(.55)}
+#view-game header{gap:10px}
+#view-game header>div:last-child{gap:8px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:1000px){#boss-timer{font-size:10px!important;margin-right:0!important}.cyber-v2-btn{padding:6px 8px;font-size:11px}#view-game header{padding-left:10px!important;padding-right:10px!important}#view-game header>div:first-child{gap:10px;font-size:14px}}
+@media(max-width:700px){.cyber-v2-machine{align-items:flex-start}.cyber-v2-overlay{padding:8px}.cyber-v2-panel{padding:18px 12px}.cyber-v2-title{padding-right:34px}}
+@media(prefers-reduced-motion:reduce){.cyber-v2-overlay,.cyber-v2-card,.cyber-boss-card,.tower,.tower-card:after{animation:none!important;transition:none!important}}
+</style>
+<script id="cyber-ext-v2-script">
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const EXTRA_SAVE_KEY = 'cyberTD2088ExtraV2';
+const clamp = (n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+const fmt = n => Math.floor(n).toLocaleString('ja-JP');
+const uid = ()=>'cx-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toString(36).slice(-4);
+const normalMachineIds = ['machineGun','laser','plasma','missile','emp','sniper','poison'];
+
+/* ボス撃破で獲得できる限定マシーン。元のTOWER_TYPESを消さずに追加します。 */
+const specialMachines = [
+ {id:'hunterDrone',name:'ハンター・ドローン',cost:500,color:'#64f5ff',icon:'fa-crosshairs',dmg:72,range:5.2,rate:14,secret:true},
+ {id:'omegaBreaker',name:'オメガ・ブレイカー',cost:700,color:'#ff4fa3',icon:'fa-burst',dmg:110,range:4.8,rate:24,secret:true},
+ {id:'voidLancer',name:'ヴォイド・ランサー',cost:900,color:'#a78bfa',icon:'fa-meteor',dmg:185,range:6.0,rate:42,secret:true},
+ {id:'disasterCannon',name:'ディザスター砲',cost:1200,color:'#ff7a3d',icon:'fa-radiation',dmg:310,range:5.5,rate:58,secret:true},
+ {id:'stellarForge',name:'ステラ・フォージ',cost:1500,color:'#ffde70',icon:'fa-sun',dmg:440,range:7.0,rate:66,secret:true},
+ {id:'singularity',name:'シンギュラリティ',cost:2000,color:'#ce8bff',icon:'fa-atom',dmg:680,range:8.0,rate:78,secret:true}
+];
+specialMachines.forEach(t=>{if(!TOWER_TYPES[t.id])TOWER_TYPES[t.id]=t;});
+const defaultStats = {};
+Object.values(TOWER_TYPES).forEach(t=>{defaultStats[t.id]={dmg:Number(t.dmg)||1,range:Number(t.range)||1,rateSeconds:(Number(t.rate)||30)/60};});
+let customStats = JSON.parse(JSON.stringify(defaultStats));
+let dlcs = {machineTuning:false,bossExpansion:false};
+let inventory = [];
+let bossRewardsClaimed = {};
+let pickedBoss = null;
+let activeBattleBoss = null;
+let pendingBossReward = false;
+let hasExtraSave = false;
+let nextBossAt = Date.now()+60000;
+let selectedFromInventory = 'machineGun';
+
+const bossSpecs = [
+ {id:'hunter',name:'ナノ・ハンター',rank:1,baseHp:2800,attack:0.72,machineDmg:1.05,color:'#00f0ff',hue:145,icon:'fa-crosshairs',desc:'高速連射と追尾弾を使う偵察型ボス。',machine:'hunterDrone'},
+ {id:'omega',name:'サイバータイタン・オメガ',rank:2,baseHp:5200,attack:1.00,machineDmg:1.12,color:'#ff007f',hue:0,icon:'fa-robot',desc:'レーザーとパルスを操る標準型の巨大ボス。',machine:'omegaBreaker'},
+ {id:'leviathan',name:'ヴォイド・リヴァイアサン',rank:3,baseHp:8500,attack:1.48,machineDmg:1.20,color:'#9b87ff',hue:245,icon:'fa-dragon',desc:'広範囲パルスで部隊全体を追い詰める。',machine:'voidLancer'},
+ {id:'disaster',name:'ディザスター・コア',rank:4,baseHp:14000,attack:1.95,machineDmg:1.28,color:'#ff733d',hue:35,icon:'fa-radiation',desc:'高火力レーザーを連発する災厄級ボス。',machine:'disasterCannon'},
+ {id:'stellar',name:'ステラ・エンペラー',rank:5,baseHp:22000,attack:2.3,machineDmg:1.35,color:'#ffe16b',hue:65,icon:'fa-sun',desc:'星核をチャージし、苛烈な連続攻撃を放つ。',machine:'stellarForge',dlc:true},
+ {id:'singularity',name:'シンギュラリティ神',rank:6,baseHp:34000,attack:2.7,machineDmg:1.45,color:'#d18bff',hue:275,icon:'fa-atom',desc:'空間そのものを歪ませる最上位の最終ボス。',machine:'singularity',dlc:true}
+];
+function bossSpecsForInventory(){return bossSpecs;}
+const standardIds = new Set(normalMachineIds);
+const baseOwnedIds = new Set([...normalMachineIds,'bossGatling']);
+function hasInInventory(type){return inventory.some(m=>m.type===type);}
+function hasPlaced(type){return builtTowers.some(m=>m.type===type);}
+function ownedSpecial(type){return !!bossRewardsClaimed[type] || hasInInventory(type) || hasPlaced(type);}
+function machineName(type){return TOWER_TYPES[type]?.name || type;}
+function machineColor(type){return TOWER_TYPES[type]?.color || '#00f0ff';}
+function machineIcon(type){return TOWER_TYPES[type]?.icon || 'fa-microchip';}
+function makeMachine(type, level){
+ const t=TOWER_TYPES[type]; if(!t)return null;
+ return {id:uid(),type,x:null,y:null,level:Math.max(1,Number(level)||1),dmg:t.dmg,range:t.range,cooldown:0};
+}
+function machineExists(type){return hasInInventory(type)||hasPlaced(type);}
+function syncMachineStats(m){
+ const t=TOWER_TYPES[m.type];if(!t)return;
+ const lv=Math.max(1,Number(m.level)||1);
+ m.level=lv;
+ m.dmg=Number((t.dmg*(lv===1?1:lv*1.2)).toFixed(2));
+ m.range=Number((t.range+(lv===1?0:lv*.2)).toFixed(2));
+ if(!Number.isFinite(m.cooldown))m.cooldown=0;
+}
+function applyCurrentStats(){
+ Object.values(TOWER_TYPES).forEach(t=>{
+  const base=defaultStats[t.id]||{dmg:t.dmg,range:t.range,rateSeconds:t.rate/60};
+  const custom=customStats[t.id]||base;
+  const use=dlcs.machineTuning?custom:base;
+  t.dmg=clamp(Number(use.dmg)||base.dmg,1,1000000);
+  t.range=clamp(Number(use.range)||base.range,.2,30);
+  t.rate=Math.round(clamp(Number(use.rateSeconds)||base.rateSeconds,.03,30)*60);
+ });
+ builtTowers.forEach(syncMachineStats); inventory.forEach(syncMachineStats);
+}
+function createStarterInventory(){
+ const inv=[];
+ normalMachineIds.forEach(id=>{if(!hasPlaced(id))inv.push(makeMachine(id,1));});
+ if(bossGatlingUnlocked && !hasPlaced('bossGatling'))inv.push(makeMachine('bossGatling',1));
+ bossSpecsForInventory().forEach(b=>{if(bossRewardsClaimed[b.id]&&!hasPlaced(b.machine))inv.push(makeMachine(b.machine,1));});
+ return inv.filter(Boolean);
+}
+function normalizeInventory(data){
+ if(!Array.isArray(data))return createStarterInventory();
+ return data.map(m=>{
+  if(!m||!TOWER_TYPES[m.type])return null;
+  return {id:m.id||uid(),type:m.type,x:null,y:null,level:Math.max(1,Number(m.level)||1),dmg:Number(m.dmg)||TOWER_TYPES[m.type].dmg,range:Number(m.range)||TOWER_TYPES[m.type].range,cooldown:0};
+ }).filter(Boolean);
+}
+function readExtraSave(){
+ hasExtraSave=false;
+ try{
+  const raw=localStorage.getItem(EXTRA_SAVE_KEY);
+  if(raw){
+   const data=JSON.parse(raw);
+   if(data&&typeof data==='object'){
+    hasExtraSave=Array.isArray(data.inventory);
+    dlcs={machineTuning:data.dlcs?.machineTuning===true,bossExpansion:data.dlcs?.bossExpansion===true};
+    bossRewardsClaimed=(data.bossRewardsClaimed&&typeof data.bossRewardsClaimed==='object')?data.bossRewardsClaimed:{};
+    const loaded=data.customStats&&typeof data.customStats==='object'?data.customStats:{};
+    customStats=JSON.parse(JSON.stringify(defaultStats));
+    Object.keys(customStats).forEach(id=>{const v=loaded[id];if(v){customStats[id]={dmg:clamp(Number(v.dmg)||defaultStats[id].dmg,1,1000000),range:clamp(Number(v.range)||defaultStats[id].range,.2,30),rateSeconds:clamp(Number(v.rateSeconds)||defaultStats[id].rateSeconds,.03,30)};}});
+    inventory=normalizeInventory(data.inventory);
+   }
+  }
+ }catch(e){console.warn('追加セーブデータの読み込みに失敗しました',e);}
+ if(!hasExtraSave)inventory=createStarterInventory();
+ // 旧バージョンのセーブでボスガトリングが解放済みなら、設置可能な1台を補完します。
+ if(bossGatlingUnlocked&&!machineExists('bossGatling'))inventory.push(makeMachine('bossGatling',1));
+ bossSpecsForInventory().forEach(b=>{if(bossRewardsClaimed[b.id]&&!machineExists(b.machine))inventory.push(makeMachine(b.machine,1));});
+ applyCurrentStats();
+}
+const previousLoadGame=window.loadGame;
+window.loadGame=function(){previousLoadGame();readExtraSave();};
+const previousSaveGame=window.saveGame;
+window.saveGame=function(){
+ try{previousSaveGame();}catch(e){console.warn('標準セーブを保存できませんでした',e);}
+ try{localStorage.setItem(EXTRA_SAVE_KEY,JSON.stringify({inventory,dlcs,customStats,bossRewardsClaimed}));}catch(e){console.warn('追加セーブを保存できませんでした',e);}
+};
+const previousClearSave=window.clearSave;
+window.clearSave=function(){
+ try{localStorage.removeItem(EXTRA_SAVE_KEY);}catch(e){}
+ dlcs={machineTuning:false,bossExpansion:false};bossRewardsClaimed={};inventory=[];customStats=JSON.parse(JSON.stringify(defaultStats));
+ previousClearSave();
+};
+
+/* --------- 拡張用モーダル --------- */
+function createOverlay(id, title, subtitle){
+ const el=document.createElement('div');el.id=id;el.className='cyber-v2-overlay';el.hidden=true;
+ el.innerHTML=`<section class="cyber-v2-panel"><button class="cyber-v2-close" type="button" aria-label="閉じる">×</button><h2 class="cyber-v2-title">${title}</h2><div class="cyber-v2-sub">${subtitle}</div><div class="cyber-v2-content"></div></section>`;
+ el.querySelector('.cyber-v2-close').onclick=()=>el.hidden=true;
+ el.addEventListener('click',e=>{if(e.target===el)el.hidden=true;});
+ document.body.appendChild(el);return el;
+}
+const dlcOverlay=createOverlay('cyber-dlc-overlay','DLC ARCHIVE','拡張コンテンツを有効化すると、このセーブデータに機能が追加されます。もう一度押すと無効化できます。');
+const inventoryOverlay=createOverlay('cyber-inventory-overlay','MACHINE INVENTORY','マシーンは各種類につき1台。設置は無料で、削除するとレベルを保持したままここへ収納されます。');
+const customOverlay=createOverlay('cyber-custom-overlay','MACHINE LAB / TUNING','攻撃力・射程・連射間隔を機種ごとに調整します。設定はセーブされ、DLCを無効にすると標準性能に戻ります。');
+const bossPicker=createOverlay('cyber-boss-picker','BOSS SELECT // THREAT RANK','ボスは強い順に表示されます。ボスを選んだ後、迎撃に参加させるマシーンを選択してください。');
+
+/* 最初の画面にDLCボタンを追加。ゲーム画面からも開けるようにします。 */
+const titleModal=document.querySelector('#view-title .cyber-modal');
+if(titleModal&&!$('cyber-dlc-title-btn')){
+ const b=document.createElement('button');b.id='cyber-dlc-title-btn';b.className='cyber-v2-btn';b.style.width='100%';b.style.minHeight='40px';b.innerHTML='<i class="fa-solid fa-layer-group"></i> DLC / 拡張コンテンツ';b.onclick=openDlc;
+ const clear=titleModal.querySelector('button[onclick="clearSave()"]');titleModal.insertBefore(b,clear||null);
+}
+const headerRight=document.querySelector('#view-game header>div:last-child');
+if(headerRight){
+ const invBtn=document.createElement('button');invBtn.id='cyber-inventory-btn';invBtn.className='cyber-v2-btn';invBtn.innerHTML='<i class="fa-solid fa-box-open"></i> インベントリ';invBtn.onclick=openInventory;headerRight.insertBefore(invBtn,headerRight.firstChild);
+ const dlcBtn=document.createElement('button');dlcBtn.id='cyber-dlc-game-btn';dlcBtn.className='cyber-v2-btn';dlcBtn.innerHTML='<i class="fa-solid fa-layer-group"></i> DLC';dlcBtn.onclick=openDlc;headerRight.insertBefore(dlcBtn,invBtn.nextSibling);
+ const bossBtn=document.createElement('button');bossBtn.id='cyber-boss-anytime-btn';bossBtn.className='cyber-v2-btn pink';bossBtn.innerHTML='<i class="fa-solid fa-skull"></i> BOSS挑戦';bossBtn.onclick=()=>window.showBossSelection();headerRight.insertBefore(bossBtn,dlcBtn.nextSibling);
+}
+function renderDlc(){
+ const host=dlcOverlay.querySelector('.cyber-v2-content');host.innerHTML=`
+ <div class="cyber-v2-grid">
+  <article class="cyber-v2-card ${dlcs.machineTuning?'active':''}">
+   <h3><i class="fa-solid fa-sliders" style="color:#00f0ff;margin-right:7px"></i>マシーン・カスタマイズ</h3>
+   <div class="cyber-v2-status"><i class="fa-solid fa-circle"></i>${dlcs.machineTuning?'有効化中':'無効'}</div>
+   <p>すべてのマシーンの攻撃力・射程・連射間隔を機種別に細かく調整。設置済み・インベントリ内・限定マシーンにも反映され、設定はセーブされます。</p>
+   <button id="cyber-toggle-tuning" class="cyber-v2-btn ${dlcs.machineTuning?'gold':''}">${dlcs.machineTuning?'無効化する':'有効化する'}</button>
+   <button id="cyber-open-tuning" class="cyber-v2-btn" style="margin-top:8px;${dlcs.machineTuning?'':'opacity:.4'}" ${dlcs.machineTuning?'':'disabled'}><i class="fa-solid fa-wrench"></i> 性能を調整</button>
+  </article>
+  <article class="cyber-v2-card ${dlcs.bossExpansion?'active':''}">
+   <h3><i class="fa-solid fa-skull" style="color:#ff007f;margin-right:7px"></i>BOSS追加パック</h3>
+   <div class="cyber-v2-status"><i class="fa-solid fa-circle"></i>${dlcs.bossExpansion?'有効化中':'無効'}</div>
+   <p>選べるボスが4種類から6種類に増加。さらにゲーム画面に「BOSS挑戦」ボタンが現れ、1分待たずにいつでもボス戦を開始できます。</p>
+   <button id="cyber-toggle-bossdlc" class="cyber-v2-btn pink ${dlcs.bossExpansion?'gold':''}">${dlcs.bossExpansion?'無効化する':'有効化する'}</button>
+  </article>
+ </div>
+ <div class="cyber-v2-footnote"><i class="fa-solid fa-floppy-disk"></i> DLCの有効・無効と性能設定はこのブラウザのセーブデータに保存されます。</div>`;
+ $('cyber-toggle-tuning').onclick=()=>toggleDlc('machineTuning');
+ $('cyber-toggle-bossdlc').onclick=()=>toggleDlc('bossExpansion');
+ $('cyber-open-tuning').onclick=()=>{if(dlcs.machineTuning){renderCustomizer();customOverlay.hidden=false;}};
+}
+function openDlc(){renderDlc();dlcOverlay.hidden=false;}
+function toggleDlc(id){
+ dlcs[id]=!dlcs[id];
+ applyCurrentStats();
+ renderFooter();renderDlc();updateBossAnytimeButton();
+ window.saveGame();
+ toast(`${id==='machineTuning'?'マシーン・カスタマイズ':'BOSS追加パック'}を${dlcs[id]?'有効化':'無効化'}しました`,dlcs[id]?'info':'warn');
+}
+function updateBossAnytimeButton(){const b=$('cyber-boss-anytime-btn');if(b)b.style.display=dlcs.bossExpansion?'inline-flex':'none';}
+
+/* --------- 性能カスタマイズ画面 --------- */
+function renderCustomizer(){
+ const host=customOverlay.querySelector('.cyber-v2-content');
+ const rows=Object.values(TOWER_TYPES).map(t=>{
+  const s=customStats[t.id]||defaultStats[t.id]||{dmg:t.dmg,range:t.range,rateSeconds:t.rate/60};
+  return `<tr data-type="${t.id}"><td><span style="color:${t.color};margin-right:7px"><i class="fa-solid ${t.icon}"></i></span>${t.name}</td><td><input class="cx-dmg" type="number" min="1" max="1000000" step="1" value="${s.dmg}" aria-label="${t.name} 攻撃力"></td><td><input class="cx-range" type="number" min="0.2" max="30" step="0.1" value="${s.range}" aria-label="${t.name} 射程"></td><td><input class="cx-rate" type="number" min="0.03" max="30" step="0.01" value="${s.rateSeconds}" aria-label="${t.name} 連射間隔（秒）"></td></tr>`;
+ }).join('');
+ host.innerHTML=`<div style="overflow:auto;max-height:60vh"><table id="cyber-custom-table"><thead><tr><th>マシーン</th><th>攻撃力</th><th>射程（マス）</th><th>連射間隔（秒）</th></tr></thead><tbody>${rows}</tbody></table></div><div class="cyber-v2-footnote">数値を大きくすると強くなります。連射間隔は短いほど速く攻撃します。変更は「設定を保存して適用」を押すまで反映されません。</div><div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button id="cyber-custom-apply" class="cyber-v2-btn gold"><i class="fa-solid fa-check"></i> 設定を保存して適用</button><button id="cyber-custom-reset" class="cyber-v2-btn"><i class="fa-solid fa-rotate-left"></i> 標準値に戻す</button></div>`;
+ $('cyber-custom-apply').onclick=saveCustomizer;
+ $('cyber-custom-reset').onclick=()=>{customStats=JSON.parse(JSON.stringify(defaultStats));renderCustomizer();toast('全マシーンの設定値を標準値へ戻しました');};
+}
+function saveCustomizer(){
+ const updated={};
+ for(const tr of $('cyber-custom-table').querySelectorAll('tbody tr')){
+  const id=tr.dataset.type;const dmg=Number(tr.querySelector('.cx-dmg').value),range=Number(tr.querySelector('.cx-range').value),rateSeconds=Number(tr.querySelector('.cx-rate').value);
+  if(!Number.isFinite(dmg)||!Number.isFinite(range)||!Number.isFinite(rateSeconds)||dmg<1||dmg>1000000||range<.2||range>30||rateSeconds<.03||rateSeconds>30){toast(`${machineName(id)}の数値が範囲外です`, 'warn');return;}
+  updated[id]={dmg,range,rateSeconds};
+ }
+ customStats=updated;applyCurrentStats();renderFooter();window.saveGame();customOverlay.hidden=true;toast('マシーン性能を保存して適用しました','info');
+}
+
+/* --------- インベントリ。設置時のレベルを保持して出し入れします。 --------- */
+function openInventory(){renderInventory();inventoryOverlay.hidden=false;}
+function renderInventory(){
+ const host=inventoryOverlay.querySelector('.cyber-v2-content');
+ let html='<div class="cyber-v2-section"><i class="fa-solid fa-box-open"></i>保管中のマシーン</div><div id="cyber-inventory-grid">';
+ if(!inventory.length)html+='<div class="cyber-v2-empty" style="grid-column:1/-1">保管中のマシーンはありません。設置済みマシーンを削除すると、ここに収納されます。</div>';
+ inventory.forEach(m=>{const t=TOWER_TYPES[m.type];html+=`<div class="cyber-v2-machine"><div class="machine-icon" style="color:${t.color}"><i class="fa-solid ${t.icon}"></i></div><div class="machine-info"><b>${t.name}</b><small>Lv.${m.level}　攻撃力 ${fmt(m.dmg)}　射程 ${Number(m.range).toFixed(1)}</small></div><button class="cyber-v2-btn" data-deploy="${m.id}">選択</button></div>`;});
+ html+='</div><div class="cyber-v2-section"><i class="fa-solid fa-tower-broadcast"></i>設置済みマシーン</div><div id="cyber-placed-grid">';
+ if(!builtTowers.length)html+='<div class="cyber-v2-empty">まだマシーンを設置していません。</div>';
+ builtTowers.forEach(m=>{const t=TOWER_TYPES[m.type];if(!t)return;html+=`<div class="cyber-v2-machine"><div class="machine-icon" style="color:${t.color}"><i class="fa-solid ${t.icon}"></i></div><div class="machine-info"><b>${t.name}</b><small>Lv.${m.level}　配置：${m.x+1}列 / ${m.y+1}行<br>攻撃力 ${fmt(m.dmg)}　射程 ${Number(m.range).toFixed(1)}</small></div><button class="cyber-v2-btn pink" data-store="${m.id}">削除して収納</button></div>`;});
+ html+='</div><div class="cyber-v2-footnote">削除・収納ではマシーンのレベルと種類を保持します。再設置も無料です。収納したマシーンを設置するには、選択ボタンを押してからグリッドの空きマスをクリックしてください。</div>';
+ host.innerHTML=html;
+ host.querySelectorAll('[data-deploy]').forEach(b=>b.onclick=()=>{const m=inventory.find(v=>v.id===b.dataset.deploy);if(!m)return;selectedTowerType=m.type;selectedFromInventory=m.type;renderFooter();inventoryOverlay.hidden=true;toast(`${machineName(m.type)} を選択しました。空きマスをクリックして無料設置！`,'info');});
+ host.querySelectorAll('[data-store]').forEach(b=>b.onclick=()=>storeMachine(b.dataset.store));
+}
+function storeMachine(id){
+ const index=builtTowers.findIndex(m=>m.id===id);if(index<0)return;
+ const tower=builtTowers.splice(index,1)[0];
+ const cell=gridEl.querySelectorAll('.grid-cell')[tower.y*GRID_W+tower.x];
+ if(cell){cell.innerHTML='';cell._tower=null;}
+ tower.x=null;tower.y=null;tower.cooldown=0;inventory.push(tower);
+ window.updateUI();renderFooter();renderInventory();window.saveGame();
+ toast(`${machineName(tower.type)} をインベントリに収納しました`,'info');
+}
+const previousHandleCellClick=window.handleCellClick;
+window.handleCellClick=function(x,y,cell){
+ const existing=builtTowers.find(t=>t.x===x&&t.y===y);
+ if(existing)return previousHandleCellClick(x,y,cell); // 既存の強化処理は維持
+ if(builtTowers.some(t=>t.type===selectedTowerType)){toast(`${machineName(selectedTowerType)} はすでに設置されています。削除して収納すると再設置できます。`,'warn');return;}
+ const idx=inventory.findIndex(m=>m.type===selectedTowerType);
+ if(idx<0){toast(`${machineName(selectedTowerType)} はインベントリにありません。インベントリを開いて確認してください。`,'warn');return;}
+ const tower=inventory.splice(idx,1)[0];tower.x=x;tower.y=y;tower.cooldown=0;syncMachineStats(tower);builtTowers.push(tower);
+ window.renderTowerDOM(cell,tower);window.updateUI();renderFooter();window.saveGame();
+ try{spawnParticle(x,y,'build');}catch(e){}
+ toast(`${machineName(tower.type)} を無料設置しました！`,'info');
+};
+gridEl.addEventListener('contextmenu',e=>{const cell=e.target.closest('.grid-cell');if(!cell||!cell._tower)return;e.preventDefault();storeMachine(cell._tower.id);});
+window.renderFooter=function(){
+ const footer=$('tower-footer');if(!footer)return;footer.innerHTML='';
+ const visible=Object.values(TOWER_TYPES).filter(t=>{
+  if(standardIds.has(t.id))return true;
+  if(t.id==='bossGatling')return !!bossGatlingUnlocked||machineExists(t.id);
+  const spec=bossSpecsForInventory().find(s=>s.machine===t.id);return !!spec&&(!!bossRewardsClaimed[spec.id]||machineExists(t.id));
+ });
+ visible.forEach(t=>{
+  const stored=inventory.some(m=>m.type===t.id),placed=hasPlaced(t.id),selected=selectedTowerType===t.id;
+  const card=document.createElement('div');card.className=`tower-card min-w-[95px] h-20 flex flex-col items-center justify-center gap-1 ${selected?'selected':''} ${!stored?'ext-unavailable':''}`;
+  card.style.borderColor=selected?t.color:'rgba(100,116,139,.3)';if(selected)card.style.boxShadow=`0 0 16px ${t.color}55`;
+  const status=stored?'無料設置':placed?'設置済み':'所持なし';
+  card.innerHTML=`<i class="fa-solid ${t.icon} text-2xl" style="color:${t.color}"></i><div class="text-[10px] font-bold text-white tracking-wider">${t.name}</div><div class="text-[10px]" style="color:${stored?'#ffde00':placed?'#66e6ff':'#94a3b8'}">${status}</div>`;
+  card.title=stored?'クリックして設置マシーンを選択':placed?'設置済みです。インベントリから削除できます':'インベントリにありません';
+  card.onclick=()=>{if(!stored){toast(placed?`${t.name} はすでに設置済みです`:`${t.name} は所持していません`,'warn');return;}selectedTowerType=t.id;selectedFromInventory=t.id;renderFooter();};
+  footer.appendChild(card);
+ });
+};
+
+/* --------- 敵をマシーン構成・レベルに連動して大幅強化 --------- */
+function threatProfile(){
+ let levels=0,damage=0,threat=0;
+ for(const m of builtTowers){const t=TOWER_TYPES[m.type];if(!t)continue;const lv=Math.max(1,Number(m.level)||1),d=Math.max(1,Number(m.dmg)||t.dmg);levels+=lv;damage+=d;threat+=lv*(1.0+Math.sqrt(d)/16+Math.max(0,t.range||1)*.035);}
+ return {levels,damage,threat};
+}
+const previousSpawnEnemy=window.spawnEnemy;
+window.spawnEnemy=function(){
+ const p=threatProfile();
+ const count=clamp(1+Math.floor(p.threat/7.5),1,10);
+ const hpMultiplier=2.35+p.threat*.19+p.damage*.0035+p.levels*.075;
+ const speedMultiplier=1+Math.min(.85,p.levels*.014+p.threat*.008);
+ for(let i=0;i<count;i++){
+  const before=enemies.length;previousSpawnEnemy();
+  for(let j=before;j<enemies.length;j++){
+   const e=enemies[j];e.hp*=hpMultiplier;e.maxHp=e.hp;e.speed*=speedMultiplier;e.level=Math.max(1,Math.floor(p.levels*.25+p.threat/2)+1);e.elite=(count>=4&&i%3===0)||e.level>=5;
+   if(i>0)e.progress=Math.min(i*.035,.28);
+  }
+ }
+};
+const previousDrawGame=window.drawGame;
+window.drawGame=function(){
+ previousDrawGame();
+ ctx.save();
+ for(const e of enemies){
+  const idx=Math.floor(e.progress);if(idx<0||idx>=pathCoords.length)continue;
+  const a=pathCoords[idx],b=pathCoords[Math.min(idx+1,pathCoords.length-1)],f=e.progress-idx;
+  const gx=a.x+(b.x-a.x)*f,gy=a.y+(b.y-a.y)*f,pos=getPixelPos(gx,gy);const r=e.elite?9:7;
+  ctx.globalAlpha=.7;ctx.strokeStyle=e.elite?'#ffde00':e.level>=3?'#b026ff':'#ff5a84';ctx.lineWidth=e.elite?2:1.2;
+  ctx.beginPath();ctx.arc(pos.x,pos.y,r+3+Math.sin(performance.now()/140+e.progress)*1.5,0,Math.PI*2);ctx.stroke();
+  if(e.elite){ctx.globalAlpha=1;ctx.fillStyle='#fff0a8';ctx.font='900 8px Orbitron, sans-serif';ctx.textAlign='center';ctx.fillText('ELITE',pos.x,pos.y-14);}
+  if(e.level>=4){ctx.globalAlpha=.95;ctx.fillStyle='#e9d5ff';ctx.font='900 8px Orbitron, sans-serif';ctx.textAlign='center';ctx.fillText('Lv'+e.level,pos.x,pos.y+18);}
+ }
+ ctx.restore();
+};
+
+/* --------- 1分ごとのボス検知カウントダウン --------- */
+const timerEl=$('boss-timer');let lastShownSec=-1;
+window.checkBossEvent=function(){
+ const now=Date.now(),remain=Math.max(0,nextBossAt-now),sec=Math.ceil(remain/1000),mm=String(Math.floor(sec/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');
+ if(timerEl&&sec!==lastShownSec){lastShownSec=sec;timerEl.innerHTML=`<i class="fa-solid fa-skull"></i> 次のボスまで <span class="bb-cd">${mm}:${ss}</span>`;timerEl.classList.toggle('bb-urgent',sec<=10);}
+ const game=$('view-game'),battle=$('view-boss-battle'),select=$('view-boss-select');
+ const canLaunch=game&&!game.classList.contains('hidden')&&battle?.classList.contains('hidden')&&select?.classList.contains('hidden')&&bossPicker.hidden&&inventoryOverlay.hidden&&dlcOverlay.hidden&&customOverlay.hidden;
+ if(now>=nextBossAt&&canLaunch){nextBossAt=now+60000;lastShownSec=-1;window.showBossSelection();}
+};
+
+/* --------- 4種（DLC中は6種）のボス選択。強い順に表示 --------- */
+function availableBosses(){return bossSpecs.filter(b=>!b.dlc||dlcs.bossExpansion).sort((a,b)=>b.rank-a.rank);}
+function renderBossPicker(){
+ const host=bossPicker.querySelector('.cyber-v2-content');
+ host.innerHTML=`<div id="cyber-boss-list">${availableBosses().map(b=>`<button class="cyber-boss-card" style="--boss-color:${b.color}" data-boss="${b.id}"><span class="rank">${b.rank}</span><div class="boss-art"><i class="fa-solid ${b.icon}"></i></div><h3>${b.name}</h3><div class="strength">THREAT RANK ${String(b.rank).padStart(2,'0')}</div><p>${b.desc}</p><div class="hp"><i class="fa-solid fa-heart-crack" style="color:${b.color}"></i> 基本HP ${fmt(b.baseHp)}　/　攻撃係数 ×${b.attack.toFixed(2)}</div></button>`).join('')}</div><div class="cyber-v2-footnote">表示は強い順です。ボスの実際のHPは参加マシーンの火力に合わせて調整されます。BOSS追加パックを有効にすると最上位2体が追加され、いつでも挑戦できます。</div>`;
+ host.querySelectorAll('[data-boss]').forEach(b=>b.onclick=()=>chooseBoss(b.dataset.boss));
+}
+function chooseBoss(id){
+ pickedBoss=bossSpecs.find(b=>b.id===id)||bossSpecs[1];bossPicker.hidden=true;
+ if(typeof originalShowBossSelection==='function')originalShowBossSelection();
+ const modal=$('view-boss-select');const panel=modal.querySelector('.cyber-modal');
+ let summary=$('cyber-selected-boss');if(!summary){summary=document.createElement('div');summary.id='cyber-selected-boss';const p=panel.querySelector('p');panel.insertBefore(summary,p||panel.firstChild);}
+ summary.innerHTML=`<b style="color:${pickedBoss.color}"><i class="fa-solid ${pickedBoss.icon}"></i> ${pickedBoss.name}</b>　<span style="color:#94a3b8">脅威ランク ${pickedBoss.rank} / 基本HP ${fmt(pickedBoss.baseHp)}</span><br>${pickedBoss.desc}`;
+ const p=panel.querySelector('p');if(p)p.textContent=`${pickedBoss.name} に挑むマシーンを選択してください。設置済みから最大3台を選べます。`;
+ const h=panel.querySelector('h2');if(h)h.textContent='BOSS迎撃準備';
+ const cancel=$('btn-cancel-boss');if(cancel)cancel.onclick=()=>{modal.classList.add('hidden');toast('ボス戦を見送りました。次のボスは1分後です');};
+}
+const originalShowBossSelection=window.showBossSelection;
+window.showBossSelection=function(){
+ if(isSpawning){try{window.toggleSpawning();}catch(e){}}
+ renderBossPicker();bossPicker.hidden=false;
+};
+
+/* --------- ボスごとにHP・攻撃傾向・色を変更。戦闘アニメーションは既存の高品質演出を使用 --------- */
+const originalStartBossBattle=window.startBossBattle;
+window.startBossBattle=function(){
+ if(!pickedBoss)pickedBoss=bossSpecs[1];
+ const spec=pickedBoss;
+ const partyDps=(selectedBossWeapons||[]).reduce((s,u)=>s+Math.max(1,Number(u.dmg)||1)*60/Math.max(1,Number(u.rate)||30),0);
+ (selectedBossWeapons||[]).forEach(u=>{
+  u.rate=TOWER_TYPES[u.type]?.rate||u.rate;u.period=u.rate/60;
+  u.dmg=Math.max(1,Math.round(u.dmg*spec.machineDmg));
+  u.maxHp=Math.max(90,Math.round(u.maxHp/spec.attack));u.hp=u.maxHp;
+ });
+ activeBattleBoss=spec;pendingBossReward=true;
+ originalStartBossBattle();
+ const hpScale=clamp(partyDps/120,.72,2.25);bossData.maxHp=Math.round(spec.baseHp*hpScale);bossData.hp=bossData.maxHp;
+ updateBossHPUI();
+ const fill=$('boss-hp-fill');if(fill)fill.style.background=`linear-gradient(90deg,${spec.color},#ffffff)`;
+ const h=$('view-boss-battle').querySelector('h3');if(h){h.textContent=spec.name;h.style.color=spec.color;h.style.textShadow=`0 0 16px ${spec.color}`;}
+ const entity=$('boss-entity');if(entity)entity.style.filter=`hue-rotate(${spec.hue}deg) saturate(1.45)`;
+ ['bb-fx','bb-bg'].forEach(id=>{const c=$(id);if(c)c.style.filter=`hue-rotate(${spec.hue}deg) saturate(1.2)`;});
+ const view=$('view-boss-battle');if(view)view.style.setProperty('--active-boss-color',spec.color);
+ const gh=$('bb-hp-ghost');if(gh)gh.style.width='100%';
+};
+function applyBossReward(){
+ if(!pendingBossReward||!activeBattleBoss)return;
+ const result=$('bb-result');if(!result||result.classList.contains('bb-hide')||!result.querySelector('.bb-result-card.win'))return;
+ pendingBossReward=false;
+ const rewardType=activeBattleBoss.machine;
+ if(!bossRewardsClaimed[activeBattleBoss.id]){
+  bossRewardsClaimed[activeBattleBoss.id]=true;
+  if(!machineExists(rewardType))inventory.push(makeMachine(rewardType,1));
+  toast(`限定マシーン獲得！ ${machineName(rewardType)}`,'info');
+ }
+ if(bossGatlingUnlocked&&!machineExists('bossGatling'))inventory.push(makeMachine('bossGatling',1));
+ renderFooter();window.saveGame();
+}
+const rewardObserver=new MutationObserver(()=>applyBossReward());
+rewardObserver.observe(document.body,{childList:true,subtree:true});
+
+/* --------- DLC有効状態・ゲーム起動後の再描画 --------- */
+const previousStartGame=window.startGame;
+window.startGame=function(){
+ previousStartGame();
+ nextBossAt=Date.now()+60000;lastShownSec=-1;
+ applyCurrentStats();renderFooter();updateBossAnytimeButton();
+};
+window.addEventListener('load',()=>{updateBossAnytimeButton();renderFooter();});
+renderDlc();
+applyCurrentStats();
+renderFooter();
+updateBossAnytimeButton();
+})();
+</script>
+
+</body>
+</html>
